@@ -1,6 +1,6 @@
-# About RustApps
+# About WebApps
 
-tion of lightweight applications and utility tools developed using various **Web technologies**. This repository serves as a centralized hub for a wide range of high-performance, responsive, and standalone web-based projects, ranging from frontend frameworks to vanilla JavaScript utilities.
+A curated collection of modern web applications and interactive tools developed using various **Web technologies**. This repository serves as a centralized hub for a wide range of high-performance, responsive, and standalone web-based projects, ranging from frontend frameworks to vanilla JavaScript utilities.
 
 All applications in this project are designed to be cross-platform and accessible through modern web browsers.
 
@@ -8,7 +8,7 @@ All applications in this project are designed to be cross-platform and accessibl
 
 ## Featured Apps
 
-| App Name | Description | Latest Version |
+| App Name | Description | Tech Stack |
 |-----------|-------------|----------------|
 | [vnbook](vnbook) | A vocabulary notebook for word logging and review | Vue3 / PHP |
 
