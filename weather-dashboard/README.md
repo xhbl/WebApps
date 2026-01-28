@@ -4,20 +4,20 @@ A modern weather dashboard application built with React demonstrating real-time 
 
 ## Features
 
-- 🌤️ Current weather information
-- 🔍 Search by city name
+- 🌤️ Display weather information for multiple cities
+- 🔍 Search by city name (case-insensitive)
 - 📊 5-day weather forecast
-- 🌡️ Temperature in Celsius and Fahrenheit
-- 💨 Wind speed and humidity
+- 🌡️ Temperature display in Celsius
+- 💨 Wind speed and humidity information
 - 📱 Responsive design
-- 🎨 Beautiful UI with weather icons
+- 🎨 Beautiful modern UI
 
 ## Technologies
 
 - React.js (Hooks)
 - CSS3
-- Weather API integration (simulated)
 - Component-based architecture
+- Simulated weather data
 
 ## How to Run
 
@@ -59,4 +59,4 @@ weather-dashboard/
 
 ## Note
 
-This demo uses simulated weather data. To use real weather data, obtain an API key from a weather service provider like OpenWeatherMap and integrate it into the application.
+This demo uses simulated static weather data for demonstration purposes. To use real weather data, obtain an API key from a weather service provider like OpenWeatherMap and integrate it into the application.

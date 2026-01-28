@@ -15,7 +15,7 @@ A simple todo list application built with vanilla JavaScript demonstrating:
 A weather information dashboard built with React demonstrating:
 - Component-based architecture
 - State management
-- API integration
+- Simulated data display
 - Modern React hooks
 
 ### 3. API Server (Node.js/Express)

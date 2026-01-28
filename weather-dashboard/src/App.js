@@ -73,9 +73,13 @@ function App() {
   const [error, setError] = useState('');
 
   const handleSearch = (city) => {
-    const data = weatherData[city];
-    if (data) {
-      setWeather(data);
+    // Case-insensitive search
+    const cityKey = Object.keys(weatherData).find(
+      key => key.toLowerCase() === city.toLowerCase()
+    );
+    
+    if (cityKey) {
+      setWeather(weatherData[cityKey]);
       setError('');
     } else {
       setError('City not found. Try: London, New York, Tokyo, or Paris');
