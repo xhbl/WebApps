@@ -15,8 +15,7 @@ A RESTful API server built with Node.js and Express demonstrating backend develo
 ## Technologies
 
 - Node.js
-- Express.js
-- Body-parser middleware
+- Express.js (with built-in JSON parsing)
 - CORS middleware
 
 ## API Endpoints

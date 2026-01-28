@@ -82,6 +82,7 @@ function App() {
       setWeather(weatherData[cityKey]);
       setError('');
     } else {
+      setWeather(null);
       setError('City not found. Try: London, New York, Tokyo, or Paris');
     }
   };

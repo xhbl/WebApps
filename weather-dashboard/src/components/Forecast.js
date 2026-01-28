@@ -5,8 +5,8 @@ function Forecast({ forecast }) {
     <div className="forecast">
       <h2 className="forecast-title">5-Day Forecast</h2>
       <div className="forecast-list">
-        {forecast.map((day, index) => (
-          <div key={index} className="forecast-item">
+        {forecast.map((day) => (
+          <div key={`${day.day}-${day.temp}-${day.condition}`} className="forecast-item">
             <div className="forecast-day">{day.day}</div>
             <div className="forecast-temp">{day.temp}°C</div>
             <div className="forecast-condition">{day.condition}</div>
