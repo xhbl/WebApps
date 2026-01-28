@@ -1,0 +1,47 @@
+services:
+  # 1. PHP + Apache 服务
+  php-api:
+    build: ./.docker
+    restart: always
+    container_name: vnbook-php
+    volumes:
+      # 映射你的 API 代码目录
+      - ./public/api:/var/www/html
+      # 映射 Xdebug 配置
+      - ./.docker/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+    ports:
+      - '8080:80'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    networks:
+      - vnbook-network
+
+  # 2. MariaDB 数据库 (虽然你用 NAS，但本地留一个做开发测试非常方便)
+  db:
+    image: mariadb:10
+    restart: always
+    container_name: vnbook-db
+    environment:
+      MYSQL_ROOT_PASSWORD: _dbpassword
+      MYSQL_DATABASE: vnbook
+    networks:
+      - vnbook-network
+
+  # 3. phpMyAdmin 数据库管理
+  phpmyadmin:
+    image: phpmyadmin:latest
+    restart: always
+    container_name: vnbook-pma
+    links:
+      - db
+    ports:
+      - '8081:80'
+    environment:
+      PMA_HOST: db
+      PMA_ARBITRARY: 1 # 允许登录其他服务器（如你的 NAS）
+    networks:
+      - vnbook-network
+
+networks:
+  vnbook-network:
+    driver: bridge

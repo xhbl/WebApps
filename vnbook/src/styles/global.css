@@ -1,0 +1,82 @@
+/* Vant 主题变量 */
+:root {
+  --van-primary-color: #1989fa;
+  --van-success-color: #07c160;
+  --van-danger-color: #f44646;
+  --van-warning-color: #ff976c;
+  --van-text-color: #323233;
+  --van-text-color-2: #646566;
+  --van-text-color-3: #969799;
+  --van-border-color: #ebedf0;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #f7f8fa;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+/* 响应式调整 */
+@media (min-width: 768px) {
+  body {
+    font-size: 16px;
+  }
+}
+
+/* 动画 */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+}
+
+/* 工具类 */
+.text-center {
+  text-align: center;
+}
+
+.mt-10 {
+  margin-top: 10px;
+}
+
+.mb-10 {
+  margin-bottom: 10px;
+}
+
+.p-10 {
+  padding: 10px;
+}
