@@ -16,7 +16,7 @@
           <van-cell
             v-for="u in usersStore.users"
             :key="u.Id"
-            :title="u.dispname"
+            :title="u.dispname || u.name"
             :label="u.name"
             is-link
             @click="editUser(u)"
@@ -33,7 +33,14 @@
       </van-pull-refresh>
     </div>
 
-    <van-action-sheet v-model:show="showActionSheet" :actions="actions" @select="onMenuSelect" />
+    <van-action-sheet
+      v-model:show="showActionSheet"
+      :actions="actions"
+      cancel-text="取消"
+      @select="onMenuSelect"
+    />
+
+    <user-mod-dialog v-model="showUserMod" />
 
     <user-editor-dialog
       v-model="showEditor"
@@ -45,27 +52,42 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
 import { useUsersStore } from '@/stores/users'
 import { useAuthStore } from '@/stores/auth'
 import UserEditorDialog from '@/components/UserEditorDialog.vue'
+import UserModDialog from '@/components/UserModDialog.vue'
 import type { User, MenuAction } from '@/types'
 
-const router = useRouter()
 const usersStore = useUsersStore()
 const authStore = useAuthStore()
 
 const showActionSheet = ref(false)
 const showEditor = ref(false)
+const showUserMod = ref(false)
 const editorUser = ref<User | null>(null)
 const refreshing = ref(false)
 const loading = ref(true)
 
-const actions: MenuAction[] = [
-  { name: '新建用户', key: 'new' },
-  { name: '注销', key: 'logout' },
-]
+// 修改点：在 actions 中增加了 icon 和 color
+const actions = computed<MenuAction[]>(() => [
+  {
+    name: '新建用户',
+    key: 'new',
+    icon: 'plus',
+  },
+  {
+    name: `${authStore.userInfo?.dname?.trim() ? authStore.userInfo.dname : authStore.userInfo?.uname}`,
+    key: 'mod',
+    icon: 'manager-o',
+  },
+  {
+    name: '退出登录',
+    key: 'logout',
+    icon: 'close',
+    color: '#c0392b', // 注销使用红色标识
+  },
+])
 
 onMounted(async () => {
   loading.value = true
@@ -110,9 +132,11 @@ const onMenuSelect = (action: MenuAction) => {
     case 'new':
       openNewUser()
       break
+    case 'mod':
+      showUserMod.value = true
+      break
     case 'logout':
       authStore.logout()
-      // logout() 会自动跳转到登录页，无需额外处理
       break
   }
 }
@@ -135,11 +159,21 @@ const onMenuSelect = (action: MenuAction) => {
 }
 
 .van-nav-bar {
-  font-size: 20px;
+  /* 调整标题字号 */
+  --van-nav-bar-title-font-size: 18px;
 }
 
+/* 统一图标点击样式 */
 .van-icon {
   font-weight: 700;
   cursor: pointer;
+}
+
+/* 优化 ActionSheet 内部图标间距 */
+:deep(.van-action-sheet__item) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 </style>

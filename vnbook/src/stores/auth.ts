@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import * as authApi from '@/api/auth'
 import type { LoginInfo, LoginRequest } from '@/types'
-import { showSuccessToast } from 'vant'
+import { toast } from '@/utils/toast'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -30,7 +30,7 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem('sessionId', loginData.login.sid)
         localStorage.setItem('userInfo', JSON.stringify(loginData.login))
 
-        showSuccessToast('登录成功')
+        // 登录成功后会跳转，不显示 toast
         return true
       }
 
@@ -80,7 +80,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await authApi.logout()
       clearAuth()
-      showSuccessToast('已注销')
+      toast.showSuccess('已注销')
       // 延迟跳转，确保 Toast 显示后再跳转
       setTimeout(() => {
         window.location.href = '/login'
@@ -125,7 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
       }
 
-      showSuccessToast('修改成功')
+      toast.showSuccess('修改成功')
       return true
     } catch (error) {
       console.error('Update user info failed:', error)

@@ -1,6 +1,6 @@
 import axios from 'axios'
 import type { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios'
-import { showLoadingToast, closeToast, showFailToast } from 'vant'
+import { toast } from '@/utils/toast'
 import type { ApiResponse } from '@/types'
 
 // 创建 axios 实例
@@ -16,13 +16,9 @@ const request: AxiosInstance = axios.create({
 // 请求拦截器
 request.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // 显示 loading
+    // 显示 loading（带 200ms 防抖）
     if (config.headers && !config.headers['X-No-Loading']) {
-      showLoadingToast({
-        message: '加载中...',
-        forbidClick: true,
-        duration: 0,
-      })
+      toast.showLoading()
     }
 
     // 添加会话 ID
@@ -36,7 +32,7 @@ request.interceptors.request.use(
     return config
   },
   (error: AxiosError) => {
-    closeToast()
+    toast.hideLoading()
     return Promise.reject(error)
   },
 )
@@ -44,21 +40,21 @@ request.interceptors.request.use(
 // 响应拦截器
 request.interceptors.response.use(
   (response) => {
-    closeToast()
+    toast.hideLoading()
 
     const data = response.data as ApiResponse
 
     // 检查业务状态
     if (data.success === 'false') {
       const message = data.message || '操作失败'
-      showFailToast(message)
+      toast.showFail(message)
       return Promise.reject(new Error(message))
     }
 
     return response
   },
   (error: AxiosError) => {
-    closeToast()
+    toast.hideLoading()
 
     let message = '网络错误，请稍后重试'
 
@@ -86,7 +82,7 @@ request.interceptors.response.use(
       message = '请求超时'
     }
 
-    showFailToast(message)
+    toast.showFail(message)
     return Promise.reject(error)
   },
 )

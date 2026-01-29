@@ -5,11 +5,11 @@ require_once 'impdb.php';
 function getUsers($uname=null) {
     $db = DB::vnb();
     if ($uname) {
-        $stmt = $db->prepare("SELECT id, name, dispname, time_c FROM vnb_users WHERE name = ? AND name NOT IN ('admin', 'test')");
+        $stmt = $db->prepare("SELECT id AS Id, name, dispname, time_c FROM vnb_users WHERE name = ? AND name != 'admin'");
         $stmt->execute([$uname]);
         $rows = $stmt->fetchAll();
     } else {
-        $stmt = $db->query("SELECT id, name, dispname, time_c FROM vnb_users WHERE name NOT IN ('admin', 'test')");
+        $stmt = $db->query("SELECT id AS Id, name, dispname, time_c FROM vnb_users WHERE name != 'admin'");
         $rows = $stmt->fetchAll();
     }
     foreach ($rows as &$row) { $row['_new'] = 0; }
@@ -29,8 +29,8 @@ function updateUsers($items) {
                 $hashedPass = hash('sha256', $item->pass);
                 $stmt = $db->prepare("INSERT INTO vnb_users (name, pass, dispname) VALUES (?, ?, ?)");
                 $stmt->execute([$item->name, $hashedPass, $item->dispname]);
-                $item->id = $db->lastInsertId();
-                $db->prepare("INSERT INTO vnu_books (user_id, title) VALUES (?, 'Default')")->execute([$item->id]);
+                $item->Id = $db->lastInsertId();
+                $db->prepare("INSERT INTO vnu_books (user_id, title) VALUES (?, 'Default')")->execute([$item->Id]);
                 $item->_new = 0;
             } else {
                 $sql = "UPDATE vnb_users SET dispname = ?";
@@ -41,13 +41,31 @@ function updateUsers($items) {
                 }
                 $sql .= " WHERE name = ?"; $params[] = $item->name;
                 $db->prepare($sql)->execute($params);
+                
+                // Fetch updated user data
+                $stmt = $db->prepare("SELECT id AS Id, name, dispname, time_c FROM vnb_users WHERE name = ?");
+                $stmt->execute([$item->name]);
+                $row = $stmt->fetch();
+                if ($row) {
+                    $item->Id = $row['Id'];
+                    $item->name = $row['name'];
+                    $item->dispname = $row['dispname'];
+                    $item->time_c = $row['time_c'];
+                }
             }
             $out[] = $item;
         }
         $db->commit();
         $ret->v = true; $ret->o = $out;
     } catch (Exception $e) {
-        if($db) $db->rollBack(); $ret->e = $e->getMessage();
+        if($db) $db->rollBack();
+        // Check if error is duplicate entry
+        $errorMsg = $e->getMessage();
+        if (strpos($errorMsg, 'Duplicate entry') !== false || strpos($errorMsg, '1062') !== false) {
+            $ret->e = 'Username already exists';
+        } else {
+            $ret->e = $errorMsg;
+        }
     }
     return $ret;
 }

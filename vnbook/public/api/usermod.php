@@ -43,7 +43,7 @@ function vnb_moduser($dname, $upassold, $upassnew) {
             'dname' => $dname
         ];
     } catch (Exception $e) { $retjo->message = $e->getMessage(); }
-    
+
     return $retjo;
 }
 

@@ -2,7 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import * as wordsApi from '@/api/words'
 import type { Word, Explanation, Sentence, SortMode, GroupedWords } from '@/types'
-import { showSuccessToast, showDialog } from 'vant'
+import { toast } from '@/utils/toast'
+import { showDialog } from 'vant'
 import { useBooksStore } from './books'
 
 // Raw response types from backend (ids may be string/number, hide flags as string/number)
@@ -49,8 +50,7 @@ export const useWordsStore = defineStore('words', () => {
     if (words.value.length === 0) return []
 
     if (sortMode.value === 'date') {
-      // 按日期分组
-      const groups = new Map<string, Word[]>()
+      // 按日期分�?      const groups = new Map<string, Word[]>()
 
       words.value.forEach((word) => {
         const date = word.time_c?.split(' ')[0] || '' // 提取日期部分
@@ -68,8 +68,7 @@ export const useWordsStore = defineStore('words', () => {
         words,
       }))
     } else {
-      // 按字母分组
-      const groups = new Map<string, Word[]>()
+      // 按字母分�?      const groups = new Map<string, Word[]>()
 
       words.value.forEach((word) => {
         const letter = word.name.charAt(0).toUpperCase()
@@ -79,8 +78,7 @@ export const useWordsStore = defineStore('words', () => {
         groups.get(letter)!.push(word)
       })
 
-      // 按字母顺序排序
-      const sortedEntries = Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+      // 按字母顺序排�?      const sortedEntries = Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]))
 
       return sortedEntries.map(([letter, words]) => ({
         key: letter,
@@ -119,8 +117,7 @@ export const useWordsStore = defineStore('words', () => {
           })),
         }))
 
-        // 按排序模式排序
-        sortWords()
+        // 按排序模式排�?        sortWords()
         return true
       }
       return false
@@ -138,8 +135,7 @@ export const useWordsStore = defineStore('words', () => {
       // 按时间倒序
       words.value.sort((a, b) => b.time_c.localeCompare(a.time_c))
     } else {
-      // 按字母顺序
-      words.value.sort((a, b) => a.name.localeCompare(b.name))
+      // 按字母顺�?      words.value.sort((a, b) => a.name.localeCompare(b.name))
     }
   }
 
@@ -152,25 +148,22 @@ export const useWordsStore = defineStore('words', () => {
   }
 
   /**
-   * 保存单词（两阶段添加逻辑）
-   */
+   * 保存单词（两阶段添加逻辑�?   */
   const saveWord = async (word: Word) => {
     try {
       const response = await wordsApi.saveWord(word)
       if (response.data.success === 'true' && response.data.word && response.data.word[0]) {
         const savedWord = response.data.word[0]
 
-        // 检查是否需要二次确认
-        if (savedWord?._new === 2) {
+        // 检查是否需要二次确�?        if (savedWord?._new === 2) {
           // 单词已存在于其他单词本中
           const confirmed = await showDialog({
-            title: '单词已存在',
+            title: '单词已存�?,
             message: `单词"${savedWord.name}"已存在于其他单词本中，要加入此单词本吗？`,
           })
 
           if (confirmed && savedWord) {
-            // 第二次提交，只添加映射关系
-            return await saveWord(savedWord)
+            // 第二次提交，只添加映射关�?            return await saveWord(savedWord)
           }
           return null
         }
@@ -179,10 +172,9 @@ export const useWordsStore = defineStore('words', () => {
           // 新增
           words.value.push(savedWord)
           sortWords()
-          showSuccessToast('添加成功')
+          toast.showSuccess('添加成功')
 
-          // 更新单词本数量
-          const booksStore = useBooksStore()
+          // 更新单词本数�?          const booksStore = useBooksStore()
           if (booksStore.currentBook) {
             booksStore.updateBookNums(booksStore.currentBook.Id, booksStore.currentBook.nums + 1)
           }
@@ -194,7 +186,7 @@ export const useWordsStore = defineStore('words', () => {
             savedWord.explanations = words.value[index]?.explanations
             words.value[index] = savedWord
           }
-          showSuccessToast('更新成功')
+          toast.showSuccess('更新成功')
         }
 
         return savedWord
@@ -213,7 +205,7 @@ export const useWordsStore = defineStore('words', () => {
     try {
       const confirmed = await showDialog({
         title: '确认删除',
-        message: `确定要删除单词"${word.name}"吗？`,
+        message: `确定要删除单�?${word.name}"吗？`,
       })
 
       if (!confirmed) return false
@@ -230,13 +222,12 @@ export const useWordsStore = defineStore('words', () => {
         currentWord.value = null
       }
 
-      // 更新单词本数量
-      const booksStore = useBooksStore()
+      // 更新单词本数�?      const booksStore = useBooksStore()
       if (booksStore.currentBook) {
         booksStore.updateBookNums(booksStore.currentBook.Id, booksStore.currentBook.nums - 1)
       }
 
-      showSuccessToast('删除成功')
+      toast.showSuccess('删除成功')
       return true
     } catch (error) {
       console.error('Delete word failed:', error)
@@ -259,7 +250,7 @@ export const useWordsStore = defineStore('words', () => {
         currentWord.value.phon = phon
       }
 
-      showSuccessToast('更新成功')
+      toast.showSuccess('更新成功')
       return true
     } catch (error) {
       console.error('Update phon failed:', error)
@@ -280,15 +271,14 @@ export const useWordsStore = defineStore('words', () => {
       ) {
         const savedExp = response.data.word[0].explanations![0]
 
-        // 更新当前单词的释义列表
-        if (currentWord.value && currentWord.value.Id === explanation.wid) {
+        // 更新当前单词的释义列�?        if (currentWord.value && currentWord.value.Id === explanation.wid) {
           if (!currentWord.value.explanations) {
             currentWord.value.explanations = []
           }
 
           if (explanation._new === 1 && savedExp) {
             currentWord.value.explanations.push(savedExp)
-            showSuccessToast('添加成功')
+            toast.showSuccess('添加成功')
           } else if (savedExp) {
             const index = currentWord.value.explanations!.findIndex((e) => e.Id === savedExp.Id)
             if (index !== -1 && currentWord.value.explanations) {
@@ -296,10 +286,10 @@ export const useWordsStore = defineStore('words', () => {
               savedExp.sentences = currentWord.value.explanations[index]?.sentences
               currentWord.value.explanations[index] = savedExp
             }
-            showSuccessToast('更新成功')
+            toast.showSuccess('更新成功')
           }
 
-          // 同步到 words 列表
+          // 同步�?words 列表
           const word = words.value.find((w) => w.Id === explanation.wid)
           if (word) {
             word.explanations = currentWord.value.explanations
@@ -322,28 +312,27 @@ export const useWordsStore = defineStore('words', () => {
     try {
       const confirmed = await showDialog({
         title: '确认删除',
-        message: '确定要删除这条释义吗？',
+        message: '确定要删除这条释义吗�?,
       })
 
       if (!confirmed) return false
 
       await wordsApi.deleteExplanation(explanation)
 
-      // 从当前单词的释义列表中移除
-      if (currentWord.value && currentWord.value.explanations) {
+      // 从当前单词的释义列表中移�?      if (currentWord.value && currentWord.value.explanations) {
         const index = currentWord.value.explanations.findIndex((e) => e.Id === explanation.Id)
         if (index !== -1) {
           currentWord.value.explanations.splice(index, 1)
         }
 
-        // 同步到 words 列表
+        // 同步�?words 列表
         const word = words.value.find((w) => w.Id === explanation.wid)
         if (word) {
           word.explanations = currentWord.value.explanations
         }
       }
 
-      showSuccessToast('删除成功')
+      toast.showSuccess('删除成功')
       return true
     } catch (error) {
       console.error('Delete explanation failed:', error)
@@ -364,8 +353,7 @@ export const useWordsStore = defineStore('words', () => {
       ) {
         const savedSen = response.data.word[0].explanations![0].sentences![0]
 
-        // 更新当前单词的例句列表
-        if (currentWord.value && currentWord.value.explanations) {
+        // 更新当前单词的例句列�?        if (currentWord.value && currentWord.value.explanations) {
           const exp = currentWord.value.explanations.find((e) => e.Id === expId)
           if (exp) {
             if (!exp.sentences) {
@@ -374,16 +362,16 @@ export const useWordsStore = defineStore('words', () => {
 
             if (sentence._new === 1 && savedSen) {
               exp.sentences.push(savedSen)
-              showSuccessToast('添加成功')
+              toast.showSuccess('添加成功')
             } else if (savedSen) {
               const index = exp.sentences.findIndex((s) => s.Id === savedSen.Id)
               if (index !== -1) {
                 exp.sentences[index] = savedSen
               }
-              showSuccessToast('更新成功')
+              toast.showSuccess('更新成功')
             }
 
-            // 同步到 words 列表
+            // 同步�?words 列表
             const word = words.value.find((w) => w.Id === currentWord.value!.Id)
             if (word && word.explanations) {
               const wordExp = word.explanations.find((e) => e.Id === expId)
@@ -410,15 +398,14 @@ export const useWordsStore = defineStore('words', () => {
     try {
       const confirmed = await showDialog({
         title: '确认删除',
-        message: '确定要删除这条例句吗？',
+        message: '确定要删除这条例句吗�?,
       })
 
       if (!confirmed) return false
 
       await wordsApi.deleteSentence(sentence)
 
-      // 从释义的例句列表中移除
-      if (currentWord.value && currentWord.value.explanations) {
+      // 从释义的例句列表中移�?      if (currentWord.value && currentWord.value.explanations) {
         const exp = currentWord.value.explanations.find((e) => e.Id === expId)
         if (exp && exp.sentences) {
           const index = exp.sentences.findIndex((s) => s.Id === sentence.Id)
@@ -426,7 +413,7 @@ export const useWordsStore = defineStore('words', () => {
             exp.sentences.splice(index, 1)
           }
 
-          // 同步到 words 列表
+          // 同步�?words 列表
           const word = words.value.find((w) => w.Id === currentWord.value!.Id)
           if (word && word.explanations) {
             const wordExp = word.explanations.find((e) => e.Id === expId)
@@ -437,7 +424,7 @@ export const useWordsStore = defineStore('words', () => {
         }
       }
 
-      showSuccessToast('删除成功')
+      toast.showSuccess('删除成功')
       return true
     } catch (error) {
       console.error('Delete sentence failed:', error)
@@ -453,8 +440,7 @@ export const useWordsStore = defineStore('words', () => {
   }
 
   /**
-   * 根据单词名查找单词（本地）
-   */
+   * 根据单词名查找单词（本地�?   */
   const findWordByName = (name: string): Word | undefined => {
     return words.value.find((w) => w.name.toLowerCase() === name.toLowerCase())
   }
@@ -487,3 +473,4 @@ export const useWordsStore = defineStore('words', () => {
     clearWords,
   }
 })
+

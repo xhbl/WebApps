@@ -14,24 +14,19 @@
             ]"
             :readonly="!isNew"
           />
-          <van-field
-            v-model="edit.dispname"
-            label="显示名"
-            placeholder="请输入显示名"
-            :rules="[{ required: true, message: '请输入显示名' }]"
-          />
+          <van-field v-model="edit.dispname" label="显示名" placeholder="留空则显示用户名" />
           <van-field
             v-model="password"
             type="password"
             label="密码"
-            placeholder="请输入密码"
+            :placeholder="isNew ? '请输入密码' : '留空则保持不变'"
             :rules="isNew ? [{ required: true, message: '请输入密码' }] : []"
           />
           <van-field
             v-model="passwordConfirm"
             type="password"
             label="确认密码"
-            placeholder="请再次输入密码"
+            :placeholder="isNew ? '请再次输入密码' : '留空则保持不变'"
             :rules="isNew ? [{ required: true, message: '请再次输入密码' }] : []"
           />
         </van-cell-group>
@@ -111,9 +106,12 @@ watch(
 )
 
 const onSubmit = () => {
-  if (password.value && password.value !== passwordConfirm.value) {
-    showToast('两次输入的密码不一致')
-    return
+  // 检查密码是否一致：如果其中一个有值，两个都必须有值且相同
+  if (password.value || passwordConfirm.value) {
+    if (password.value !== passwordConfirm.value) {
+      showToast('两次输入的密码不一致')
+      return
+    }
   }
 
   const u: User = { ...edit.value }
@@ -160,5 +158,9 @@ h3 {
 
 .actions .van-button {
   flex: 1;
+}
+
+:deep(.van-field__label) {
+  font-weight: bold;
 }
 </style>

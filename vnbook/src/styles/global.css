@@ -8,6 +8,13 @@
   --van-text-color-2: #646566;
   --van-text-color-3: #969799;
   --van-border-color: #ebedf0;
+
+  /* 自定义字体大小 */
+  --van-font-size-xs: 13px !important;
+  --van-font-size-sm: 15px !important;
+  --van-font-size-md: 17px !important;
+  --van-font-size-lg: 19px !important;
+  --van-font-size-xl: 21px !important;
 }
 
 * {
@@ -79,4 +86,48 @@ body {
 
 .p-10 {
   padding: 10px;
+}
+
+/* Toast 统一样式 - 黑底半透明白字 */
+.van-toast {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  color: #ffffff !important;
+  min-width: 96px;
+  max-width: 70%;
+}
+
+.van-toast--text,
+.van-toast--loading,
+.van-toast--success,
+.van-toast--fail {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+.van-toast__text {
+  color: #ffffff !important;
+  padding: 2px 0;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.van-toast .van-icon {
+  color: #ffffff !important;
+}
+
+/* Toast 成功/失败 图标颜色 */
+.toast-success .van-icon {
+  color: #07c160 !important;
+}
+
+.toast-fail .van-icon {
+  color: #ee0a24 !important;
+}
+
+.van-toast--loading .van-loading__spinner {
+  color: #ffffff !important;
+}
+
+/* Loading spinner 颜色 */
+.van-loading__spinner .van-loading__dot {
+  background-color: #ffffff !important;
 }

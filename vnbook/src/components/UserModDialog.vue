@@ -1,38 +1,34 @@
 <template>
-  <van-popup v-model:show="show" round position="bottom" :style="{ height: '60%' }">
+  <van-popup v-model:show="show" round position="bottom" :style="{ height: '70%' }">
     <div class="editor">
       <h3>修改用户信息</h3>
       <van-form @submit="onSubmit">
         <van-cell-group>
-          <van-field
-            v-model="edit.dispname"
-            label="显示名"
-            placeholder="请输入显示名"
-            :rules="[{ required: true, message: '请输入显示名' }]"
-          />
+          <van-field v-model="edit.uname" label="当前用户" readonly class="readonly-field" />
+          <van-field v-model="edit.dispname" label="显示名" placeholder="留空则显示用户名" />
           <van-field
             v-model="edit.oldpass"
             type="password"
-            label="旧密码（可选）"
-            placeholder="要修改密码请输入"
+            label="旧密码"
+            placeholder="留空则保持不变"
           />
           <van-field
             v-model="edit.newpass"
             type="password"
-            label="新密码（可选）"
-            placeholder="新密码"
+            label="新密码"
+            placeholder="留空则保持不变"
           />
           <van-field
             v-model="edit.newpass2"
             type="password"
             label="确认密码"
-            placeholder="再次输入新密码"
+            placeholder="留空则保持不变"
           />
         </van-cell-group>
 
         <div class="actions">
           <van-button round type="primary" native-type="submit">保存</van-button>
-          <van-button round class="ml" @click="onCancel">取消</van-button>
+          <van-button round @click="onCancel">取消</van-button>
         </div>
       </van-form>
     </div>
@@ -41,6 +37,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { showToast } from 'vant'
 import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps<{ modelValue: boolean }>()
@@ -56,6 +53,7 @@ watch(show, (v) => emit('update:modelValue', v))
 const authStore = useAuthStore()
 
 const edit = ref({
+  uname: authStore.userInfo?.uname || '',
   dispname: authStore.userInfo?.dname || '',
   oldpass: '',
   newpass: '',
@@ -63,16 +61,30 @@ const edit = ref({
 })
 
 const onSubmit = async () => {
-  if (edit.value.newpass && edit.value.newpass !== edit.value.newpass2) {
-    alert('两次输入的密码不一致')
-    return
+  // 判断是否要修改密码：三项都为空表示不修改
+  const hasPassword = edit.value.oldpass || edit.value.newpass || edit.value.newpass2
+
+  if (hasPassword) {
+    // 需要校验密码
+    if (!edit.value.oldpass) {
+      showToast('请输入旧密码')
+      return
+    }
+    if (!edit.value.newpass) {
+      showToast('请输入新密码')
+      return
+    }
+    if (edit.value.newpass !== edit.value.newpass2) {
+      showToast('两次输入的新密码不一致')
+      return
+    }
   }
 
   const success = await authStore.updateUserInfo({
     dispname: edit.value.dispname,
-    oldpass: edit.value.oldpass || undefined,
-    newpass: edit.value.newpass || undefined,
-    newpass2: edit.value.newpass2 || undefined,
+    oldpass: hasPassword ? edit.value.oldpass : undefined,
+    newpass: hasPassword ? edit.value.newpass : undefined,
+    newpass2: hasPassword ? edit.value.newpass2 : undefined,
   })
 
   if (success) {
@@ -86,13 +98,42 @@ const onCancel = () => (show.value = false)
 <style scoped>
 .editor {
   padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
+
+h3 {
+  margin: 0 0 16px 0;
+  text-align: center;
+}
+
+.van-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
 .actions {
-  padding: 12px 0;
+  margin-top: auto;
+  padding: 20px 0;
   display: flex;
   gap: 12px;
 }
-.ml {
-  margin-left: 8px;
+
+.actions .van-button {
+  flex: 1;
+}
+
+:deep(.van-field__label) {
+  font-weight: bold;
+}
+
+:deep(.readonly-field .van-field__value) {
+  color: #999 !important;
+}
+
+:deep(.readonly-field input) {
+  color: #999 !important;
 }
 </style>

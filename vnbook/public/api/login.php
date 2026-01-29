@@ -65,8 +65,8 @@ function vnb_dologin($uname, $response_hash, $keepme) {
         $isInitialization = false;
         $storedHash = null;
         
-        // Check initialization scenario
-        if (!$db || $uname === C_ADMIN_NAME) {
+        // Check initialization scenario: only use init password if DB doesn't exist
+        if (!$db) {
             $storedHash = hash('sha256', C_ADMIN_PASSINIT);
             $isInitialization = true;
         } else {

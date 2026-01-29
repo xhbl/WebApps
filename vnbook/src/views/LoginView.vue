@@ -2,8 +2,10 @@
   <div class="login-view">
     <div class="login-container">
       <div class="logo">
-        <h1>单词本</h1>
-        <p>VnBook</p>
+        <h1 class="logo-title">
+          <img class="logo-icon" src="/resources/icons/favicon-96.png" alt="单词本" />
+          <span>单词本</span>
+        </h1>
       </div>
 
       <van-form @submit="onSubmit">
@@ -25,14 +27,28 @@
             :rules="[{ required: true, message: '请输入密码' }]"
             autocomplete="current-password"
           />
+          <van-field label="保持登录">
+            <template #input>
+              <van-checkbox v-model="formData.remember" />
+            </template>
+          </van-field>
         </van-cell-group>
 
-        <div class="remember-me">
-          <van-checkbox v-model="formData.remember">记住我</van-checkbox>
+        <div class="submit-btn">
+          <van-button round block type="primary" native-type="submit" :loading="loading">
+            登录
+          </van-button>
         </div>
 
-        <div class="submit-btn">
-          <van-button round block type="primary" native-type="submit"> 登录 </van-button>
+        <div class="footer-info">
+          <p>单词记录本 网页应用程序 v2.1</p>
+          <p>著左权所有 (C) 2026 XHBL</p>
+          <p class="apply-link">
+            <a
+              href="mailto:newxhbl@hotmail.com?subject=申请单词本帐号&body=请提供你的用户名和初始密码: "
+              >申请账号</a
+            >
+          </p>
         </div>
       </van-form>
     </div>
@@ -40,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -54,19 +70,28 @@ const formData = reactive({
   remember: true,
 })
 
-const onSubmit = async () => {
-  const success = await authStore.login(formData)
+const loading = ref(false)
 
-  if (success) {
-    // 登录成功，管理员跳转到用户管理，普通用户跳转到单词本列表
-    const redirect = route.query.redirect as string
-    if (redirect) {
-      router.push(redirect)
-    } else if (authStore.isAdmin) {
-      router.push('/users')
-    } else {
-      router.push('/books')
+const onSubmit = async () => {
+  if (loading.value) return // 防止重复提交
+
+  loading.value = true
+  try {
+    const success = await authStore.login(formData)
+
+    if (success) {
+      // 登录成功，管理员跳转到用户管理，普通用户跳转到单词本列表
+      const redirect = route.query.redirect as string
+      if (redirect) {
+        router.push(redirect)
+      } else if (authStore.isAdmin) {
+        router.push('/users')
+      } else {
+        router.push('/books')
+      }
     }
+  } finally {
+    loading.value = false
   }
 }
 </script>
@@ -75,27 +100,42 @@ const onSubmit = async () => {
 .login-view {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  justify-content: flex-start;
+  background: rgb(238, 235, 238);
   padding: 20px;
 }
 
 .login-container {
   width: 100%;
   max-width: 400px;
+  margin-top: 4vh;
+  transition: margin-top 0.3s ease;
 }
 
 .logo {
   text-align: center;
-  color: white;
-  margin-bottom: 40px;
+  color: #323233;
+  margin-bottom: 12px;
 }
 
 .logo h1 {
-  font-size: 36px;
+  font-size: 24px;
   font-weight: bold;
   margin: 0 0 10px 0;
+}
+
+.logo-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 .logo p {
@@ -104,15 +144,40 @@ const onSubmit = async () => {
   opacity: 0.9;
 }
 
-.remember-me {
-  padding: 15px 16px;
-}
-
 .submit-btn {
   padding: 15px 16px;
 }
 
 :deep(.van-cell-group--inset) {
   margin: 0;
+}
+
+:deep(.van-field__label) {
+  font-weight: bold;
+}
+
+.footer-info {
+  text-align: center;
+  font-size: var(--van-font-size-sm);
+  color: rgb(128, 128, 128);
+  margin-top: 10px;
+  padding: 0 16px;
+}
+
+.footer-info p {
+  margin: 1px 0;
+  line-height: 1.2;
+}
+
+.apply-link {
+  margin-top: 10px !important;
+}
+
+.apply-link {
+  font-size: var(--van-font-size-xs);
+}
+
+.apply-link a:hover {
+  text-decoration: underline;
 }
 </style>

@@ -2,7 +2,8 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import * as usersApi from '@/api/users'
 import type { User } from '@/types'
-import { showSuccessToast, showDialog } from 'vant'
+import { toast } from '@/utils/toast'
+import { showDialog } from 'vant'
 
 export const useUsersStore = defineStore('users', () => {
   // State
@@ -38,13 +39,13 @@ export const useUsersStore = defineStore('users', () => {
 
         if (user._new === 1) {
           users.value.push(savedUser)
-          showSuccessToast('创建成功')
+          toast.showSuccess('创建成功')
         } else {
           const index = users.value.findIndex((u) => u.Id === savedUser?.Id)
           if (index !== -1 && savedUser) {
             users.value[index] = savedUser
           }
-          showSuccessToast('更新成功')
+          toast.showSuccess('更新成功')
         }
 
         return savedUser
@@ -58,30 +59,30 @@ export const useUsersStore = defineStore('users', () => {
 
   /**
    * 删除用户
-   * 两阶段确认：1) 确认删除用户 2) 确认是否同时删除用户数据库
+   * 两阶段确认：1) 确认删除用户 2) 确认是否同时删除用户数据
    */
   const deleteUser = async (user: User) => {
     try {
       // 第一次确认：删除用户
       await showDialog({
         title: '删除用户',
-        message: `确定要删除用户"${user.dispname}"吗？`,
+        message: `确定要删除用户"${user.dispname || user.name}"吗？`,
         confirmButtonText: '删除',
         cancelButtonText: '取消',
       })
 
-      // 第二次确认：删除数据库
+      // 第二次确认：删除数据
       const deleteDb = await showDialog({
-        title: '删除用户数据库',
+        title: '删除用户数据',
         message: '该用户的数据需要同时删除吗？',
-        confirmButtonText: '删除数据库',
+        confirmButtonText: '删除数据',
         cancelButtonText: '仅删除用户',
       })
         .then(() => true)
         .catch(() => false)
 
-      // 设置 _new 标志：11 = 删除用户和数据库, 0 = 仅删除用户
-      const deletePayload = { ...user, _new: deleteDb ? 11 : 0 }
+      // 设置 _new 标志：1 = 删除用户和数据库, 0 = 仅删除用户
+      const deletePayload = { ...user, _new: deleteDb ? 1 : 0 }
 
       await usersApi.deleteUser(deletePayload)
 
@@ -90,7 +91,7 @@ export const useUsersStore = defineStore('users', () => {
         users.value.splice(index, 1)
       }
 
-      showSuccessToast('删除成功')
+      toast.showSuccess('删除成功')
       return true
     } catch (error) {
       console.error('Delete user failed:', error)

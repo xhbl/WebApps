@@ -2,7 +2,8 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import * as booksApi from '@/api/books'
 import type { Book } from '@/types'
-import { showSuccessToast, showDialog } from 'vant'
+import { toast } from '@/utils/toast'
+import { showDialog } from 'vant'
 
 export const useBooksStore = defineStore('books', () => {
   // State
@@ -39,14 +40,14 @@ export const useBooksStore = defineStore('books', () => {
         if (book._new === 1) {
           // 新增
           books.value.unshift(savedBook)
-          showSuccessToast('创建成功')
+          toast.showSuccess('创建成功')
         } else {
           // 更新
           const index = books.value.findIndex((b) => b.Id === savedBook?.Id)
           if (index !== -1 && savedBook) {
             books.value[index] = savedBook
           }
-          showSuccessToast('更新成功')
+          toast.showSuccess('更新成功')
         }
 
         return savedBook
@@ -91,7 +92,7 @@ export const useBooksStore = defineStore('books', () => {
         currentBook.value = null
       }
 
-      showSuccessToast('删除成功')
+      toast.showSuccess('删除成功')
       return true
     } catch (error) {
       console.error('Delete book failed:', error)
