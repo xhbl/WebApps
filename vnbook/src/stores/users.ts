@@ -59,33 +59,25 @@ export const useUsersStore = defineStore('users', () => {
 
   /**
    * 删除用户
-   * 两阶段确认：1) 确认删除用户 2) 确认是否同时删除用户数据
+   * 单次确认：删除用户将级联删除其名下所有数据
    */
   const deleteUser = async (user: User) => {
     try {
-      // 第一次确认：删除用户
+      // 1. 等待确认弹窗
+      // 注意：点击取消会抛出异常，所以这里会被 try-catch 捕获
       await showDialog({
         title: '删除用户',
-        message: `确定要删除用户"${user.dispname || user.name}"吗？`,
+        message: `确定要删除用户"${user.dispname || user.name}"吗？\n这将同时删除其所有相关联的数据。`,
         confirmButtonText: '删除',
+        confirmButtonColor: 'var(--van-danger-color)',
         cancelButtonText: '取消',
+        showCancelButton: true,
       })
 
-      // 第二次确认：删除数据
-      const deleteDb = await showDialog({
-        title: '删除用户数据',
-        message: '该用户的数据需要同时删除吗？',
-        confirmButtonText: '删除数据',
-        cancelButtonText: '仅删除用户',
-      })
-        .then(() => true)
-        .catch(() => false)
+      // 2. 执行真正的删除请求
+      await usersApi.deleteUser(user)
 
-      // 设置 _new 标志：1 = 删除用户和数据库, 0 = 仅删除用户
-      const deletePayload = { ...user, _new: deleteDb ? 1 : 0 }
-
-      await usersApi.deleteUser(deletePayload)
-
+      // 3. 更新本地状态（Store）
       const index = users.value.findIndex((u) => u.Id === user.Id)
       if (index !== -1) {
         users.value.splice(index, 1)
@@ -94,7 +86,13 @@ export const useUsersStore = defineStore('users', () => {
       toast.showSuccess('删除成功')
       return true
     } catch (error) {
+      // 关键判断：如果是用户点击了取消，不应该报错，直接结束即可
+      if (error === 'cancel') {
+        return false
+      }
+
       console.error('Delete user failed:', error)
+      toast.showFail('删除失败，请稍后重试')
       return false
     }
   }

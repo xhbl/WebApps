@@ -7,12 +7,13 @@
           <van-field
             v-model="edit.name"
             label="用户名"
-            placeholder="请输入用户名（邮箱）"
+            placeholder="限字母数字和._@"
             :rules="[
               { required: true, message: '请输入用户名' },
               { pattern: /^[\w.@]+$/, message: '用户名格式不正确' },
             ]"
             :readonly="!isNew"
+            :class="{ 'readonly-field': !isNew }"
           />
           <van-field v-model="edit.dispname" label="显示名" placeholder="留空则显示用户名" />
           <van-field
@@ -151,16 +152,28 @@ h3 {
 
 .actions {
   margin-top: auto;
-  padding: 20px 0;
+  padding: 20px 16px; /* 适当的边距 */
   display: flex;
   gap: 12px;
+  justify-content: center;
 }
 
 .actions .van-button {
+  /* 这样设置可以让按钮在一定范围内自适应，但不会无限拉长 */
+  min-width: 100px;
+  max-width: 120px;
   flex: 1;
 }
 
 :deep(.van-field__label) {
   font-weight: bold;
+}
+
+:deep(.readonly-field .van-field__value) {
+  color: var(--van-text-color-2) !important;
+}
+
+:deep(.readonly-field input) {
+  color: var(--van-text-color-2) !important;
 }
 </style>

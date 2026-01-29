@@ -2,10 +2,10 @@
   <div class="users-manage-view">
     <van-nav-bar title="用户管理" fixed placeholder>
       <template #left>
-        <van-icon name="plus" size="18" @click="openNewUser" />
+        <van-icon name="plus" size="22" @click="openNewUser" />
       </template>
       <template #right>
-        <van-icon name="ellipsis" size="18" @click="showActionSheet = true" />
+        <van-icon name="ellipsis" size="22" @click="showActionSheet = true" />
       </template>
     </van-nav-bar>
 
@@ -22,7 +22,7 @@
             @click="editUser(u)"
           >
             <template #icon>
-              <van-icon name="user-o" style="margin-right: 8px" />
+              <van-icon name="user-o" class="user-list-icon" />
             </template>
           </van-cell>
           <van-empty
@@ -53,6 +53,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { showDialog } from 'vant'
 import { useUsersStore } from '@/stores/users'
 import { useAuthStore } from '@/stores/auth'
 import UserEditorDialog from '@/components/UserEditorDialog.vue'
@@ -85,7 +86,7 @@ const actions = computed<MenuAction[]>(() => [
     name: '退出登录',
     key: 'logout',
     icon: 'close',
-    color: '#c0392b', // 注销使用红色标识
+    color: 'var(--van-warning-color)',
   },
 ])
 
@@ -136,7 +137,20 @@ const onMenuSelect = (action: MenuAction) => {
       showUserMod.value = true
       break
     case 'logout':
-      authStore.logout()
+      showDialog({
+        title: '请确认',
+        message: '确定要退出登录吗？',
+        confirmButtonText: '退出',
+        cancelButtonText: '取消',
+        showCancelButton: true,
+      })
+        .then(async () => {
+          // 点击确认按钮
+          await authStore.logout()
+        })
+        .catch(() => {
+          // 点击取消按钮，不进行任何操作
+        })
       break
   }
 }
@@ -145,25 +159,20 @@ const onMenuSelect = (action: MenuAction) => {
 <style scoped>
 .users-manage-view {
   min-height: 100vh;
-  background-color: #f7f8fa;
+  background-color: var(--van-background);
 }
 
 .content {
-  padding-top: 46px;
+  padding-top: 4px;
 }
 
 .loading {
   padding: 20px;
   text-align: center;
-  color: #999;
+  color: var(--van-text-color-3);
 }
 
-.van-nav-bar {
-  /* 调整标题字号 */
-  --van-nav-bar-title-font-size: 18px;
-}
-
-/* 统一图标点击样式 */
+/* 图标点击样式 */
 .van-icon {
   font-weight: 700;
   cursor: pointer;
@@ -175,5 +184,34 @@ const onMenuSelect = (action: MenuAction) => {
   align-items: center;
   justify-content: center;
   gap: 4px;
+}
+
+/* 调整标题字号 */
+:deep(.van-nav-bar__title) {
+  font-size: var(--van-font-size-xl);
+}
+
+/* 调整列表字号 */
+:deep(.van-cell__title) {
+  font-size: var(--van-font-size-lg);
+  font-weight: 500;
+}
+:deep(.van-cell__label) {
+  font-size: var(--van-font-size-md);
+}
+
+/* 用户列表 图标优化 */
+:deep(.user-list-icon) {
+  font-size: 24px;
+  margin-right: 12px;
+  color: var(--van-primary-color);
+  display: flex;
+  align-items: center;
+  height: 100%; /* 确保在 Cell 容器中垂直居中 */
+}
+
+/* 确保单元格内容与图标对齐 */
+:deep(.van-cell) {
+  align-items: center;
 }
 </style>

@@ -80,7 +80,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await authApi.logout()
       clearAuth()
-      toast.showSuccess('已注销')
+      toast.showSuccess('已退出登录')
       // 延迟跳转，确保 Toast 显示后再跳转
       setTimeout(() => {
         window.location.href = '/login'

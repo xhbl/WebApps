@@ -116,11 +116,11 @@ body {
 
 /* Toast 成功/失败 图标颜色 */
 .toast-success .van-icon {
-  color: #07c160 !important;
+  color: var(--van-success-color) !important;
 }
 
 .toast-fail .van-icon {
-  color: #ee0a24 !important;
+  color: var(--van-danger-color) !important;
 }
 
 .van-toast--loading .van-loading__spinner {

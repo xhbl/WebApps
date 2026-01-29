@@ -1,10 +1,10 @@
 <template>
   <van-popup v-model:show="show" round position="bottom" :style="{ height: '70%' }">
     <div class="editor">
-      <h3>修改用户信息</h3>
+      <h3>当前用户</h3>
       <van-form @submit="onSubmit">
         <van-cell-group>
-          <van-field v-model="edit.uname" label="当前用户" readonly class="readonly-field" />
+          <van-field v-model="edit.uname" label="用户名" readonly class="readonly-field" />
           <van-field v-model="edit.dispname" label="显示名" placeholder="留空则显示用户名" />
           <van-field
             v-model="edit.oldpass"
@@ -116,12 +116,16 @@ h3 {
 
 .actions {
   margin-top: auto;
-  padding: 20px 0;
+  padding: 20px 16px; /* 适当的边距 */
   display: flex;
   gap: 12px;
+  justify-content: center;
 }
 
 .actions .van-button {
+  /* 这样设置可以让按钮在一定范围内自适应，但不会无限拉长 */
+  min-width: 100px;
+  max-width: 120px;
   flex: 1;
 }
 
@@ -130,10 +134,10 @@ h3 {
 }
 
 :deep(.readonly-field .van-field__value) {
-  color: #999 !important;
+  color: var(--van-text-color-2) !important;
 }
 
 :deep(.readonly-field input) {
-  color: #999 !important;
+  color: var(--van-text-color-2) !important;
 }
 </style>
