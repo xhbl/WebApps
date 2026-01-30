@@ -7,6 +7,7 @@ export interface Book {
   time_c: string
   hide: number
   _new?: number // 1=新增, 0=已存在
+  deleteWords?: boolean // 删除时可选，是否同时删除本内单词
 }
 
 export interface Word {

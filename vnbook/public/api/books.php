@@ -108,16 +108,36 @@ function updateBooks($items) {
 function deleteBooks($items) {
     $db = DB::vnb();
     $uid = $_SESSION['user_id'];
-    
     try {
-        $stmt = $db->prepare("DELETE FROM vnu_books WHERE id = ? AND user_id = ?");
-        
+        $db->beginTransaction();
         foreach ($items as $item) {
-            $stmt->execute([$item->id, $uid]);
+            $bookId = $item->id;
+            $deleteWords = !empty($item->deleteWords);
+            if ($deleteWords) {
+                // 彻底删除本子下所有单词（不管是否属于其他本子）
+                $sql = "DELETE FROM vnu_words 
+                        WHERE user_id = ? 
+                        AND id IN (SELECT word_id FROM vnu_mapbw WHERE book_id = ?)";
+                $db->prepare($sql)->execute([$uid, $bookId]);
+            } else {
+                // 只删除“因本次操作变成孤儿”的单词
+                $sqlGetOnlyInThisBook = "
+                    SELECT word_id FROM vnu_mapbw 
+                    WHERE book_id = ? AND user_id = ?
+                    AND word_id NOT IN (
+                        SELECT word_id FROM vnu_mapbw WHERE book_id != ? AND user_id = ?
+                    )";
+                $sqlDeleteOrphans = "DELETE FROM vnu_words WHERE id IN ($sqlGetOnlyInThisBook)";
+                $db->prepare($sqlDeleteOrphans)->execute([$bookId, $uid, $bookId, $uid]);
+            }
+            // 再删除本子（级联删除映射）
+            $db->prepare("DELETE FROM vnu_books WHERE id = ? AND user_id = ?")
+               ->execute([$bookId, $uid]);
         }
-        
+        $db->commit();
         return true;
     } catch (Exception $e) {
+        $db->rollBack();
         return false;
     }
 }
