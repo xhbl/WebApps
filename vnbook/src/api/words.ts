@@ -90,6 +90,6 @@ export const deleteSentence = (sentence: Sentence) => {
 /**
  * 获取词性列表
  */
-export const getLexicalCats = () => {
+export const getPosList = () => {
   return request.get<ApiResponse>('/lexicalcats.php')
 }

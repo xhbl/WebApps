@@ -51,7 +51,7 @@ export interface User {
   _new?: number
 }
 
-export interface LexicalCat {
+export interface Pos {
   id: number
   name: string
   abbr: string
@@ -75,7 +75,7 @@ export interface ApiResponse<T = unknown> {
   book?: Book[]
   word?: Word[]
   user?: User[]
-  lexicalcat?: LexicalCat[]
+  lexicalcat?: Pos[]
   data?: T
 }
 

@@ -72,11 +72,11 @@ const isNew = computed(() => !props.explanation || props.explanation._new === 1)
 const selectedCat = ref('')
 
 const lexCatOptions = computed(() => {
-  return lexStore.lexicalCats.map((cat) => ({ text: cat.name_ch, value: cat.abbr }))
+  return lexStore.posList.map((cat) => ({ text: cat.name_ch, value: cat.abbr }))
 })
 
 const edit = ref<Explanation>({
-  Id: props.explanation?.Id || 0,
+  id: props.explanation?.id || 0,
   wid: props.wid,
   lid: props.explanation?.lid || 0,
   exp_ch: props.explanation?.exp_ch || '',
@@ -87,7 +87,7 @@ const edit = ref<Explanation>({
 })
 
 onMounted(async () => {
-  await lexStore.loadLexicalCats()
+  await lexStore.loadPosList()
   if (props.explanation?.abbr) {
     selectedCat.value = props.explanation.abbr
   }

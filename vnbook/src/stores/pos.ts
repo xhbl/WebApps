@@ -1,30 +1,30 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import * as wordsApi from '@/api/words'
-import type { LexicalCat } from '@/types'
+import type { Pos } from '@/types'
 
 export const usePosStore = defineStore('pos', () => {
   // State
-  const lexicalCats = ref<LexicalCat[]>([])
+  const posList = ref<Pos[]>([])
   const loaded = ref(false)
 
   // Actions
   /**
    * 加载词性列表
    */
-  const loadLexicalCats = async () => {
+  const loadPosList = async () => {
     if (loaded.value) return true
 
     try {
-      const response = await wordsApi.getLexicalCats()
+      const response = await wordsApi.getPosList()
       if (response.data.success === 'true' && response.data.lexicalcat) {
-        lexicalCats.value = response.data.lexicalcat
+        posList.value = response.data.lexicalcat
         loaded.value = true
         return true
       }
       return false
     } catch (error) {
-      console.error('Load lexical cats failed:', error)
+      console.error('Load pos list failed:', error)
       return false
     }
   }
@@ -32,22 +32,22 @@ export const usePosStore = defineStore('pos', () => {
   /**
    * 根据 ID 获取词性
    */
-  const getLexicalCatById = (id: number): LexicalCat | undefined => {
-    return lexicalCats.value.find((cat) => cat.Id === id)
+  const getPosById = (id: number): Pos | undefined => {
+    return posList.value.find((cat) => cat.id === id)
   }
 
   /**
    * 根据缩写获取词性
    */
-  const getLexicalCatByAbbr = (abbr: string): LexicalCat | undefined => {
-    return lexicalCats.value.find((cat) => cat.abbr === abbr)
+  const getPosByAbbr = (abbr: string): Pos | undefined => {
+    return posList.value.find((cat) => cat.abbr === abbr)
   }
 
   return {
-    lexicalCats,
+    posList,
     loaded,
-    loadLexicalCats,
-    getLexicalCatById,
-    getLexicalCatByAbbr,
+    loadPosList,
+    getPosById,
+    getPosByAbbr,
   }
 })
