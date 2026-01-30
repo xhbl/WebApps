@@ -25,7 +25,6 @@
               <van-icon name="edit" class="book-edit-icon" @click.stop="editBook(b)" />
             </template>
           </van-cell>
-          <!-- 清理残留 JS 代码，修复标签闭合 -->
           <van-empty
             v-if="booksStore.books.length === 0"
             description="暂无单词本，点击左上角➕新建"
@@ -59,7 +58,7 @@
     >
       <div class="custom-dialog-container">
         <div class="delete-message">
-          <span v-html="deleteDialogMessage"></span>
+          {{ deleteDialogMessage }}
         </div>
 
         <div class="delete-checkbox-area">
@@ -97,10 +96,7 @@ const refreshing = ref(false)
 const loading = ref(true)
 
 const userBookTitle = computed(() => {
-  const name = authStore.userInfo?.dname?.trim()
-    ? authStore.userInfo.dname
-    : authStore.userInfo?.uname || ''
-  return name ? `${name}的单词本` : '我的单词本'
+  return authStore.userDisplayName ? `${authStore.userDisplayName}的单词本` : '我的单词本'
 })
 // 修改点：在 actions 中增加了 icon 和 color
 const actions = computed<MenuAction[]>(() => [
@@ -110,7 +106,7 @@ const actions = computed<MenuAction[]>(() => [
     icon: 'plus',
   },
   {
-    name: `${authStore.userInfo?.dname?.trim() ? authStore.userInfo.dname : authStore.userInfo?.uname}`,
+    name: authStore.userDisplayName || '用户',
     key: 'mod',
     icon: 'user-circle-o',
   },
@@ -184,9 +180,7 @@ const onMenuSelect = (action: MenuAction) => {
       showUserMod.value = true
       break
     case 'logout':
-      const userName = authStore.userInfo?.dname?.trim()
-        ? authStore.userInfo.dname
-        : authStore.userInfo?.uname || '请确认'
+      const userName = authStore.userDisplayName || '请确认'
       showDialog({
         title: userName,
         message: '确定要退出登录吗？',
@@ -213,7 +207,7 @@ const onMenuSelect = (action: MenuAction) => {
 }
 
 .content {
-  padding-top: 4px;
+  padding-top: 0px;
 }
 
 .loading {

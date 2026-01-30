@@ -61,7 +61,25 @@ const emit = defineEmits<{
 const show = ref(props.modelValue)
 watch(
   () => props.modelValue,
-  (v) => (show.value = v),
+  (v) => {
+    show.value = v
+    if (v) {
+      // 每次打开时初始化数据，解决数据残留和重置问题
+      password.value = ''
+      passwordConfirm.value = ''
+      if (props.user) {
+        edit.value = {
+          id: props.user.id,
+          name: props.user.name,
+          dispname: props.user.dispname,
+          time_c: props.user.time_c,
+          _new: props.user._new ?? 1,
+        }
+      } else {
+        edit.value = { id: 0, name: '', dispname: '', time_c: '', _new: 1 }
+      }
+    }
+  },
 )
 
 const isNew = computed(() => !props.user || props.user._new === 1)
@@ -75,36 +93,7 @@ const edit = ref<User>({
   _new: 1,
 })
 
-// 先定义函数，再在 watch 中使用
-const resetForm = () => {
-  password.value = ''
-  passwordConfirm.value = ''
-}
-
-watch(show, (v) => {
-  emit('update:modelValue', v)
-  if (!v) {
-    resetForm()
-  }
-})
-
-watch(
-  () => props.user,
-  (user) => {
-    if (user) {
-      edit.value = {
-        id: user.id,
-        name: user.name,
-        dispname: user.dispname,
-        time_c: user.time_c,
-        _new: user._new ?? 1,
-      }
-    } else {
-      resetForm()
-    }
-  },
-  { immediate: true },
-)
+watch(show, (v) => emit('update:modelValue', v))
 
 const onSubmit = () => {
   // 检查密码是否一致：如果其中一个有值，两个都必须有值且相同
@@ -116,6 +105,9 @@ const onSubmit = () => {
   }
 
   const u: User = { ...edit.value }
+  if (u.dispname) {
+    u.dispname = u.dispname.trim()
+  }
   if (password.value) {
     u.pass = password.value
   }

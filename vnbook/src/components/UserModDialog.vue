@@ -46,7 +46,17 @@ const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void }>()
 const show = ref(props.modelValue)
 watch(
   () => props.modelValue,
-  (v) => (show.value = v),
+  (v) => {
+    show.value = v
+    if (v) {
+      // 每次打开弹窗时重置表单数据，确保显示最新信息并清空密码框
+      edit.value.uname = authStore.userInfo?.uname || ''
+      edit.value.dispname = authStore.userInfo?.dname || ''
+      edit.value.oldpass = ''
+      edit.value.newpass = ''
+      edit.value.newpass2 = ''
+    }
+  },
 )
 watch(show, (v) => emit('update:modelValue', v))
 
@@ -81,7 +91,7 @@ const onSubmit = async () => {
   }
 
   const success = await authStore.updateUserInfo({
-    dispname: edit.value.dispname,
+    dispname: edit.value.dispname?.trim(), // 保存前去除首尾空格
     oldpass: hasPassword ? edit.value.oldpass : undefined,
     newpass: hasPassword ? edit.value.newpass : undefined,
     newpass2: hasPassword ? edit.value.newpass2 : undefined,

@@ -16,7 +16,7 @@
           <van-cell
             v-for="u in usersStore.users"
             :key="u.id"
-            :title="u.dispname || u.name"
+            :title="u.dispname?.trim() || u.name"
             :label="u.name"
             is-link
             @click="editUser(u)"
@@ -80,7 +80,7 @@ const actions = computed<MenuAction[]>(() => [
     icon: 'plus',
   },
   {
-    name: `${authStore.userInfo?.dname?.trim() ? authStore.userInfo.dname : authStore.userInfo?.uname}`,
+    name: authStore.userDisplayName || '用户',
     key: 'mod',
     icon: 'manager-o',
   },
@@ -128,7 +128,7 @@ const deleteUser = async (u: User) => {
   try {
     await showDialog({
       title: '删除用户',
-      message: `确定要删除用户“${u.dispname || u.name}”吗？<br><br><span style="color:var(--van-danger-color)"><b>此操作将永久删除该用户所有相关数据，且无法撤销。</b></span>`,
+      message: `确定要删除用户“${u.dispname?.trim() || u.name}”吗？<br><br><span style="color:var(--van-danger-color)"><b>此操作将永久删除该用户和其所有相关数据，且无法撤销。</b></span>`,
       confirmButtonText: '删除',
       confirmButtonColor: 'var(--van-danger-color)',
       cancelButtonText: '取消',
@@ -153,9 +153,7 @@ const onMenuSelect = (action: MenuAction) => {
       showUserMod.value = true
       break
     case 'logout':
-      const userName = authStore.userInfo?.dname?.trim()
-        ? authStore.userInfo.dname
-        : authStore.userInfo?.uname || '请确认'
+      const userName = authStore.userDisplayName || '请确认'
       showDialog({
         title: userName,
         message: '确定要退出登录吗？',
@@ -182,7 +180,7 @@ const onMenuSelect = (action: MenuAction) => {
 }
 
 .content {
-  padding-top: 4px;
+  padding-top: 0px;
 }
 
 .loading {

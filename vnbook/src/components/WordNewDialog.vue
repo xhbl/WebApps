@@ -48,7 +48,7 @@ const normalizeWord = (s: string) => {
 
 const onSubmit = () => {
   const w: Word = {
-    Id: 0,
+    id: 0,
     name: normalizeWord(name.value.trim()),
     bid: props.bid,
     hide: 0,

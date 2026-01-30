@@ -12,6 +12,9 @@ export const useAuthStore = defineStore('auth', () => {
   // Getters
   const isLoggedIn = computed(() => !!userInfo.value && !!sessionId.value)
   const isAdmin = computed(() => userInfo.value?.uname === 'admin')
+  const userDisplayName = computed(() => {
+    return userInfo.value?.dname?.trim() || userInfo.value?.uname || ''
+  })
 
   // Actions
   /**
@@ -120,7 +123,7 @@ export const useAuthStore = defineStore('auth', () => {
       await authApi.updateUserInfo(data)
 
       // 更新显示名
-      if (data.dispname && userInfo.value) {
+      if (data.dispname !== undefined && userInfo.value) {
         userInfo.value.dname = data.dispname
         localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
       }
@@ -138,6 +141,7 @@ export const useAuthStore = defineStore('auth', () => {
     sessionId,
     isLoggedIn,
     isAdmin,
+    userDisplayName,
     login,
     checkLogin,
     logout,
