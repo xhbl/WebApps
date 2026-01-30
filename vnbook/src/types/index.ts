@@ -12,33 +12,34 @@ export interface Book {
 
 export interface Word {
   id: number
-  name: string
+  word: string
   phon?: string
-  bid: number
   time_c: string
-  hide: number
-  _new?: number
   explanations?: Explanation[]
+  _new?: number
 }
 
 export interface Explanation {
   id: number
-  wid: number
-  lid: number
-  exp_ch: string
-  exp?: string
-  abbr: string
-  hide: number
-  _new?: number
+  word_id: number
+  pos: string
+  exp: {
+    en: string
+    zh: string
+  }
+  time_c: string
   sentences?: Sentence[]
+  _new?: number
 }
 
 export interface Sentence {
   id: number
-  eid: number
-  sen: string
-  sen_ch?: string
-  hide: number
+  exp_id: number
+  sen: {
+    en: string
+    zh: string
+  }
+  time_c: string
   _new?: number
 }
 
@@ -63,6 +64,7 @@ export interface MenuAction {
   name: string
   key: string
   color?: string
+  icon?: string
   disabled?: boolean
   loading?: boolean
   className?: string

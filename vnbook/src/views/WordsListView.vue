@@ -1,53 +1,61 @@
 <template>
-  <div class="words-view">
-    <van-nav-bar class="nav-bar-fixed" :title="booksStore.currentBook?.title || '单词列表'">
+  <div class="words-manage-view">
+    <van-nav-bar :title="booksStore.currentBook?.title || '单词列表'" fixed placeholder>
       <template #left>
-        <van-button class="icon-btn" round size="small" icon="arrow-left" @click="goBack" />
+        <van-icon name="plus" size="22" @click="openAddWord" />
       </template>
       <template #right>
-        <van-button class="icon-btn" round size="small" icon="ellipsis" @click="openMenu" />
+        <van-icon name="ellipsis" size="22" @click="showActionSheet = true" />
       </template>
     </van-nav-bar>
 
-    <div v-if="wordsStore.sortMode === 'alpha'">
-      <van-index-bar>
-        <template v-for="group in wordsStore.groupedWords" :key="group.key">
-          <van-index-anchor :index="group.label" />
+    <div class="content">
+      <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
+        <div v-if="loading" class="loading">加载中...</div>
+        <div v-else>
           <van-cell
-            v-for="w in group.words"
-            :key="w.Id"
-            :title="w.name"
+            v-for="w in wordsStore.words"
+            :key="w.id"
+            :title="w.word"
             :label="w.phon ? `[${w.phon}]` : ''"
             is-link
             @click="openWordCard(w)"
+          >
+            <template #icon>
+              <van-icon name="edit" class="word-edit-icon" />
+            </template>
+          </van-cell>
+          <van-empty
+            v-if="wordsStore.words.length === 0"
+            description="暂无单词，点击左上角➕新建"
           />
-        </template>
-      </van-index-bar>
+        </div>
+      </van-pull-refresh>
     </div>
-    <div v-else>
-      <template v-for="group in wordsStore.groupedWords" :key="group.key">
-        <div class="group-title">{{ group.label }}</div>
-        <van-cell-group>
-          <van-cell
-            v-for="w in group.words"
-            :key="w.Id"
-            :title="w.name"
-            :label="w.phon ? `[${w.phon}]` : ''"
-            is-link
-            @click="openWordCard(w)"
-          />
-        </van-cell-group>
-      </template>
-    </div>
-
-    <word-new-dialog v-model="showWordNew" :bid="bid" @save="saveWord" />
 
     <van-action-sheet
-      v-model:show="showMenu"
-      :actions="menuActions"
+      v-model:show="showActionSheet"
+      :actions="actions"
       cancel-text="取消"
-      @select="handleMenuSelect"
+      @select="onMenuSelect"
     />
+
+    <word-new-dialog v-model="showWordNew" :bid="bid" @save="saveWord" />
+    <van-dialog
+      v-model:show="showDeleteDialog"
+      :title="deleteDialogTitle"
+      show-cancel-button
+      confirm-button-text="删除"
+      confirm-button-color="var(--van-danger-color)"
+      cancel-button-text="取消"
+      @confirm="onConfirmDeleteWord"
+    >
+      <div class="custom-dialog-container">
+        <div class="delete-message">
+          {{ deleteDialogMessage }}
+        </div>
+      </div>
+    </van-dialog>
   </div>
 </template>
 
@@ -55,62 +63,75 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
-import { useWordsStore } from '@/stores/words'
+import { useWordsStore, type WordsStore } from '@/stores/words'
+import { useAppMenu } from '@/composables/useAppMenu'
 import WordNewDialog from '@/components/WordNewDialog.vue'
-import type { Word, MenuAction } from '@/types'
+import type { Word } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
 const booksStore = useBooksStore()
-const wordsStore = useWordsStore()
+const wordsStore: WordsStore = useWordsStore()
 
 const bid = Number(route.params.bid)
 const showWordNew = ref(false)
-const showMenu = ref(false)
-const menuActions = [
-  { name: '添加单词', key: 'add' },
-  { name: '切换排序', key: 'toggle' },
-]
+const refreshing = ref(false)
+const loading = ref(true)
+const showDeleteDialog = ref(false)
+const deleteDialogTitle = ref('')
+const deleteDialogMessage = ref('')
+let pendingDeleteWord: Word | null = null
 
 onMounted(async () => {
+  loading.value = true
   if (!booksStore.currentBook) {
-    // 如果从刷新进入，尝试从已加载的 books 中找到当前 book
     const loaded = await booksStore.loadBooks()
     if (loaded) {
-      const b = booksStore.books.find((b) => b.Id === bid)
+      const b = booksStore.books.find((b) => b.id === bid)
       if (b) booksStore.setCurrentBook(b)
     }
   }
   await wordsStore.loadWords(bid)
+  loading.value = false
 })
 
-const goBack = () => router.back()
-const openAddWord = () => (showWordNew.value = true)
-const toggleSort = () => wordsStore.toggleSortMode()
-const openMenu = () => (showMenu.value = true)
-const onSelectAction = (action: MenuAction) => {
-  if (action.key === 'add') {
-    openAddWord()
-  } else if (action.key === 'toggle') {
-    toggleSort()
+const onRefresh = async () => {
+  refreshing.value = true
+  await wordsStore.loadWords(bid)
+  refreshing.value = false
+}
+
+const openAddWord = () => {
+  showWordNew.value = true
+}
+
+const saveWord = async (word: Word) => {
+  const saved = await wordsStore.saveWord(word)
+  if (saved) {
+    showWordNew.value = false
+    await wordsStore.loadWords(bid)
   }
 }
-const handleMenuSelect = (action: MenuAction) => onSelectAction(action)
+
+const onConfirmDeleteWord = async () => {
+  if (!pendingDeleteWord) return
+  await wordsStore.deleteWord(pendingDeleteWord)
+  // editorWord.value = null
+  showDeleteDialog.value = false
+  pendingDeleteWord = null
+  await wordsStore.loadWords(bid)
+}
 
 const openWordCard = (w: Word) => {
   wordsStore.setCurrentWord(w)
-  router.push(`/books/${bid}/words/${w.Id}`)
+  router.push(`/books/${bid}/words/${w.id}`)
 }
 
-const saveWord = async (w: Word) => {
-  // 本地查重
-  const exist = wordsStore.findWordByName(w.name)
-  if (exist) {
-    router.push(`/books/${bid}/words/${exist.Id}`)
-    return
-  }
-  await wordsStore.saveWord(w)
-}
+const { showActionSheet, actions, onMenuSelect } = useAppMenu({
+  showUser: false,
+  showLogout: false,
+  items: [{ name: '添加单词', icon: 'plus', handler: openAddWord }],
+})
 </script>
 
 <style scoped>

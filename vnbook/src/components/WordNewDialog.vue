@@ -49,13 +49,11 @@ const normalizeWord = (s: string) => {
 const onSubmit = () => {
   const w: Word = {
     id: 0,
-    name: normalizeWord(name.value.trim()),
-    bid: props.bid,
-    hide: 0,
-    time_c: '',
-    _new: 1,
+    word: normalizeWord(name.value.trim()),
     phon: '',
+    time_c: '',
     explanations: [],
+    _new: 1,
   }
   emit('save', w)
   show.value = false

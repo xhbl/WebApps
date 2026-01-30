@@ -1,42 +1,14 @@
+// 导出 WordsStore 类型，便于组件类型断言
+export type WordsStore = ReturnType<typeof useWordsStore>
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import * as wordsApi from '@/api/words'
 import type { Word, Explanation, Sentence, SortMode, GroupedWords } from '@/types'
 import { toast } from '@/utils/toast'
 import { showDialog } from 'vant'
-import { useBooksStore } from './books'
+import { useBooksStore } from '@/stores/books'
 
-// Raw response types from backend (ids may be string/number, hide flags as string/number)
-interface RawSentence {
-  Id: string | number
-  eid: string | number
-  sen: string
-  sen_ch?: string
-  hide: string | number
-}
-
-interface RawExplanation {
-  Id: string | number
-  wid: string | number
-  lid: string | number
-  exp_ch: string
-  exp?: string
-  abbr: string
-  hide: string | number
-  sentences?: RawSentence[]
-}
-
-interface RawWord {
-  Id: string | number
-  name: string
-  phon?: string
-  bid?: string | number
-  time_c: string
-  hide: string | number
-  explanations?: RawExplanation[]
-}
-
-export const useWordsStore = defineStore('words', () => {
+function defineWordsStore() {
   // State
   const words = ref<Word[]>([])
   const currentWord = ref<Word | null>(null)
@@ -50,7 +22,8 @@ export const useWordsStore = defineStore('words', () => {
     if (words.value.length === 0) return []
 
     if (sortMode.value === 'date') {
-      // 按日期分�?      const groups = new Map<string, Word[]>()
+      // 按日期分组
+      const groups = new Map<string, Word[]>()
 
       words.value.forEach((word) => {
         const date = word.time_c?.split(' ')[0] || '' // 提取日期部分
@@ -68,17 +41,19 @@ export const useWordsStore = defineStore('words', () => {
         words,
       }))
     } else {
-      // 按字母分�?      const groups = new Map<string, Word[]>()
+      // 按字母分组
+      const groups = new Map<string, Word[]>()
 
       words.value.forEach((word) => {
-        const letter = word.name.charAt(0).toUpperCase()
+        const letter = word.word.charAt(0).toUpperCase()
         if (!groups.has(letter)) {
           groups.set(letter, [])
         }
         groups.get(letter)!.push(word)
       })
 
-      // 按字母顺序排�?      const sortedEntries = Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+      // 按字母顺序排序
+      const sortedEntries = Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]))
 
       return sortedEntries.map(([letter, words]) => ({
         key: letter,
@@ -96,28 +71,40 @@ export const useWordsStore = defineStore('words', () => {
     try {
       const response = await wordsApi.getWords(bookId)
       if (response.data.success === 'true' && response.data.word) {
-        // Normalize numeric ids to numbers to ensure route param matching
-        words.value = response.data.word.map((w: RawWord) => ({
-          ...w,
-          Id: Number(w.Id),
-          bid: w.bid !== undefined ? Number(w.bid) : bookId,
-          hide: w.hide === '1' || w.hide === 1 ? 1 : 0,
-          explanations: (w.explanations || []).map((e: RawExplanation) => ({
-            ...e,
-            Id: Number(e.Id),
-            wid: Number(e.wid),
-            lid: Number(e.lid),
-            hide: e.hide === '1' || e.hide === 1 ? 1 : 0,
-            sentences: (e.sentences || []).map((s: RawSentence) => ({
-              ...s,
-              Id: Number(s.Id),
-              eid: Number(s.eid),
-              hide: s.hide === '1' || s.hide === 1 ? 1 : 0,
-            })),
-          })),
-        }))
+        words.value = response.data.word.map((w: unknown) => {
+          const word = w as Word & { explanations?: unknown[] }
+          return {
+            id: Number(word.id),
+            word: word.word,
+            phon: word.phon,
+            time_c: word.time_c,
+            _new: word._new,
+            explanations: (word.explanations || []).map((e) => {
+              const exp = e as Explanation & { sentences?: unknown[] }
+              return {
+                id: Number(exp.id),
+                word_id: Number(exp.word_id),
+                pos: exp.pos,
+                exp: typeof exp.exp === 'string' ? JSON.parse(exp.exp) : exp.exp,
+                time_c: exp.time_c,
+                _new: exp._new,
+                sentences: (exp.sentences || []).map((s) => {
+                  const sen = s as Sentence
+                  return {
+                    id: Number(sen.id),
+                    exp_id: Number(sen.exp_id),
+                    sen: typeof sen.sen === 'string' ? JSON.parse(sen.sen) : sen.sen,
+                    time_c: sen.time_c,
+                    _new: sen._new,
+                  }
+                }),
+              }
+            }),
+          }
+        })
 
-        // 按排序模式排�?        sortWords()
+        // 按排序模式排序
+        sortWords()
         return true
       }
       return false
@@ -135,7 +122,8 @@ export const useWordsStore = defineStore('words', () => {
       // 按时间倒序
       words.value.sort((a, b) => b.time_c.localeCompare(a.time_c))
     } else {
-      // 按字母顺�?      words.value.sort((a, b) => a.name.localeCompare(b.name))
+      // 按字母顺序
+      words.value.sort((a, b) => a.word.localeCompare(b.word))
     }
   }
 
@@ -148,22 +136,25 @@ export const useWordsStore = defineStore('words', () => {
   }
 
   /**
-   * 保存单词（两阶段添加逻辑�?   */
+   * 保存单词（两阶段添加逻辑）
+   */
   const saveWord = async (word: Word) => {
     try {
       const response = await wordsApi.saveWord(word)
       if (response.data.success === 'true' && response.data.word && response.data.word[0]) {
         const savedWord = response.data.word[0]
 
-        // 检查是否需要二次确�?        if (savedWord?._new === 2) {
+        // 检查是否需要二次确认
+        if (savedWord?._new === 2) {
           // 单词已存在于其他单词本中
           const confirmed = await showDialog({
-            title: '单词已存�?,
-            message: `单词"${savedWord.name}"已存在于其他单词本中，要加入此单词本吗？`,
+            title: '单词已存在',
+            message: `单词"${savedWord.word}"已存在于其他单词本中，要加入此单词本吗？`,
           })
 
           if (confirmed && savedWord) {
-            // 第二次提交，只添加映射关�?            return await saveWord(savedWord)
+            // 第二次提交，只添加映射关系
+            return await saveWord(savedWord)
           }
           return null
         }
@@ -174,13 +165,14 @@ export const useWordsStore = defineStore('words', () => {
           sortWords()
           toast.showSuccess('添加成功')
 
-          // 更新单词本数�?          const booksStore = useBooksStore()
+          // 更新单词本数量
+          const booksStore = useBooksStore()
           if (booksStore.currentBook) {
-            booksStore.updateBookNums(booksStore.currentBook.Id, booksStore.currentBook.nums + 1)
+            booksStore.updateBookNums(booksStore.currentBook.id, booksStore.currentBook.nums + 1)
           }
         } else {
           // 更新
-          const index = words.value.findIndex((w) => w.Id === savedWord?.Id)
+          const index = words.value.findIndex((w) => w.id === savedWord?.id)
           if (index !== -1 && words.value[index]) {
             // 保留 explanations
             savedWord.explanations = words.value[index]?.explanations
@@ -205,7 +197,7 @@ export const useWordsStore = defineStore('words', () => {
     try {
       const confirmed = await showDialog({
         title: '确认删除',
-        message: `确定要删除单�?${word.name}"吗？`,
+        message: `确定要删除单词"${word.word}"吗？`,
       })
 
       if (!confirmed) return false
@@ -222,7 +214,8 @@ export const useWordsStore = defineStore('words', () => {
         currentWord.value = null
       }
 
-      // 更新单词本数�?      const booksStore = useBooksStore()
+      // 更新单词本数量
+      const booksStore = useBooksStore()
       if (booksStore.currentBook) {
         booksStore.updateBookNums(booksStore.currentBook.id, booksStore.currentBook.nums - 1)
       }
@@ -271,7 +264,8 @@ export const useWordsStore = defineStore('words', () => {
       ) {
         const savedExp = response.data.word[0].explanations![0]
 
-        // 更新当前单词的释义列        if (currentWord.value && currentWord.value.id === explanation.wid) {
+        // 更新当前单词的释义列表
+        if (currentWord.value && currentWord.value.id === explanation.word_id) {
           if (!currentWord.value.explanations) {
             currentWord.value.explanations = []
           }
@@ -289,8 +283,8 @@ export const useWordsStore = defineStore('words', () => {
             toast.showSuccess('更新成功')
           }
 
-          // 同步�?words 列表
-          const word = words.value.find((w) => w.id === explanation.wid)
+          // 同步到 words 列表
+          const word = words.value.find((w) => w.id === explanation.word_id)
           if (word) {
             word.explanations = currentWord.value.explanations
           }
@@ -312,21 +306,22 @@ export const useWordsStore = defineStore('words', () => {
     try {
       const confirmed = await showDialog({
         title: '确认删除',
-        message: '确定要删除这条释义吗�?,
+        message: '确定要删除这条释义吗？',
       })
 
       if (!confirmed) return false
 
       await wordsApi.deleteExplanation(explanation)
 
-      // 从当前单词的释义列表中移�?      if (currentWord.value && currentWord.value.explanations) {
+      // 从当前单词的释义列表中移除
+      if (currentWord.value && currentWord.value.explanations) {
         const index = currentWord.value.explanations.findIndex((e) => e.id === explanation.id)
         if (index !== -1) {
           currentWord.value.explanations.splice(index, 1)
         }
 
-        // 同步�?words 列表
-        const word = words.value.find((w) => w.id === explanation.wid)
+        // 同步到 words 列表
+        const word = words.value.find((w) => w.id === explanation.word_id)
         if (word) {
           word.explanations = currentWord.value.explanations
         }
@@ -353,35 +348,20 @@ export const useWordsStore = defineStore('words', () => {
       ) {
         const savedSen = response.data.word[0].explanations![0].sentences![0]
 
-        // 更新当前单词的例句列�?        if (currentWord.value && currentWord.value.explanations) {
-          const exp = currentWord.value.explanations.find((e) => e.id === expId)
-          if (exp) {
-            if (!exp.sentences) {
-              exp.sentences = []
-            }
-
-            if (sentence._new === 1 && savedSen) {
-              exp.sentences.push(savedSen)
-              toast.showSuccess('添加成功')
-            } else if (savedSen) {
-              const index = exp.sentences.findIndex((s) => s.id === savedSen.id)
-              if (index !== -1) {
-                exp.sentences[index] = savedSen
-              }
-              toast.showSuccess('更新成功')
-            }
-
-            // 同步�?words 列表
-            const word = words.value.find((w) => w.id === currentWord.value!.id)
-            if (word && word.explanations) {
-              const wordExp = word.explanations.find((e) => e.Id === expId)
-              if (wordExp) {
+        // 同步到 words 列表
+        const word = words.value.find((w) => w.id === currentWord.value?.id)
+        if (word && word.explanations) {
+          const wordExp = word.explanations.find((e) => e.id === expId)
+          if (wordExp) {
+            // 这里假设 exp.sentences 已经在上层同步
+            if (currentWord.value) {
+              const exp = currentWord.value.explanations?.find((e) => e.id === expId)
+              if (exp) {
                 wordExp.sentences = exp.sentences
               }
             }
           }
         }
-
         return savedSen
       }
       return null
@@ -398,14 +378,15 @@ export const useWordsStore = defineStore('words', () => {
     try {
       const confirmed = await showDialog({
         title: '确认删除',
-        message: '确定要删除这条例句吗�?,
+        message: '确定要删除这条例句吗？',
       })
 
       if (!confirmed) return false
 
       await wordsApi.deleteSentence(sentence)
 
-      // 从释义的例句列表中移�?      if (currentWord.value && currentWord.value.explanations) {
+      // 从释义的例句列表中移除
+      if (currentWord.value && currentWord.value.explanations) {
         const exp = currentWord.value.explanations.find((e) => e.id === expId)
         if (exp && exp.sentences) {
           const index = exp.sentences.findIndex((s) => s.id === sentence.id)
@@ -440,9 +421,10 @@ export const useWordsStore = defineStore('words', () => {
   }
 
   /**
-   * 根据单词名查找单词（本地�?   */
+   * 根据单词名查找单词（本地）
+   */
   const findWordByName = (name: string): Word | undefined => {
-    return words.value.find((w) => w.name.toLowerCase() === name.toLowerCase())
+    return words.value.find((w) => w.word.toLowerCase() === name.toLowerCase())
   }
 
   /**
@@ -472,5 +454,6 @@ export const useWordsStore = defineStore('words', () => {
     findWordByName,
     clearWords,
   }
-})
+}
 
+export const useWordsStore = defineStore('words', defineWordsStore)

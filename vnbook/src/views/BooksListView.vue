@@ -74,12 +74,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { showDialog } from 'vant'
 import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
+import { useAppMenu } from '@/composables/useAppMenu'
 import BookEditorDialog from '@/components/BookEditorDialog.vue'
 import UserModDialog from '@/components/UserModDialog.vue'
-import type { Book, MenuAction } from '@/types'
+import type { Book } from '@/types'
 
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
@@ -88,9 +88,7 @@ const enterWordsList = (b: Book) => {
   // 跳转到单词本详情页（WordsListView）
   router.push(`/books/${b.id}/words`)
 }
-const showActionSheet = ref(false)
 const showEditor = ref(false)
-const showUserMod = ref(false)
 const editorBook = ref<Book | null>(null)
 const refreshing = ref(false)
 const loading = ref(true)
@@ -98,25 +96,6 @@ const loading = ref(true)
 const userBookTitle = computed(() => {
   return authStore.userDisplayName ? `${authStore.userDisplayName}的单词本` : '我的单词本'
 })
-// 修改点：在 actions 中增加了 icon 和 color
-const actions = computed<MenuAction[]>(() => [
-  {
-    name: '新建单词本',
-    key: 'new',
-    icon: 'plus',
-  },
-  {
-    name: authStore.userDisplayName || '用户',
-    key: 'mod',
-    icon: 'user-circle-o',
-  },
-  {
-    name: '退出登录',
-    key: 'logout',
-    icon: 'close',
-    color: 'var(--van-warning-color)',
-  },
-])
 
 onMounted(async () => {
   loading.value = true
@@ -134,6 +113,10 @@ const openNewBook = () => {
   editorBook.value = { id: 0, title: '', nums: 0, time_c: '', hide: 0, _new: 1 }
   showEditor.value = true
 }
+
+const { showActionSheet, showUserMod, actions, onMenuSelect } = useAppMenu({
+  items: [{ name: '新建单词本', icon: 'plus', handler: openNewBook }],
+})
 
 const editBook = (b: Book) => {
   editorBook.value = { ...b, _new: 0 }
@@ -168,35 +151,6 @@ const onConfirmDeleteBook = async () => {
   editorBook.value = null
   showDeleteDialog.value = false
   pendingDeleteBook = null
-}
-
-const onMenuSelect = (action: MenuAction) => {
-  showActionSheet.value = false
-  switch (action.key) {
-    case 'new':
-      openNewBook()
-      break
-    case 'mod':
-      showUserMod.value = true
-      break
-    case 'logout':
-      const userName = authStore.userDisplayName || '请确认'
-      showDialog({
-        title: userName,
-        message: '确定要退出登录吗？',
-        confirmButtonText: '退出',
-        cancelButtonText: '取消',
-        showCancelButton: true,
-      })
-        .then(async () => {
-          // 点击确认按钮
-          await authStore.logout()
-        })
-        .catch(() => {
-          // 点击取消按钮，不进行任何操作
-        })
-      break
-  }
 }
 </script>
 

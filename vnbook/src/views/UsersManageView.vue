@@ -54,43 +54,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { showDialog } from 'vant'
 import { useUsersStore } from '@/stores/users'
-import { useAuthStore } from '@/stores/auth'
+import { useAppMenu } from '@/composables/useAppMenu'
 import UserEditorDialog from '@/components/UserEditorDialog.vue'
 import UserModDialog from '@/components/UserModDialog.vue'
-import type { User, MenuAction } from '@/types'
+import type { User } from '@/types'
 
 const usersStore = useUsersStore()
-const authStore = useAuthStore()
 
-const showActionSheet = ref(false)
 const showEditor = ref(false)
-const showUserMod = ref(false)
 const editorUser = ref<User | null>(null)
 const refreshing = ref(false)
 const loading = ref(true)
-
-// 修改点：在 actions 中增加了 icon 和 color
-const actions = computed<MenuAction[]>(() => [
-  {
-    name: '新建用户',
-    key: 'new',
-    icon: 'plus',
-  },
-  {
-    name: authStore.userDisplayName || '用户',
-    key: 'mod',
-    icon: 'manager-o',
-  },
-  {
-    name: '退出登录',
-    key: 'logout',
-    icon: 'close',
-    color: 'var(--van-warning-color)',
-  },
-])
 
 onMounted(async () => {
   loading.value = true
@@ -112,6 +89,11 @@ const openNewUser = () => {
   editorUser.value = { id: 0, name: '', dispname: '', time_c: '', _new: 1 }
   showEditor.value = true
 }
+
+const { showActionSheet, showUserMod, actions, onMenuSelect } = useAppMenu({
+  items: [{ name: '新建用户', icon: 'plus', handler: openNewUser }],
+  userIcon: 'manager-o',
+})
 
 const editUser = (u: User) => {
   editorUser.value = { ...u, _new: 0 }
@@ -139,36 +121,6 @@ const deleteUser = async (u: User) => {
     editorUser.value = null
   } catch {
     // 用户点击取消，不做任何处理
-  }
-}
-
-const onMenuSelect = (action: MenuAction) => {
-  showActionSheet.value = false
-
-  switch (action.key) {
-    case 'new':
-      openNewUser()
-      break
-    case 'mod':
-      showUserMod.value = true
-      break
-    case 'logout':
-      const userName = authStore.userDisplayName || '请确认'
-      showDialog({
-        title: userName,
-        message: '确定要退出登录吗？',
-        confirmButtonText: '退出',
-        cancelButtonText: '取消',
-        showCancelButton: true,
-      })
-        .then(async () => {
-          // 点击确认按钮
-          await authStore.logout()
-        })
-        .catch(() => {
-          // 点击取消按钮，不进行任何操作
-        })
-      break
   }
 }
 </script>
