@@ -48,6 +48,8 @@
       @save="saveUser"
       @delete="deleteUser"
     />
+    <van-dialog></van-dialog
+    ><!-- 占位符，让showDialog样式统一 -->
   </div>
 </template>
 
@@ -127,7 +129,7 @@ const deleteUser = async (u: User) => {
     await showDialog({
       title: '删除用户',
       message: `确定要删除用户“${u.dispname || u.name}”吗？<br><br><span style="color:var(--van-danger-color)"><b>此操作将永久删除该用户所有相关数据，且无法撤销。</b></span>`,
-      confirmButtonText: '彻底删除',
+      confirmButtonText: '删除',
       confirmButtonColor: 'var(--van-danger-color)',
       cancelButtonText: '取消',
       showCancelButton: true,
