@@ -16,9 +16,9 @@ export const getWords = (bookId: number) => {
 /**
  * 创建或更新单词
  */
-export const saveWord = (word: Word) => {
+export const saveWord = (word: Word & { book_id?: number }) => {
   return request.put<ApiResponse>('/words.php', word, {
-    params: { req: 'w' },
+    params: { req: 'w', bid: word.book_id },
   })
 }
 

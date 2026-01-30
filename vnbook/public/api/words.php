@@ -23,30 +23,30 @@ function getWords($bid, $wid = null) {
     $uid = $_SESSION['user_id'];
     
     try {
-        // Get words for this book
+        // Get words for this book (only those mapped to this book)
         $sql = "SELECT w.id, w.user_id, w.word, w.phon, w.time_c, m.book_id, m.id as map_id
                 FROM vnu_words w
                 LEFT JOIN vnu_mapbw m ON w.id = m.word_id AND m.book_id = ?
-                WHERE w.user_id = ?";
+                WHERE w.user_id = ? AND m.id IS NOT NULL";
         $params = [$bid, $uid];
-        
+
         if ($wid) {
             $sql .= " AND w.id = ?";
             $params[] = $wid;
         }
-        
+
         $sql .= " ORDER BY w.time_c DESC";
-        
+
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Add nested explanations and _new flag
         foreach ($rows as &$row) {
             $row['explanations'] = getExplanations($row['id']);
             $row['_new'] = 0;
         }
-        
+
         return $rows;
     } catch (Exception $e) {
         return false;

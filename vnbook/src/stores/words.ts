@@ -10,6 +10,9 @@ import { useBooksStore } from '@/stores/books'
 
 function defineWordsStore() {
   // State
+  /**
+   * 当前单词本的单词列表（已由接口按 bookId 过滤）
+   */
   const words = ref<Word[]>([])
   const currentWord = ref<Word | null>(null)
   const sortMode = ref<SortMode>('date')
@@ -134,13 +137,15 @@ function defineWordsStore() {
     sortMode.value = sortMode.value === 'date' ? 'alpha' : 'date'
     sortWords()
   }
-
-  /**
-   * 保存单词（两阶段添加逻辑）
-   */
   const saveWord = async (word: Word) => {
     try {
-      const response = await wordsApi.saveWord(word)
+      // 由 API 层处理 bid 传递
+      const booksStore = useBooksStore()
+      let book_id: number | undefined = undefined
+      if (!book_id && booksStore.currentBook) {
+        book_id = booksStore.currentBook.id
+      }
+      const response = await wordsApi.saveWord({ ...word, book_id })
       if (response.data.success === 'true' && response.data.word && response.data.word[0]) {
         const savedWord = response.data.word[0]
 
