@@ -1,6 +1,7 @@
-import { ref, computed } from 'vue'
-import { showDialog } from 'vant'
+import { ref, computed, defineComponent, h } from 'vue'
+import { showDialog, ActionSheet } from 'vant'
 import { useAuthStore } from '@/stores/auth'
+import UserModDialog from '@/components/UserModDialog.vue'
 import type { MenuAction } from '@/types'
 
 export interface AppMenuItem {
@@ -22,6 +23,7 @@ export interface UseAppMenuOptions {
 export function useAppMenu(options: UseAppMenuOptions = {}) {
   const authStore = useAuthStore()
   const showActionSheet = ref(false)
+  const openMenu = () => (showActionSheet.value = true)
   const showUserMod = ref(false)
 
   const actions = computed<MenuAction[]>(() => {
@@ -36,7 +38,7 @@ export function useAppMenu(options: UseAppMenuOptions = {}) {
           color: item.color,
           key: item.key || item.name,
           handler: item.handler,
-        } as MenuAction)
+        } as MenuAction & { handler?: () => void })
       })
     }
 
@@ -92,10 +94,34 @@ export function useAppMenu(options: UseAppMenuOptions = {}) {
     }
   }
 
+  // 定义一个包装组件，将内部状态 showUserMod 绑定到 UserModDialog
+  const UserDialog = defineComponent({
+    setup() {
+      return () =>
+        h(UserModDialog, {
+          modelValue: showUserMod.value,
+          'onUpdate:modelValue': (v: boolean) => (showUserMod.value = v),
+        })
+    },
+  })
+
+  // 定义 ActionSheet 包装组件
+  const AppMenu = defineComponent({
+    setup() {
+      return () =>
+        h(ActionSheet, {
+          show: showActionSheet.value,
+          'onUpdate:show': (v: boolean) => (showActionSheet.value = v),
+          actions: actions.value,
+          cancelText: '取消',
+          onSelect: onMenuSelect,
+        })
+    },
+  })
+
   return {
-    actions,
-    onMenuSelect,
-    showActionSheet,
-    showUserMod,
+    openMenu,
+    AppMenu,
+    UserDialog,
   }
 }

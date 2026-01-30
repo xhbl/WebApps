@@ -5,7 +5,7 @@
         <van-icon name="plus" size="22" @click="openNewUser" />
       </template>
       <template #right>
-        <van-icon name="ellipsis" size="22" @click="showActionSheet = true" />
+        <van-icon name="ellipsis" size="22" @click="openMenu" />
       </template>
     </van-nav-bar>
 
@@ -33,14 +33,8 @@
       </van-pull-refresh>
     </div>
 
-    <van-action-sheet
-      v-model:show="showActionSheet"
-      :actions="actions"
-      cancel-text="取消"
-      @select="onMenuSelect"
-    />
-
-    <user-mod-dialog v-model="showUserMod" />
+    <AppMenu />
+    <UserDialog />
 
     <user-editor-dialog
       v-model="showEditor"
@@ -59,7 +53,6 @@ import { showDialog } from 'vant'
 import { useUsersStore } from '@/stores/users'
 import { useAppMenu } from '@/composables/useAppMenu'
 import UserEditorDialog from '@/components/UserEditorDialog.vue'
-import UserModDialog from '@/components/UserModDialog.vue'
 import type { User } from '@/types'
 
 const usersStore = useUsersStore()
@@ -90,7 +83,7 @@ const openNewUser = () => {
   showEditor.value = true
 }
 
-const { showActionSheet, showUserMod, actions, onMenuSelect } = useAppMenu({
+const { openMenu, AppMenu, UserDialog } = useAppMenu({
   items: [{ name: '新建用户', icon: 'plus', handler: openNewUser }],
   userIcon: 'manager-o',
 })

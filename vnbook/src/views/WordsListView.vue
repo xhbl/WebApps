@@ -5,7 +5,7 @@
         <van-icon name="plus" size="22" @click="openAddWord" />
       </template>
       <template #right>
-        <van-icon name="ellipsis" size="22" @click="showActionSheet = true" />
+        <van-icon name="ellipsis" size="22" @click="openMenu" />
       </template>
     </van-nav-bar>
 
@@ -33,13 +33,7 @@
       </van-pull-refresh>
     </div>
 
-    <van-action-sheet
-      v-model:show="showActionSheet"
-      :actions="actions"
-      cancel-text="取消"
-      @select="onMenuSelect"
-    />
-
+    <AppMenu />
     <word-new-dialog v-model="showWordNew" :bid="bid" @save="saveWord" />
     <van-dialog
       v-model:show="showDeleteDialog"
@@ -127,7 +121,7 @@ const openWordCard = (w: Word) => {
   router.push(`/books/${bid}/words/${w.id}`)
 }
 
-const { showActionSheet, actions, onMenuSelect } = useAppMenu({
+const { openMenu, AppMenu } = useAppMenu({
   showUser: false,
   showLogout: false,
   items: [{ name: '添加单词', icon: 'plus', handler: openAddWord }],

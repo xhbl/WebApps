@@ -5,7 +5,7 @@
         <van-icon name="plus" size="22" @click="openNewBook" />
       </template>
       <template #right>
-        <van-icon name="ellipsis" size="22" @click="showActionSheet = true" />
+        <van-icon name="ellipsis" size="22" @click="openMenu" />
       </template>
     </van-nav-bar>
 
@@ -33,14 +33,8 @@
       </van-pull-refresh>
     </div>
 
-    <van-action-sheet
-      v-model:show="showActionSheet"
-      :actions="actions"
-      cancel-text="取消"
-      @select="onMenuSelect"
-    />
-
-    <user-mod-dialog v-model="showUserMod" />
+    <AppMenu />
+    <UserDialog />
     <book-editor-dialog
       v-model="showEditor"
       :book="editorBook"
@@ -78,7 +72,6 @@ import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
 import { useAppMenu } from '@/composables/useAppMenu'
 import BookEditorDialog from '@/components/BookEditorDialog.vue'
-import UserModDialog from '@/components/UserModDialog.vue'
 import type { Book } from '@/types'
 
 const booksStore = useBooksStore()
@@ -114,7 +107,7 @@ const openNewBook = () => {
   showEditor.value = true
 }
 
-const { showActionSheet, showUserMod, actions, onMenuSelect } = useAppMenu({
+const { openMenu, AppMenu, UserDialog } = useAppMenu({
   items: [{ name: '新建单词本', icon: 'plus', handler: openNewBook }],
 })
 

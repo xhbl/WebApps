@@ -82,16 +82,16 @@ export const useAuthStore = defineStore('auth', () => {
   const logout = async () => {
     try {
       await authApi.logout()
-      clearAuth()
       toast.showSuccess('已退出登录')
       // 延迟跳转，确保 Toast 显示后再跳转
       setTimeout(() => {
+        clearAuth(false) // 仅清除存储，保留内存状态防止 UI 闪烁
         window.location.href = '/login'
-      }, 500)
+      }, 300)
       return true
     } catch (error) {
       console.error('Logout failed:', error)
-      clearAuth()
+      clearAuth(false)
       // 即使出错也要跳转到登录页
       setTimeout(() => {
         window.location.href = '/login'
@@ -102,10 +102,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   /**
    * 清除认证信息
+   * @param clearState 是否同时清除内存中的状态（默认为 true）。
+   * 在页面即将跳转销毁时设为 false 可避免 UI 闪烁。
    */
-  const clearAuth = () => {
-    userInfo.value = null
-    sessionId.value = ''
+  const clearAuth = (clearState = true) => {
+    if (clearState) {
+      userInfo.value = null
+      sessionId.value = ''
+    }
     localStorage.removeItem('sessionId')
     localStorage.removeItem('userInfo')
   }
