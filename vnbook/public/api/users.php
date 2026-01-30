@@ -5,11 +5,11 @@ require_once 'impdb.php';
 function getUsers($uname=null) {
     $db = DB::vnb();
     if ($uname) {
-        $stmt = $db->prepare("SELECT id AS Id, name, dispname, time_c FROM vnb_users WHERE name = ? AND name != 'admin'");
+        $stmt = $db->prepare("SELECT id, name, dispname, time_c FROM vnb_users WHERE name = ? AND name != 'admin'");
         $stmt->execute([$uname]);
         $rows = $stmt->fetchAll();
     } else {
-        $stmt = $db->query("SELECT id AS Id, name, dispname, time_c FROM vnb_users WHERE name != 'admin'");
+        $stmt = $db->query("SELECT id, name, dispname, time_c FROM vnb_users WHERE name != 'admin'");
         $rows = $stmt->fetchAll();
     }
     foreach ($rows as &$row) { $row['_new'] = 0; }
@@ -30,7 +30,6 @@ function updateUsers($items) {
                 $stmt = $db->prepare("INSERT INTO vnb_users (name, pass, dispname) VALUES (?, ?, ?)");
                 $stmt->execute([$item->name, $hashedPass, $item->dispname]);
                 $item->Id = $db->lastInsertId();
-                $db->prepare("INSERT INTO vnu_books (user_id, title) VALUES (?, 'Default')")->execute([$item->Id]);
                 $item->_new = 0;
             } else {
                 $sql = "UPDATE vnb_users SET dispname = ?";
@@ -43,11 +42,11 @@ function updateUsers($items) {
                 $db->prepare($sql)->execute($params);
                 
                 // Fetch updated user data
-                $stmt = $db->prepare("SELECT id AS Id, name, dispname, time_c FROM vnb_users WHERE name = ?");
+                $stmt = $db->prepare("SELECT id, name, dispname, time_c FROM vnb_users WHERE name = ?");
                 $stmt->execute([$item->name]);
                 $row = $stmt->fetch();
                 if ($row) {
-                    $item->Id = $row['Id'];
+                    $item->id = $row['id'];
                     $item->name = $row['name'];
                     $item->dispname = $row['dispname'];
                     $item->time_c = $row['time_c'];

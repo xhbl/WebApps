@@ -1,7 +1,7 @@
 // 基础数据模型类型定义
 
 export interface Book {
-  Id: number
+  id: number
   title: string
   nums: number
   time_c: string
@@ -10,7 +10,7 @@ export interface Book {
 }
 
 export interface Word {
-  Id: number
+  id: number
   name: string
   phon?: string
   bid: number
@@ -21,7 +21,7 @@ export interface Word {
 }
 
 export interface Explanation {
-  Id: number
+  id: number
   wid: number
   lid: number
   exp_ch: string
@@ -33,7 +33,7 @@ export interface Explanation {
 }
 
 export interface Sentence {
-  Id: number
+  id: number
   eid: number
   sen: string
   sen_ch?: string
@@ -42,7 +42,7 @@ export interface Sentence {
 }
 
 export interface User {
-  Id: number
+  id: number
   name: string
   pass?: string
   dispname: string
@@ -51,7 +51,7 @@ export interface User {
 }
 
 export interface LexicalCat {
-  Id: number
+  id: number
   name: string
   abbr: string
   name_ch: string

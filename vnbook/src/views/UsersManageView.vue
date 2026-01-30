@@ -15,7 +15,7 @@
         <div v-else>
           <van-cell
             v-for="u in usersStore.users"
-            :key="u.Id"
+            :key="u.id"
             :title="u.dispname || u.name"
             :label="u.name"
             is-link
@@ -107,7 +107,7 @@ const onRefresh = async () => {
 }
 
 const openNewUser = () => {
-  editorUser.value = { Id: 0, name: '', dispname: '', time_c: '', _new: 1 }
+  editorUser.value = { id: 0, name: '', dispname: '', time_c: '', _new: 1 }
   showEditor.value = true
 }
 
@@ -122,8 +122,22 @@ const saveUser = async (u: User) => {
 }
 
 const deleteUser = async (u: User) => {
-  await usersStore.deleteUser(u)
-  editorUser.value = null
+  // 弹窗确认逻辑迁移到 View 层
+  try {
+    await showDialog({
+      title: '删除用户',
+      message: `确定要删除用户“${u.dispname || u.name}”吗？<br><br><span style="color:var(--van-danger-color)"><b>此操作将永久删除该用户所有相关数据，且无法撤销。</b></span>`,
+      confirmButtonText: '彻底删除',
+      confirmButtonColor: 'var(--van-danger-color)',
+      cancelButtonText: '取消',
+      showCancelButton: true,
+      allowHtml: true,
+    })
+    await usersStore.deleteUser(u)
+    editorUser.value = null
+  } catch {
+    // 用户点击取消，不做任何处理
+  }
 }
 
 const onMenuSelect = (action: MenuAction) => {
@@ -137,8 +151,11 @@ const onMenuSelect = (action: MenuAction) => {
       showUserMod.value = true
       break
     case 'logout':
+      const userName = authStore.userInfo?.dname?.trim()
+        ? authStore.userInfo.dname
+        : authStore.userInfo?.uname || '请确认'
       showDialog({
-        title: '请确认',
+        title: userName,
         message: '确定要退出登录吗？',
         confirmButtonText: '退出',
         cancelButtonText: '取消',

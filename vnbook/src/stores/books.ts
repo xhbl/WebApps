@@ -3,7 +3,6 @@ import { ref } from 'vue'
 import * as booksApi from '@/api/books'
 import type { Book } from '@/types'
 import { toast } from '@/utils/toast'
-import { showDialog } from 'vant'
 
 export const useBooksStore = defineStore('books', () => {
   // State
@@ -43,9 +42,9 @@ export const useBooksStore = defineStore('books', () => {
           toast.showSuccess('创建成功')
         } else {
           // 更新
-          const index = books.value.findIndex((b) => b.Id === savedBook?.Id)
+          const index = books.value.findIndex((b) => b.id === savedBook.id)
           if (index !== -1 && savedBook) {
-            books.value[index] = savedBook
+            books.value.splice(index, 1, savedBook)
           }
           toast.showSuccess('更新成功')
         }
@@ -60,42 +59,23 @@ export const useBooksStore = defineStore('books', () => {
   }
 
   /**
-   * 删除单词本
+   * 删除单词本（仅数据处理，弹窗交互由 View 层负责）
    */
   const deleteBook = async (book: Book) => {
-    // 检查是否为空
-    if (book.nums > 0) {
-      showDialog({
-        title: '提示',
-        message: '请先删除单词本中的所有单词',
-      })
-      return false
-    }
-
     try {
-      const confirmed = await showDialog({
-        title: '确认删除',
-        message: `确定要删除单词本"${book.title}"吗？`,
-      })
-
-      if (!confirmed) return false
-
       await booksApi.deleteBook(book)
-
-      // 从列表中移除
-      const index = books.value.findIndex((b) => b.Id === book.Id)
+      const index = books.value.findIndex((b) => b.id === book.id)
       if (index !== -1) {
         books.value.splice(index, 1)
       }
-
-      if (currentBook.value?.Id === book.Id) {
+      if (currentBook.value?.id === book.id) {
         currentBook.value = null
       }
-
       toast.showSuccess('删除成功')
       return true
     } catch (error) {
       console.error('Delete book failed:', error)
+      toast.showFail('删除失败，请稍后重试')
       return false
     }
   }
@@ -111,11 +91,11 @@ export const useBooksStore = defineStore('books', () => {
    * 更新单词本的单词数量
    */
   const updateBookNums = (bookId: number, nums: number) => {
-    const book = books.value.find((b) => b.Id === bookId)
+    const book = books.value.find((b) => b.id === bookId)
     if (book) {
       book.nums = nums
     }
-    if (currentBook.value?.Id === bookId) {
+    if (currentBook.value?.id === bookId) {
       currentBook.value.nums = nums
     }
   }

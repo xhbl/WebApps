@@ -68,7 +68,7 @@ const isNew = computed(() => !props.user || props.user._new === 1)
 const password = ref('')
 const passwordConfirm = ref('')
 const edit = ref<User>({
-  Id: 0,
+  id: 0,
   name: '',
   dispname: '',
   time_c: '',
@@ -93,7 +93,7 @@ watch(
   (user) => {
     if (user) {
       edit.value = {
-        Id: user.Id,
+        id: user.id,
         name: user.name,
         dispname: user.dispname,
         time_c: user.time_c,

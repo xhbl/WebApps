@@ -213,18 +213,18 @@ export const useWordsStore = defineStore('words', () => {
       await wordsApi.deleteWord(word)
 
       // 从列表中移除
-      const index = words.value.findIndex((w) => w.Id === word.Id)
+      const index = words.value.findIndex((w) => w.id === word.id)
       if (index !== -1) {
         words.value.splice(index, 1)
       }
 
-      if (currentWord.value?.Id === word.Id) {
+      if (currentWord.value?.id === word.id) {
         currentWord.value = null
       }
 
       // 更新单词本数�?      const booksStore = useBooksStore()
       if (booksStore.currentBook) {
-        booksStore.updateBookNums(booksStore.currentBook.Id, booksStore.currentBook.nums - 1)
+        booksStore.updateBookNums(booksStore.currentBook.id, booksStore.currentBook.nums - 1)
       }
 
       toast.showSuccess('删除成功')
@@ -242,11 +242,11 @@ export const useWordsStore = defineStore('words', () => {
     try {
       await wordsApi.updateWordPhon(wordId, phon)
 
-      const word = words.value.find((w) => w.Id === wordId)
+      const word = words.value.find((w) => w.id === wordId)
       if (word) {
         word.phon = phon
       }
-      if (currentWord.value?.Id === wordId) {
+      if (currentWord.value?.id === wordId) {
         currentWord.value.phon = phon
       }
 
@@ -271,7 +271,7 @@ export const useWordsStore = defineStore('words', () => {
       ) {
         const savedExp = response.data.word[0].explanations![0]
 
-        // 更新当前单词的释义列�?        if (currentWord.value && currentWord.value.Id === explanation.wid) {
+        // 更新当前单词的释义列        if (currentWord.value && currentWord.value.id === explanation.wid) {
           if (!currentWord.value.explanations) {
             currentWord.value.explanations = []
           }
@@ -280,7 +280,7 @@ export const useWordsStore = defineStore('words', () => {
             currentWord.value.explanations.push(savedExp)
             toast.showSuccess('添加成功')
           } else if (savedExp) {
-            const index = currentWord.value.explanations!.findIndex((e) => e.Id === savedExp.Id)
+            const index = currentWord.value.explanations!.findIndex((e) => e.id === savedExp.id)
             if (index !== -1 && currentWord.value.explanations) {
               // 保留 sentences
               savedExp.sentences = currentWord.value.explanations[index]?.sentences
@@ -290,7 +290,7 @@ export const useWordsStore = defineStore('words', () => {
           }
 
           // 同步�?words 列表
-          const word = words.value.find((w) => w.Id === explanation.wid)
+          const word = words.value.find((w) => w.id === explanation.wid)
           if (word) {
             word.explanations = currentWord.value.explanations
           }
@@ -320,13 +320,13 @@ export const useWordsStore = defineStore('words', () => {
       await wordsApi.deleteExplanation(explanation)
 
       // 从当前单词的释义列表中移�?      if (currentWord.value && currentWord.value.explanations) {
-        const index = currentWord.value.explanations.findIndex((e) => e.Id === explanation.Id)
+        const index = currentWord.value.explanations.findIndex((e) => e.id === explanation.id)
         if (index !== -1) {
           currentWord.value.explanations.splice(index, 1)
         }
 
         // 同步�?words 列表
-        const word = words.value.find((w) => w.Id === explanation.wid)
+        const word = words.value.find((w) => w.id === explanation.wid)
         if (word) {
           word.explanations = currentWord.value.explanations
         }
@@ -354,7 +354,7 @@ export const useWordsStore = defineStore('words', () => {
         const savedSen = response.data.word[0].explanations![0].sentences![0]
 
         // 更新当前单词的例句列�?        if (currentWord.value && currentWord.value.explanations) {
-          const exp = currentWord.value.explanations.find((e) => e.Id === expId)
+          const exp = currentWord.value.explanations.find((e) => e.id === expId)
           if (exp) {
             if (!exp.sentences) {
               exp.sentences = []
@@ -364,7 +364,7 @@ export const useWordsStore = defineStore('words', () => {
               exp.sentences.push(savedSen)
               toast.showSuccess('添加成功')
             } else if (savedSen) {
-              const index = exp.sentences.findIndex((s) => s.Id === savedSen.Id)
+              const index = exp.sentences.findIndex((s) => s.id === savedSen.id)
               if (index !== -1) {
                 exp.sentences[index] = savedSen
               }
@@ -372,7 +372,7 @@ export const useWordsStore = defineStore('words', () => {
             }
 
             // 同步�?words 列表
-            const word = words.value.find((w) => w.Id === currentWord.value!.Id)
+            const word = words.value.find((w) => w.id === currentWord.value!.id)
             if (word && word.explanations) {
               const wordExp = word.explanations.find((e) => e.Id === expId)
               if (wordExp) {
@@ -406,17 +406,17 @@ export const useWordsStore = defineStore('words', () => {
       await wordsApi.deleteSentence(sentence)
 
       // 从释义的例句列表中移�?      if (currentWord.value && currentWord.value.explanations) {
-        const exp = currentWord.value.explanations.find((e) => e.Id === expId)
+        const exp = currentWord.value.explanations.find((e) => e.id === expId)
         if (exp && exp.sentences) {
-          const index = exp.sentences.findIndex((s) => s.Id === sentence.Id)
+          const index = exp.sentences.findIndex((s) => s.id === sentence.id)
           if (index !== -1) {
             exp.sentences.splice(index, 1)
           }
 
-          // 同步�?words 列表
-          const word = words.value.find((w) => w.Id === currentWord.value!.Id)
+          // 同步 words 列表
+          const word = words.value.find((w) => w.id === currentWord.value!.id)
           if (word && word.explanations) {
-            const wordExp = word.explanations.find((e) => e.Id === expId)
+            const wordExp = word.explanations.find((e) => e.id === expId)
             if (wordExp) {
               wordExp.sentences = exp.sentences
             }
