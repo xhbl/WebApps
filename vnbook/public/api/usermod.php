@@ -1,10 +1,11 @@
 <?php
 require_once 'login.php';
 
-function vnb_moduser($dname, $upassold, $upassnew, $cfg) {
+function vnb_moduser($dname, $upassold, $upassnew, $cfg)
+{
     $uname = $_SESSION['user_name'];
     $retjo = new stdClass();
-    $retjo->success = 'false';
+    $retjo->success = false;
     $db = DB::vnb();
 
     try {
@@ -43,14 +44,16 @@ function vnb_moduser($dname, $upassold, $upassnew, $cfg) {
             $_SESSION['user_cfg'] = $cfg;
         }
 
-        $retjo->success = 'true';
+        $retjo->success = true;
         $retjo->login = [
             'sid' => session_id(),
             'uname' => $uname,
             'dname' => $dname,
             'cfg' => json_decode($_SESSION['user_cfg'] ?? '')
         ];
-    } catch (Exception $e) { $retjo->message = $e->getMessage(); }
+    } catch (Exception $e) {
+        $retjo->message = $e->getMessage();
+    }
 
     return $retjo;
 }
@@ -59,7 +62,9 @@ header('Content-Type: application/json; charset=utf-8');
 
 // Security Check
 $logsess = vnb_checklogin($_POST["_sessid"] ?? null);
-if ($logsess->success !== 'true') { die(json_encode($logsess)); }
+if ($logsess->success !== true) {
+    die(json_encode($logsess));
+}
 
 echo json_encode(vnb_moduser(
     $_POST["dname"] ?? $_SESSION['user_dispname'],

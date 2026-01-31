@@ -148,7 +148,7 @@ export const checkLogin = () => {
 export const login = async (data: LoginRequest) => {
   // 1. 获取nonce
   const nonceResp = await getNonce(data.uname)
-  if (nonceResp.data.success !== 'true' || !nonceResp.data.nonce) {
+  if (nonceResp.data.success !== true || !nonceResp.data.nonce) {
     throw new Error('Failed to get login nonce')
   }
 

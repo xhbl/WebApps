@@ -73,7 +73,7 @@ function defineWordsStore() {
   const loadWords = async (bookId: number) => {
     try {
       const response = await wordsApi.getWords(bookId)
-      if (response.data.success === 'true' && response.data.word) {
+      if (response.data.success === true && response.data.word) {
         words.value = response.data.word.map((w: unknown) => {
           const word = w as Word & { explanations?: unknown[] }
           return {
@@ -146,7 +146,7 @@ function defineWordsStore() {
         book_id = booksStore.currentBook.id
       }
       const response = await wordsApi.saveWord({ ...word, book_id })
-      if (response.data.success === 'true' && response.data.word && response.data.word[0]) {
+      if (response.data.success === true && response.data.word && response.data.word[0]) {
         const savedWord = response.data.word[0]
 
         // 检查是否需要二次确认
@@ -263,7 +263,7 @@ function defineWordsStore() {
     try {
       const response = await wordsApi.saveExplanation(explanation)
       if (
-        response.data.success === 'true' &&
+        response.data.success === true &&
         response.data.word &&
         response.data.word[0]?.explanations?.[0]
       ) {
@@ -347,7 +347,7 @@ function defineWordsStore() {
     try {
       const response = await wordsApi.saveSentence(sentence)
       if (
-        response.data.success === 'true' &&
+        response.data.success === true &&
         response.data.word &&
         response.data.word[0]?.explanations?.[0]?.sentences?.[0]
       ) {

@@ -13,7 +13,7 @@ export const useUsersStore = defineStore('users', () => {
   const loadUsers = async () => {
     try {
       const response = await usersApi.getUsers()
-      if (response.data.success === 'true') {
+      if (response.data.success === true) {
         users.value = Array.isArray(response.data.user) ? response.data.user : []
         return true
       }
@@ -28,7 +28,7 @@ export const useUsersStore = defineStore('users', () => {
   const saveUser = async (user: User) => {
     try {
       const response = await usersApi.saveUser(user)
-      if (response.data.success === 'true' && response.data.user && response.data.user[0]) {
+      if (response.data.success === true && response.data.user && response.data.user[0]) {
         const savedUser = response.data.user[0]
         if (user._new === 1) {
           users.value.push(savedUser)

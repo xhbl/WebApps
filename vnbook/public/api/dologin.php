@@ -37,7 +37,7 @@ try {
 
             // Validate nonce
             if (!$nonce || $nonceUser !== $uname) {
-                echo json_encode(['success' => 'false', 'message' => 'Invalid nonce. Please retry login.']);
+                echo json_encode(['success' => false, 'message' => 'Invalid nonce. Please retry login.']);
                 exit;
             }
 
@@ -47,7 +47,7 @@ try {
 
             // Verify password
             if ($response !== $expectedResponse) {
-                echo json_encode(['success' => 'false', 'message' => 'Invalid initialization password.']);
+                echo json_encode(['success' => false, 'message' => 'Invalid initialization password.']);
                 exit;
             }
 
@@ -55,25 +55,25 @@ try {
             include_once 'impdb.php';
             $initRes = createVnbInitData();
             if (!$initRes->v) {
-                echo json_encode(['success' => 'false', 'message' => 'Database initialization failed.']);
+                echo json_encode(['success' => false, 'message' => 'Database initialization failed.']);
                 exit;
             }
         }
         // If database connection failed, return immediately
         else if ($dbStatus === 'connect_fail') {
-            echo json_encode(['success' => 'false', 'message' => 'Database connection failed']);
+            echo json_encode(['success' => false, 'message' => 'Database connection failed']);
             exit;
         }
         // If database does not exist and not admin, require initialization
         else if ($dbStatus === 'not_exists') {
-            echo json_encode(['success' => 'false', 'message' => 'Initialization credentials required.']);
+            echo json_encode(['success' => false, 'message' => 'Initialization credentials required.']);
             exit;
         }
 
         echo json_encode(vnb_dologin($uname, $response, isset($_POST["keepme"])));
     } elseif ($act == 'logout') {
         vnb_dologout();
-        echo json_encode(['success' => 'true']);
+        echo json_encode(['success' => true]);
     }
 } catch (Exception $e) {
     echo json_encode(['error' => $e->getMessage()]);

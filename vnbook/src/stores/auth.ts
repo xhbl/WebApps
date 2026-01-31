@@ -39,7 +39,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authApi.login(data)
       const loginData = response.data
 
-      if (loginData.success === 'true' && loginData.login) {
+      if (loginData.success === true && loginData.login) {
         userInfo.value = loginData.login
         sessionId.value = loginData.login.sid
 
@@ -74,7 +74,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authApi.checkLogin()
       const loginData = response.data
 
-      if (loginData.success === 'true' && loginData.login) {
+      if (loginData.success === true && loginData.login) {
         userInfo.value = loginData.login
         localStorage.setItem('userInfo', JSON.stringify(loginData.login))
         return true

@@ -74,18 +74,18 @@ export interface MenuAction {
 
 // API 响应类型
 export interface ApiResponse<T = unknown> {
-  success: 'true' | 'false'
+  success: boolean
   message?: string
   book?: Book[]
   word?: Word[]
   user?: User[]
-  lexicalcat?: Pos[]
+  pos?: Pos[]
   data?: T
 }
 
 // Nonce 响应类型
 export interface NonceResponse {
-  success: 'true' | 'false'
+  success: boolean
   nonce?: string
   message?: string
 }
@@ -105,7 +105,7 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  success: 'true' | 'false'
+  success: boolean
   message?: string
   login?: LoginInfo
 }

@@ -17,8 +17,8 @@ export const usePosStore = defineStore('pos', () => {
 
     try {
       const response = await wordsApi.getPosList()
-      if (response.data.success === 'true' && response.data.lexicalcat) {
-        posList.value = response.data.lexicalcat
+      if (response.data.success === true && response.data.pos) {
+        posList.value = response.data.pos
         loaded.value = true
         return true
       }

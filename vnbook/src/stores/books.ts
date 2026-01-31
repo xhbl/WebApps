@@ -31,7 +31,7 @@ export const useBooksStore = defineStore('books', () => {
   const loadBooks = async () => {
     try {
       const response = await booksApi.getBooks()
-      if (response.data.success === 'true' && response.data.book) {
+      if (response.data.success === true && response.data.book) {
         books.value = response.data.book.map((b: Book) => ({
           ...b,
           ptop: Number(b.ptop || 0),
@@ -53,7 +53,7 @@ export const useBooksStore = defineStore('books', () => {
   const saveBook = async (book: Book, silent = false) => {
     try {
       const response = await booksApi.saveBook(book)
-      if (response.data.success === 'true' && response.data.book && response.data.book[0]) {
+      if (response.data.success === true && response.data.book && response.data.book[0]) {
         const savedBook = response.data.book[0]
 
         if (book._new === 1) {

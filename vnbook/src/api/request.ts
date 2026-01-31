@@ -45,7 +45,7 @@ request.interceptors.response.use(
     const data = response.data as ApiResponse
 
     // 检查业务状态
-    if (data.success === 'false') {
+    if (data.success === false) {
       const message = data.message || '操作失败'
       toast.showFail(message)
       return Promise.reject(new Error(message))
