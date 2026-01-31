@@ -141,10 +141,7 @@ function defineWordsStore() {
     try {
       // 由 API 层处理 bid 传递
       const booksStore = useBooksStore()
-      let book_id: number | undefined = undefined
-      if (!book_id && booksStore.currentBook) {
-        book_id = booksStore.currentBook.id
-      }
+      const book_id = booksStore.currentBook?.id
       const response = await wordsApi.saveWord({ ...word, book_id })
       if (response.data.success === true && response.data.word && response.data.word[0]) {
         const savedWord = response.data.word[0]
