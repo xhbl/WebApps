@@ -48,7 +48,18 @@
             @click="enterWordsList(b)"
           >
             <template #icon>
-              <van-icon name="edit" class="book-edit-icon" @click.stop="editBook(b)" />
+              <div class="icon-wrapper" @click.stop>
+                <van-popover
+                  v-model:show="showBookPopover[b.id]"
+                  :actions="bookPopoverActions"
+                  placement="bottom-start"
+                  @select="(action) => onBookAction(action, b)"
+                >
+                  <template #reference>
+                    <van-icon name="label-o" class="book-edit-icon" />
+                  </template>
+                </van-popover>
+              </div>
             </template>
           </van-cell>
           <van-empty
@@ -153,6 +164,16 @@ const onAllWordsAction = (action: { key: string }) => {
 
 const toggleShowAllWords = () => {
   showAllWords.value = !showAllWords.value
+}
+
+const showBookPopover = ref<Record<number, boolean>>({})
+const bookPopoverActions = [{ text: '编辑', icon: 'edit', key: 'edit' }]
+
+const onBookAction = (action: { key: string }, b: Book) => {
+  if (action.key === 'edit') {
+    showBookPopover.value[b.id] = false
+    editBook(b)
+  }
 }
 
 const { openMenu, AppMenu, UserDialog } = useAppMenu({
