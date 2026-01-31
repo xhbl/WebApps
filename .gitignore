@@ -1,3 +1,14 @@
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*.tmp
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
 /*
 !/.gitignore
 !/vnbook/
