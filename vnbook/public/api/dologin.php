@@ -40,7 +40,11 @@ try {
             
             // Password correct, initialize database
             include_once 'impdb.php';
-            createVnbInitData();
+            $initRes = createVnbInitData();
+            if (!$initRes->v) {
+                echo json_encode(['success' => 'false', 'message' => 'Database initialization failed.']);
+                exit;
+            }
         }
         // If database doesn't exist and not admin, require initialization
         else if (!$dbExists) {

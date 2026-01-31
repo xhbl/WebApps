@@ -1,7 +1,7 @@
 <?php
 require_once 'login.php';
 
-function vnb_moduser($dname, $upassold, $upassnew) {
+function vnb_moduser($dname, $upassold, $upassnew, $cfg) {
     $uname = $_SESSION['user_name'];
     $retjo = new stdClass();
     $retjo->success = 'false';
@@ -28,6 +28,10 @@ function vnb_moduser($dname, $upassold, $upassnew) {
             // Hash new password before storing
             $params[] = hash('sha256', $upassnew);
         }
+        if ($cfg !== null) {
+            $sql .= ", cfg = ?";
+            $params[] = $cfg;
+        }
         $sql .= " WHERE name = ?";
         $params[] = $uname;
 
@@ -35,12 +39,16 @@ function vnb_moduser($dname, $upassold, $upassnew) {
 
         // Update session
         $_SESSION['user_dispname'] = $dname;
+        if ($cfg !== null) {
+            $_SESSION['user_cfg'] = $cfg;
+        }
 
         $retjo->success = 'true';
         $retjo->login = [
             'sid' => session_id(),
             'uname' => $uname,
-            'dname' => $dname
+            'dname' => $dname,
+            'cfg' => json_decode($_SESSION['user_cfg'] ?? '')
         ];
     } catch (Exception $e) { $retjo->message = $e->getMessage(); }
 
@@ -56,5 +64,6 @@ if ($logsess->success !== 'true') { die(json_encode($logsess)); }
 echo json_encode(vnb_moduser(
     $_POST["dname"] ?? $_SESSION['user_dispname'],
     $_POST["upassold"] ?? '',
-    $_POST["upassnew"] ?? ''
+    $_POST["upassnew"] ?? '',
+    $_POST["cfg"] ?? null
 ));

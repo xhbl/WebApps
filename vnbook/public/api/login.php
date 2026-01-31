@@ -24,17 +24,18 @@ function vnb_checklogin($sid = null) {
     if (empty($_SESSION['user_name'])) {
         if (empty($vnbsess[2]) || $vnbsess[2] != md5($vnbsess[0].'@'.session_id())) return $retjo;
         $db = DB::vnb();
-        $stmt = $db->prepare("SELECT id, name, dispname FROM vnb_users WHERE name = ?");
+        $stmt = $db->prepare("SELECT id, name, dispname, cfg FROM vnb_users WHERE name = ?");
         $stmt->execute([$vnbsess[0]]);
         if ($row = $stmt->fetch()) {
             $_SESSION['user_id'] = $row['id'];
             $_SESSION['user_name'] = $row['name'];
             $_SESSION['user_dispname'] = $row['dispname'];
+            $_SESSION['user_cfg'] = $row['cfg'];
         } else { return $retjo; }
     }
 
     $retjo->success = 'true';
-    $retjo->login = ['sid' => session_id(), 'uid' => $_SESSION['user_id'], 'uname' => $_SESSION['user_name'], 'dname' => $_SESSION['user_dispname']];
+    $retjo->login = ['sid' => session_id(), 'uid' => $_SESSION['user_id'], 'uname' => $_SESSION['user_name'], 'dname' => $_SESSION['user_dispname'], 'cfg' => json_decode($_SESSION['user_cfg'] ?? '')];
     return $retjo;
 }
 
@@ -70,7 +71,7 @@ function vnb_dologin($uname, $response_hash, $keepme) {
             $storedHash = hash('sha256', C_ADMIN_PASSINIT);
             $isInitialization = true;
         } else {
-            $stmt = $db->prepare("SELECT id, name, pass, dispname FROM vnb_users WHERE name = ?");
+            $stmt = $db->prepare("SELECT id, name, pass, dispname, cfg FROM vnb_users WHERE name = ?");
             $stmt->execute([trim($uname)]);
             $row = $stmt->fetch();
             
@@ -109,12 +110,13 @@ function vnb_dologin($uname, $response_hash, $keepme) {
             $_SESSION['user_id'] = $row['id'];
             $_SESSION['user_name'] = $row['name'];
             $_SESSION['user_dispname'] = $row['dispname'];
+            $_SESSION['user_cfg'] = $row['cfg'];
             $sid = session_id();
             $cookie_str = $row['name'].'@'.$sid.'@'.md5($row['name'].'@'.$sid);
             $expiry = $keepme ? time() + 3600*24*365 : 0;
             setcookie(vnb_sessname(), $cookie_str, $expiry, '/');
             $retjo->success = 'true';
-            $retjo->login = ['sid' => $sid, 'uid' => $row['id'], 'uname' => $row['name'], 'dname' => $row['dispname']];
+            $retjo->login = ['sid' => $sid, 'uid' => $row['id'], 'uname' => $row['name'], 'dname' => $row['dispname'], 'cfg' => json_decode($row['cfg'] ?? '')];
         }
     } catch (Exception $e) {
         unset($_SESSION['login_nonce'], $_SESSION['nonce_username'], $_SESSION['nonce_expire']);
