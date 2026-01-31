@@ -339,12 +339,12 @@ const onConfirmDeleteBook = async () => {
 }
 
 .all-words-cell {
-  background-color: #f7f8fa; /* 灰色背景 */
+  background-color: var(--van-gray-2); /* 灰色背景 */
   align-items: center;
 }
 
 .pinned-book {
-  background-color: #f7f8fa; /* 置顶项灰色背景 */
+  background-color: var(--van-gray-1); /* 置顶项灰色背景 */
 }
 
 .icon-wrapper {

@@ -17,7 +17,7 @@ const route = useRoute()
 <style scoped>
 .app-root {
   min-height: 100vh;
-  background-color: #f7f8fa;
+  background-color: var(--van-background);
 }
 
 .slide-enter-active,
