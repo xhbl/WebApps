@@ -27,6 +27,7 @@ function createVnbInitData() {
                 `pass` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
                 `dispname` VARCHAR(100) DEFAULT NULL,
                 `time_c` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                `cfg` JSON DEFAULT NULL,
                 UNIQUE INDEX `idx_user_name` (`name`)
             ) ENGINE=InnoDB",
 
@@ -38,7 +39,9 @@ function createVnbInitData() {
                 `nums` INT UNSIGNED DEFAULT 0,
                 `time_c` DATETIME DEFAULT CURRENT_TIMESTAMP,
                 `hide` TINYINT(1) DEFAULT 0,
-                INDEX `idx_vnu_user_books` (`user_id`),
+                `ptop` TINYINT(1) DEFAULT 0,
+                `sorder` INT DEFAULT 0,
+                INDEX `idx_vnu_user_books` (`user_id` ASC, `ptop` DESC, `sorder` ASC, `time_c` DESC),
                 CONSTRAINT `fk_book_user` FOREIGN KEY (`user_id`) REFERENCES `vnb_users` (`id`) ON DELETE CASCADE
             ) ENGINE=InnoDB",
 
