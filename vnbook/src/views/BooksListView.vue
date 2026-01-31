@@ -10,7 +10,7 @@
     </van-nav-bar>
 
     <!-- 全部单词条目 (Sticky 置顶) -->
-    <div v-if="showAllWords" class="sticky-header">
+    <div v-if="showAllWords" class="sticky-header van-hairline--bottom">
       <van-cell
         title="全部单词"
         :label="`单词总数：${totalWords}`"
