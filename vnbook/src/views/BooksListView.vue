@@ -9,6 +9,32 @@
       </template>
     </van-nav-bar>
 
+    <!-- 全部单词条目 (Sticky 置顶) -->
+    <div v-if="showAllWords" class="sticky-header">
+      <van-cell
+        title="全部单词"
+        :label="`单词总数：${totalWords}`"
+        is-link
+        @click="enterAllWords"
+        class="all-words-cell"
+      >
+        <template #icon>
+          <div class="icon-wrapper" @click.stop>
+            <van-popover
+              v-model:show="showAllWordsPopover"
+              :actions="allWordsPopoverActions"
+              placement="bottom-start"
+              @select="onAllWordsAction"
+            >
+              <template #reference>
+                <van-icon name="label" class="book-edit-icon" />
+              </template>
+            </van-popover>
+          </div>
+        </template>
+      </van-cell>
+    </div>
+
     <div class="content">
       <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
         <div v-if="loading" class="loading">加载中...</div>
@@ -81,6 +107,9 @@ const enterWordsList = (b: Book) => {
   // 跳转到单词本详情页（WordsListView）
   router.push(`/books/${b.id}/words`)
 }
+const enterAllWords = () => {
+  router.push(`/books/0/words`)
+}
 const showEditor = ref(false)
 const editorBook = ref<Book | null>(null)
 const refreshing = ref(false)
@@ -88,6 +117,10 @@ const loading = ref(true)
 
 const userBookTitle = computed(() => {
   return authStore.userDisplayName ? `${authStore.userDisplayName}的单词本` : '我的单词本'
+})
+
+const totalWords = computed(() => {
+  return booksStore.books.reduce((sum, b) => sum + b.nums, 0)
 })
 
 onMounted(async () => {
@@ -107,8 +140,32 @@ const openNewBook = () => {
   showEditor.value = true
 }
 
+const showAllWords = ref(true)
+const showAllWordsPopover = ref(false)
+const allWordsPopoverActions = [{ text: '隐藏', icon: 'closed-eye', key: 'hide' }]
+
+const onAllWordsAction = (action: { key: string }) => {
+  if (action.key === 'hide') {
+    showAllWordsPopover.value = false
+    showAllWords.value = false
+  }
+}
+
+const toggleShowAllWords = () => {
+  showAllWords.value = !showAllWords.value
+}
+
 const { openMenu, AppMenu, UserDialog } = useAppMenu({
-  items: [{ name: '新建单词本', icon: 'plus', handler: openNewBook }],
+  get items() {
+    return [
+      { name: '新建单词本', icon: 'plus', handler: openNewBook },
+      {
+        name: showAllWords.value ? '隐藏 全部单词' : '显示 全部单词',
+        icon: showAllWords.value ? 'closed-eye' : 'eye-o',
+        handler: toggleShowAllWords,
+      },
+    ]
+  },
 })
 
 const editBook = (b: Book) => {
@@ -227,5 +284,22 @@ const onConfirmDeleteBook = async () => {
 :deep(.delete-checkbox-area .van-checkbox__label) {
   font-size: 14px;
   color: var(--van-text-color-2);
+}
+
+.sticky-header {
+  position: sticky;
+  top: var(--van-nav-bar-height);
+  z-index: 10;
+}
+
+.all-words-cell {
+  background-color: #f7f8fa; /* 灰色背景 */
+  align-items: center;
+}
+
+.icon-wrapper {
+  display: flex;
+  align-items: center;
+  height: 100%;
 }
 </style>
