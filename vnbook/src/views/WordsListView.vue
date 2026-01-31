@@ -34,7 +34,7 @@
     </div>
 
     <AppMenu />
-    <word-new-dialog v-model="showWordNew" :bid="bid" @save="saveWord" />
+    <word-new-dialog v-model="showWordNew" :bid="bid" />
     <van-dialog
       v-model:show="showDeleteDialog"
       :title="deleteDialogTitle"
@@ -97,14 +97,6 @@ const onRefresh = async () => {
 
 const openAddWord = () => {
   showWordNew.value = true
-}
-
-const saveWord = async (word: Word) => {
-  const saved = await wordsStore.saveWord(word)
-  if (saved) {
-    showWordNew.value = false
-    await wordsStore.loadWords(bid)
-  }
 }
 
 const onConfirmDeleteWord = async () => {

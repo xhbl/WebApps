@@ -9,6 +9,20 @@ export const useAuthStore = defineStore('auth', () => {
   const userInfo = ref<LoginInfo | null>(null)
   const sessionId = ref<string>('')
 
+  // Init from localStorage
+  const storedUser = localStorage.getItem('userInfo')
+  if (storedUser) {
+    try {
+      userInfo.value = JSON.parse(storedUser)
+    } catch (e) {
+      console.error('Failed to parse stored user info', e)
+    }
+  }
+  const storedSession = localStorage.getItem('sessionId')
+  if (storedSession) {
+    sessionId.value = storedSession
+  }
+
   // Getters
   const isLoggedIn = computed(() => !!userInfo.value && !!sessionId.value)
   const isAdmin = computed(() => userInfo.value?.uname === 'admin')
@@ -132,10 +146,32 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
       }
 
-      toast.showSuccess('修改成功')
+      toast.showSuccess('更新成功')
       return true
     } catch (error) {
       console.error('Update user info failed:', error)
+      toast.showFail('更新失败')
+      return false
+    }
+  }
+
+  /**
+   * 更新用户配置 (cfg)
+   */
+  const updateUserConfig = async (configPart: Record<string, unknown>) => {
+    if (!userInfo.value) return false
+
+    const newCfg = { ...(userInfo.value.cfg || {}), ...configPart }
+
+    try {
+      await authApi.updateUserInfo({ cfg: newCfg })
+
+      // 更新本地状态
+      userInfo.value.cfg = newCfg
+      localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
+      return true
+    } catch (error) {
+      console.error('Update config failed:', error)
       return false
     }
   }
@@ -150,5 +186,6 @@ export const useAuthStore = defineStore('auth', () => {
     checkLogin,
     logout,
     updateUserInfo,
+    updateUserConfig,
   }
 })

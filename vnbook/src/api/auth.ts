@@ -189,11 +189,13 @@ export const updateUserInfo = (data: {
   newpass?: string
   newpass2?: string
   dispname?: string
+  cfg?: Record<string, unknown>
 }) => {
   const formData = new FormData()
   if (data.oldpass) formData.append('upassold', data.oldpass)
   if (data.newpass) formData.append('upassnew', data.newpass)
   if (data.dispname) formData.append('dname', data.dispname)
+  if (data.cfg) formData.append('cfg', JSON.stringify(data.cfg))
 
   return request.post<ApiResponse>('/usermod.php', formData, {
     headers: {

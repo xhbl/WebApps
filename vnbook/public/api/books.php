@@ -21,11 +21,11 @@ function getBooks($bid = null) {
     try {
         if ($bid) {
             // Fetch single book with ownership verification
-            $stmt = $db->prepare("SELECT id, user_id, title, nums, time_c, hide FROM vnu_books WHERE id = ? AND user_id = ?");
+            $stmt = $db->prepare("SELECT id, user_id, title, nums, time_c, hide, ptop, sorder FROM vnu_books WHERE id = ? AND user_id = ?");
             $stmt->execute([$bid, $uid]);
         } else {
             // Fetch all user's books
-            $stmt = $db->prepare("SELECT id, user_id, title, nums, time_c, hide FROM vnu_books WHERE user_id = ? ORDER BY time_c DESC");
+            $stmt = $db->prepare("SELECT id, user_id, title, nums, time_c, hide, ptop, sorder FROM vnu_books WHERE user_id = ? ORDER BY ptop DESC, sorder ASC, time_c DESC");
             $stmt->execute([$uid]);
         }
         
@@ -61,20 +61,26 @@ function updateBooks($items) {
         foreach ($items as $item) {
             if (!empty($item->_new)) {
                 // Create new book
-                $stmt = $db->prepare("INSERT INTO vnu_books (user_id, title, nums, hide) VALUES (?, ?, 0, 0)");
+                $stmt = $db->prepare("INSERT INTO vnu_books (user_id, title, nums, hide, ptop, sorder) VALUES (?, ?, 0, 0, 0, 0)");
                 $stmt->execute([$uid, $item->title ?? 'Untitled']);
                 
                 $bid = $db->lastInsertId();
+                
+                // Initialize sorder with id to ensure stable initial order
+                $db->exec("UPDATE vnu_books SET sorder = $bid WHERE id = $bid");
+                
                 $item->id = $bid;
                 $item->user_id = $uid;
                 $item->nums = 0;
                 $item->hide = 0;
+                $item->ptop = 0;
+                $item->sorder = $bid;
                 $item->time_c = date('Y-m-d H:i:s');
                 $item->_new = 0;
             } else {
                 // Update existing book (ownership verified)
-                $stmt = $db->prepare("UPDATE vnu_books SET title = ?, hide = ? WHERE id = ? AND user_id = ?");
-                $stmt->execute([$item->title ?? 'Untitled', $item->hide ?? 0, $item->id, $uid]);
+                $stmt = $db->prepare("UPDATE vnu_books SET title = ?, hide = ?, ptop = ?, sorder = ? WHERE id = ? AND user_id = ?");
+                $stmt->execute([$item->title ?? 'Untitled', $item->hide ?? 0, $item->ptop ?? 0, $item->sorder ?? 0, $item->id, $uid]);
                 
                 // Refresh from DB
                 $stmt = $db->prepare("SELECT * FROM vnu_books WHERE id = ? AND user_id = ?");

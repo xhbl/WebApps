@@ -23,12 +23,12 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useWordsStore } from '@/stores/words'
 import type { Word } from '@/types'
 
 const props = defineProps<{ modelValue: boolean; bid: number }>()
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
-  (e: 'save', w: Word): void
 }>()
 
 const show = ref(props.modelValue)
@@ -46,7 +46,9 @@ const normalizeWord = (s: string) => {
   return isAllUpper ? s : s.toLowerCase()
 }
 
-const onSubmit = () => {
+const wordsStore = useWordsStore()
+
+const onSubmit = async () => {
   const w: Word = {
     id: 0,
     word: normalizeWord(name.value.trim()),
@@ -55,8 +57,11 @@ const onSubmit = () => {
     explanations: [],
     _new: 1,
   }
-  emit('save', w)
-  show.value = false
+
+  const saved = await wordsStore.saveWord(w)
+  if (saved) {
+    show.value = false
+  }
 }
 
 const onCancel = () => (show.value = false)

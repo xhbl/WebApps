@@ -45,6 +45,7 @@ export const useUsersStore = defineStore('users', () => {
       return null
     } catch (error) {
       console.error('Save user failed:', error)
+      toast.showFail('保存失败')
       return null
     }
   }
@@ -61,7 +62,7 @@ export const useUsersStore = defineStore('users', () => {
       return true
     } catch (error) {
       console.error('Delete user failed:', error)
-      toast.showFail('删除失败，请稍后重试')
+      toast.showFail('删除失败')
       return false
     }
   }

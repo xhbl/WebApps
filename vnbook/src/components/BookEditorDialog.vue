@@ -25,6 +25,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 // ...existing code...
+import { useBooksStore } from '@/stores/books'
 import type { Book } from '@/types'
 
 const props = defineProps<{
@@ -34,7 +35,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
-  (e: 'save', book: Book): void
   (e: 'delete', book: Book): void
 }>()
 
@@ -93,10 +93,14 @@ watch(
   { immediate: true },
 )
 
-const onSubmit = () => {
+const booksStore = useBooksStore()
+
+const onSubmit = async () => {
   const b: Book = { ...edit.value }
-  emit('save', b)
-  show.value = false
+  const saved = await booksStore.saveBook(b)
+  if (saved) {
+    show.value = false
+  }
 }
 
 const onCancel = () => (show.value = false)

@@ -36,12 +36,7 @@
     <AppMenu />
     <UserDialog />
 
-    <user-editor-dialog
-      v-model="showEditor"
-      :user="editorUser"
-      @save="saveUser"
-      @delete="deleteUser"
-    />
+    <user-editor-dialog v-model="showEditor" :user="editorUser" @delete="deleteUser" />
     <van-dialog></van-dialog
     ><!-- 占位符，让showDialog样式统一 -->
   </div>
@@ -91,11 +86,6 @@ const { openMenu, AppMenu, UserDialog } = useAppMenu({
 const editUser = (u: User) => {
   editorUser.value = { ...u, _new: 0 }
   showEditor.value = true
-}
-
-const saveUser = async (u: User) => {
-  await usersStore.saveUser(u)
-  editorUser.value = null
 }
 
 const deleteUser = async (u: User) => {

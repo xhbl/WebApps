@@ -16,6 +16,13 @@ export const saveBook = (book: Book) => {
 }
 
 /**
+ * 批量保存单词本 (用于排序等)
+ */
+export const saveBooks = (books: Book[]) => {
+  return request.put<ApiResponse>('/books.php', books)
+}
+
+/**
  * 删除单词本
  */
 export const deleteBook = (book: Book) => {

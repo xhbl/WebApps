@@ -6,6 +6,8 @@ export interface Book {
   nums: number
   time_c: string
   hide: number
+  ptop?: number
+  sorder?: number
   _new?: number // 1=新增, 0=已存在
   deleteWords?: boolean // 删除时可选，是否同时删除本内单词
 }
@@ -93,6 +95,7 @@ export interface LoginInfo {
   sid: string
   uname: string
   dname: string
+  cfg?: Record<string, unknown>
 }
 
 export interface LoginRequest {

@@ -45,13 +45,14 @@
             :title="b.title"
             :label="`单词数: ${b.nums}`"
             is-link
+            :class="{ 'pinned-book': b.ptop === 1 }"
             @click="enterWordsList(b)"
           >
             <template #icon>
               <div class="icon-wrapper" @click.stop>
                 <van-popover
                   v-model:show="showBookPopover[b.id]"
-                  :actions="bookPopoverActions"
+                  :actions="getBookActions(b)"
                   placement="bottom-start"
                   @select="(action) => onBookAction(action, b)"
                 >
@@ -72,12 +73,7 @@
 
     <AppMenu />
     <UserDialog />
-    <book-editor-dialog
-      v-model="showEditor"
-      :book="editorBook"
-      @save="saveBook"
-      @delete="deleteBook"
-    />
+    <book-editor-dialog v-model="showEditor" :book="editorBook" @delete="deleteBook" />
     <van-dialog
       v-model:show="showDeleteDialog"
       :title="deleteDialogTitle"
@@ -130,6 +126,9 @@ const userBookTitle = computed(() => {
   return authStore.userDisplayName ? `${authStore.userDisplayName}的单词本` : '我的单词本'
 })
 
+// 初始化 showAllWords 状态
+const showAllWords = ref(!authStore.userInfo?.cfg?.hideAllWords)
+
 const totalWords = computed(() => {
   return booksStore.books.reduce((sum, b) => sum + b.nums, 0)
 })
@@ -151,7 +150,6 @@ const openNewBook = () => {
   showEditor.value = true
 }
 
-const showAllWords = ref(true)
 const showAllWordsPopover = ref(false)
 const allWordsPopoverActions = [{ text: '隐藏', icon: 'closed-eye', key: 'hide' }]
 
@@ -159,20 +157,54 @@ const onAllWordsAction = (action: { key: string }) => {
   if (action.key === 'hide') {
     showAllWordsPopover.value = false
     showAllWords.value = false
+    authStore.updateUserConfig({ hideAllWords: true })
   }
 }
 
 const toggleShowAllWords = () => {
   showAllWords.value = !showAllWords.value
+  authStore.updateUserConfig({ hideAllWords: !showAllWords.value })
 }
 
 const showBookPopover = ref<Record<number, boolean>>({})
-const bookPopoverActions = [{ text: '编辑', icon: 'edit', key: 'edit' }]
+
+const getBookActions = (b: Book) => {
+  const actions = [{ text: '编辑', icon: 'edit', key: 'edit' }]
+
+  // 置顶/取消置顶
+  actions.push({
+    text: b.ptop === 1 ? '取消置顶' : '置顶',
+    icon: b.ptop === 1 ? 'down' : 'back-top',
+    key: 'pin',
+  })
+
+  // 计算同组位置
+  const group = booksStore.books.filter((item) => !!item.ptop === !!b.ptop)
+  const index = group.findIndex((item) => item.id === b.id)
+
+  // 上移 (不是第一个)
+  if (index > 0) {
+    actions.push({ text: '上移', icon: 'arrow-up', key: 'up' })
+  }
+  // 下移 (不是最后一个)
+  if (index < group.length - 1) {
+    actions.push({ text: '下移', icon: 'arrow-down', key: 'down' })
+  }
+
+  return actions
+}
 
 const onBookAction = (action: { key: string }, b: Book) => {
+  showBookPopover.value[b.id] = false
   if (action.key === 'edit') {
     showBookPopover.value[b.id] = false
     editBook(b)
+  } else if (action.key === 'pin') {
+    booksStore.togglePin(b)
+  } else if (action.key === 'up') {
+    booksStore.moveBook(b, -1)
+  } else if (action.key === 'down') {
+    booksStore.moveBook(b, 1)
   }
 }
 
@@ -192,13 +224,6 @@ const { openMenu, AppMenu, UserDialog } = useAppMenu({
 const editBook = (b: Book) => {
   editorBook.value = { ...b, _new: 0 }
   showEditor.value = true
-}
-
-const saveBook = async (book: Book) => {
-  const saved = await booksStore.saveBook(book)
-  if (saved) {
-    editorBook.value = null
-  }
 }
 
 const showDeleteDialog = ref(false)
@@ -316,6 +341,10 @@ const onConfirmDeleteBook = async () => {
 .all-words-cell {
   background-color: #f7f8fa; /* 灰色背景 */
   align-items: center;
+}
+
+.pinned-book {
+  background-color: #f7f8fa; /* 置顶项灰色背景 */
 }
 
 .icon-wrapper {

@@ -45,6 +45,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { showToast } from 'vant'
+import { useUsersStore } from '@/stores/users'
 import type { User } from '@/types'
 
 const props = defineProps<{
@@ -54,7 +55,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
-  (e: 'save', user: User): void
   (e: 'delete', user: User): void
 }>()
 
@@ -95,7 +95,9 @@ const edit = ref<User>({
 
 watch(show, (v) => emit('update:modelValue', v))
 
-const onSubmit = () => {
+const usersStore = useUsersStore()
+
+const onSubmit = async () => {
   // 检查密码是否一致：如果其中一个有值，两个都必须有值且相同
   if (password.value || passwordConfirm.value) {
     if (password.value !== passwordConfirm.value) {
@@ -111,8 +113,11 @@ const onSubmit = () => {
   if (password.value) {
     u.pass = password.value
   }
-  emit('save', u)
-  show.value = false
+
+  const success = await usersStore.saveUser(u)
+  if (success) {
+    show.value = false
+  }
 }
 
 const onCancel = () => (show.value = false)
