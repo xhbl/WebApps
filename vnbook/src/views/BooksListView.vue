@@ -213,7 +213,7 @@ const { openMenu, AppMenu, UserDialog } = useAppMenu({
     return [
       { name: '新建单词本', icon: 'plus', handler: openNewBook },
       {
-        name: showAllWords.value ? '隐藏 全部单词' : '显示 全部单词',
+        name: showAllWords.value ? '隐藏[全部单词]' : '显示[全部单词]',
         icon: showAllWords.value ? 'closed-eye' : 'eye-o',
         handler: toggleShowAllWords,
       },

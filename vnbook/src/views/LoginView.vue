@@ -3,7 +3,7 @@
     <div class="login-container">
       <div class="logo">
         <h1 class="logo-title">
-          <img class="logo-icon" src="/resources/icons/favicon-96.png" alt="单词本" />
+          <img class="logo-icon" src="/resources/icons/favicon-192.png" alt="单词本" />
           <span>单词本</span>
         </h1>
       </div>
