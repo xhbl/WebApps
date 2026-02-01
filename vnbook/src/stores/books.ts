@@ -14,7 +14,7 @@ export const useBooksStore = defineStore('books', () => {
     books.value.sort((a, b) => {
       const ptopA = a.ptop || 0
       const ptopB = b.ptop || 0
-      if (ptopA !== ptopB) return ptopB - ptopA // ptop=1 first
+      if (ptopA !== ptopB) return ptopB - ptopA // 置顶优先
 
       const sorderA = a.sorder || 0
       const sorderB = b.sorder || 0
@@ -24,7 +24,15 @@ export const useBooksStore = defineStore('books', () => {
     })
   }
 
-  // Actions
+  /**
+   * 辅助函数：获取当前组的最小 sorder
+   */
+  const getMinSorderInGroup = (isPinned: boolean) => {
+    const group = books.value.filter((b) => !!b.ptop === isPinned)
+    if (group.length === 0) return 0
+    return group.reduce((min, b) => Math.min(min, b.sorder || 0), Infinity)
+  }
+
   /**
    * 加载单词本列表
    */
@@ -52,6 +60,12 @@ export const useBooksStore = defineStore('books', () => {
    */
   const saveBook = async (book: Book, silent = false) => {
     try {
+      // 如果是新增，设为普通组最小 sorder - 1
+      if (book._new === 1) {
+        const minSorder = getMinSorderInGroup(false)
+        book.sorder = minSorder - 1
+        book.ptop = 0
+      }
       const response = await booksApi.saveBook(book)
       if (response.data.success === true && response.data.book && response.data.book[0]) {
         const savedBook = response.data.book[0]
@@ -133,13 +147,16 @@ export const useBooksStore = defineStore('books', () => {
    * 置顶/取消置顶
    */
   const togglePin = async (book: Book) => {
-    book.ptop = book.ptop === 1 ? 0 : 1
+    const targetPinned = book.ptop === 1 ? 0 : 1
+    const minSorder = getMinSorderInGroup(targetPinned === 1)
+    book.ptop = targetPinned
+    book.sorder = minSorder - 1 // 赋以最小权重
     sortBooksLocal()
     await saveBook(book, true)
   }
 
   /**
-   * 移动书籍 (direction: -1 for Up, 1 for Down)
+   * 移动书籍 (保持重索引逻辑，用于清除负数纠偏)
    */
   const moveBook = async (book: Book, direction: number) => {
     // 1. 获取同组书籍 (置顶或非置顶)
@@ -154,12 +171,9 @@ export const useBooksStore = defineStore('books', () => {
 
     // 2. 在逻辑组中交换位置
     const desiredOrder = [...group]
-    // const temp = desiredOrder[currentIndex]
-    if (desiredOrder[currentIndex] && desiredOrder[targetIndex]) {
-      const tmp = desiredOrder[currentIndex]
-      desiredOrder[currentIndex] = desiredOrder[targetIndex]!
-      desiredOrder[targetIndex] = tmp!
-    }
+    const tmp = desiredOrder[currentIndex]!
+    desiredOrder[currentIndex] = desiredOrder[targetIndex]!
+    desiredOrder[targetIndex] = tmp
 
     // 3. 重新分配 sorder (使用数组索引) 并收集变更
     const updates: Book[] = []
@@ -167,9 +181,6 @@ export const useBooksStore = defineStore('books', () => {
       if (b.sorder !== idx) {
         b.sorder = idx
         updates.push(b)
-        // 同步更新本地状态
-        const local = books.value.find((lb) => lb.id === b.id)
-        if (local) local.sorder = idx
       }
     })
 

@@ -64,8 +64,10 @@ function updateBooks($items)
         foreach ($items as $item) {
             if (!empty($item->_new)) {
                 // Create new book
-                $stmt = $db->prepare("INSERT INTO vnu_books (user_id, title, nums, hide, ptop, sorder) VALUES (?, ?, 0, 0, 0, 0)");
-                $stmt->execute([$uid, $item->title ?? 'Untitled']);
+                $stmt = $db->prepare("INSERT INTO vnu_books (user_id, title, nums, hide, ptop, sorder) VALUES (?, ?, 0, 0, ?, ?)");
+                $ptop = isset($item->ptop) ? (int)$item->ptop : 0;
+                $sorder = isset($item->sorder) ? (int)$item->sorder : 0;
+                $stmt->execute([$uid, $item->title ?? 'Untitled', $ptop, $sorder]);
 
                 $bid = $db->lastInsertId();
 
@@ -73,8 +75,8 @@ function updateBooks($items)
                 $item->user_id = $uid;
                 $item->nums = 0;
                 $item->hide = 0;
-                $item->ptop = 0;
-                $item->sorder = 0;
+                $item->ptop = $ptop;
+                $item->sorder = $sorder;
                 $item->time_c = date('Y-m-d H:i:s');
                 $item->_new = 0;
             } else {
