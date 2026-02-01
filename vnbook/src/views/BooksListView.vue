@@ -9,33 +9,35 @@
       </template>
     </van-nav-bar>
 
-    <!-- 全部单词条目 (Sticky 置顶) -->
-    <div v-if="showAllWords" class="sticky-header van-hairline--bottom">
-      <van-cell
-        title="全部单词"
-        :label="`单词总数：${totalWords}`"
-        is-link
-        @click="enterAllWords"
-        class="all-words-cell"
-      >
-        <template #icon>
-          <div class="icon-wrapper" @click.stop>
-            <van-popover
-              v-model:show="showAllWordsPopover"
-              :actions="allWordsPopoverActions"
-              placement="bottom-start"
-              @select="onAllWordsAction"
-            >
-              <template #reference>
-                <van-icon name="label" class="book-edit-icon" />
-              </template>
-            </van-popover>
-          </div>
-        </template>
-        <template #right-icon>
-          <img src="/resources/icons/favicon-192.png" class="right-more-icon" />
-        </template>
-      </van-cell>
+    <!-- 置顶区域 (全部单词 + 复习本) -->
+    <div class="sticky-header">
+      <div v-if="showReviewBook" class="van-hairline--bottom">
+        <van-cell
+          title="复习本"
+          label="单词数:0"
+          is-link
+          @click="enterReviewBook"
+          class="all-words-cell"
+        >
+          <template #icon>
+            <div class="icon-wrapper" @click.stop>
+              <van-popover
+                v-model:show="showReviewBookPopover"
+                :actions="reviewBookPopoverActions"
+                placement="bottom-start"
+                @select="onReviewBookAction"
+              >
+                <template #reference>
+                  <van-icon name="bookmark" class="book-edit-icon" />
+                </template>
+              </van-popover>
+            </div>
+          </template>
+          <template #right-icon>
+            <img src="/resources/icons/favicon-192.png" class="right-more-icon" />
+          </template>
+        </van-cell>
+      </div>
     </div>
 
     <div class="content">
@@ -43,7 +45,7 @@
         <div v-if="loading" class="loading">加载中...</div>
         <div v-else>
           <van-cell
-            v-for="b in booksStore.books"
+            v-for="(b, index) in booksStore.books"
             :key="b.id"
             :title="b.title"
             :label="`单词数: ${b.nums}`"
@@ -56,7 +58,7 @@
                 <van-popover
                   v-model:show="showBookPopover[b.id]"
                   :actions="getBookActions(b)"
-                  placement="bottom-start"
+                  :placement="getBookPopoverPlacement(index)"
                   @select="(action) => onBookAction(action, b)"
                 >
                   <template #reference>
@@ -67,6 +69,32 @@
             </template>
             <template #right-icon>
               <img src="/resources/icons/vnb-more.png" class="right-more-icon" />
+            </template>
+          </van-cell>
+          <van-cell
+            v-if="showAllWords"
+            title="全部单词"
+            :label="`单词总数：${totalWords}`"
+            is-link
+            @click="enterAllWords"
+            class="all-words-cell"
+          >
+            <template #icon>
+              <div class="icon-wrapper" @click.stop>
+                <van-popover
+                  v-model:show="showAllWordsPopover"
+                  :actions="allWordsPopoverActions"
+                  :placement="booksStore.books.length > 5 ? 'top-start' : 'bottom-start'"
+                  @select="onAllWordsAction"
+                >
+                  <template #reference>
+                    <van-icon name="label" class="book-edit-icon" />
+                  </template>
+                </van-popover>
+              </div>
+            </template>
+            <template #right-icon>
+              <img src="/resources/icons/favicon-192.png" class="right-more-icon" />
             </template>
           </van-cell>
           <van-empty
@@ -123,6 +151,9 @@ const enterWordsList = (b: Book) => {
 const enterAllWords = () => {
   router.push(`/books/0/words`)
 }
+const enterReviewBook = () => {
+  router.push(`/books/-1/words`)
+}
 const showEditor = ref(false)
 const editorBook = ref<Book | null>(null)
 const refreshing = ref(false)
@@ -134,6 +165,7 @@ const userBookTitle = computed(() => {
 
 // 初始化 showAllWords 状态
 const showAllWords = ref(!authStore.userInfo?.cfg?.hideAllWords)
+const showReviewBook = ref(!authStore.userInfo?.cfg?.hideReviewBook)
 
 const totalWords = computed(() => {
   return booksStore.books.reduce((sum, b) => sum + b.nums, 0)
@@ -167,9 +199,33 @@ const onAllWordsAction = (action: { key: string }) => {
   }
 }
 
+const showReviewBookPopover = ref(false)
+const reviewBookPopoverActions = [{ text: '隐藏', icon: 'closed-eye', key: 'hide' }]
+
+const onReviewBookAction = (action: { key: string }) => {
+  if (action.key === 'hide') {
+    showReviewBookPopover.value = false
+    showReviewBook.value = false
+    authStore.updateUserConfig({ hideReviewBook: true })
+  }
+}
+
 const toggleShowAllWords = () => {
   showAllWords.value = !showAllWords.value
   authStore.updateUserConfig({ hideAllWords: !showAllWords.value })
+}
+
+const toggleShowReviewBook = () => {
+  showReviewBook.value = !showReviewBook.value
+  authStore.updateUserConfig({ hideReviewBook: !showReviewBook.value })
+}
+
+const getBookPopoverPlacement = (index: number) => {
+  // 当列表较长（超过5个）且是最后两项时，向上弹出菜单，防止被底部遮挡
+  if (booksStore.books.length > 5 && index >= booksStore.books.length - 2) {
+    return 'top-start'
+  }
+  return 'bottom-start'
 }
 
 const showBookPopover = ref<Record<number, boolean>>({})
@@ -222,6 +278,11 @@ const { openMenu, AppMenu, UserDialog } = useAppMenu({
         name: showAllWords.value ? '隐藏[全部单词]' : '显示[全部单词]',
         icon: showAllWords.value ? 'closed-eye' : 'eye-o',
         handler: toggleShowAllWords,
+      },
+      {
+        name: showReviewBook.value ? '隐藏[复习本]' : '显示[复习本]',
+        icon: showReviewBook.value ? 'closed-eye' : 'eye-o',
+        handler: toggleShowReviewBook,
       },
     ]
   },
