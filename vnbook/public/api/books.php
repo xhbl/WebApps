@@ -69,15 +69,12 @@ function updateBooks($items)
 
                 $bid = $db->lastInsertId();
 
-                // Initialize sorder with id to ensure stable initial order
-                $db->exec("UPDATE vnu_books SET sorder = $bid WHERE id = $bid");
-
                 $item->id = $bid;
                 $item->user_id = $uid;
                 $item->nums = 0;
                 $item->hide = 0;
                 $item->ptop = 0;
-                $item->sorder = $bid;
+                $item->sorder = 0;
                 $item->time_c = date('Y-m-d H:i:s');
                 $item->_new = 0;
             } else {
