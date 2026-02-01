@@ -170,9 +170,6 @@ function updateWords($bid, $items)
                         $stmt = $db->prepare("INSERT IGNORE INTO vnu_mapbw (user_id, book_id, word_id) VALUES (?, ?, ?)");
                         $stmt->execute([$uid, $bid, $item->id]);
 
-                        // Update book word count
-                        $db->exec("UPDATE vnu_books SET nums = (SELECT COUNT(*) FROM vnu_mapbw WHERE book_id = $bid) WHERE id = $bid");
-
                         $item->_new = 0;
                     }
                 } else {
@@ -186,9 +183,6 @@ function updateWords($bid, $items)
                     // Add to book
                     $stmt = $db->prepare("INSERT INTO vnu_mapbw (user_id, book_id, word_id) VALUES (?, ?, ?)");
                     $stmt->execute([$uid, $bid, $wid]);
-
-                    // Update book word count
-                    $db->exec("UPDATE vnu_books SET nums = (SELECT COUNT(*) FROM vnu_mapbw WHERE book_id = $bid) WHERE id = $bid");
 
                     $item->_new = 0;
                 }
@@ -349,9 +343,6 @@ function deleteWords($bid, $items)
                 $db->exec("DELETE FROM vnu_words WHERE id = " . $item->id);
             }
         }
-
-        // Update book word count
-        $db->exec("UPDATE vnu_books SET nums = (SELECT COUNT(*) FROM vnu_mapbw WHERE book_id = $bid) WHERE id = $bid");
 
         $db->commit();
         return true;

@@ -4,13 +4,14 @@ require_once 'db.php';
 /**
  * Initialize all tables based on the latest SQL schema
  */
-function createVnbInitData() {
+function createVnbInitData()
+{
     $ret = new stdClass();
     $ret->v = false;
     try {
         $tmpPdo = new PDO("mysql:host=" . C_VNB_DB_HOST, C_VNB_DB_USER, C_VNB_DB_PASS);
         $tmpPdo->exec("CREATE DATABASE IF NOT EXISTS `" . C_VNB_DB_NAME . "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-        
+
         $db = DB::vnb();
         $queries = [
             // 1. POS Standards
@@ -90,21 +91,48 @@ function createVnbInitData() {
                 CONSTRAINT `fk_map_user` FOREIGN KEY (`user_id`) REFERENCES `vnb_users` (`id`) ON DELETE CASCADE,
                 CONSTRAINT `fk_map_book` FOREIGN KEY (`book_id`) REFERENCES `vnu_books` (`id`) ON DELETE CASCADE,
                 CONSTRAINT `fk_map_word` FOREIGN KEY (`word_id`) REFERENCES `vnu_words` (`id`) ON DELETE CASCADE
-            ) ENGINE=InnoDB"
+            ) ENGINE=InnoDB",
+
+            // 8. Triggers for automatic word counting
+            // Case 1: Insert mapping - Auto increment book word count
+            "CREATE TRIGGER tr_mapbw_insert AFTER INSERT ON vnu_mapbw 
+             FOR EACH ROW UPDATE vnu_books SET nums = nums + 1 WHERE id = NEW.book_id",
+            // Case 2: Delete mapping - Auto decrement book word count
+            "CREATE TRIGGER tr_mapbw_delete AFTER DELETE ON vnu_mapbw 
+             FOR EACH ROW UPDATE vnu_books SET nums = nums - 1 WHERE id = OLD.book_id",
+            // Case 3: Update mapping - Handle moving words between books
+            "CREATE TRIGGER tr_mapbw_update AFTER UPDATE ON vnu_mapbw 
+             FOR EACH ROW BEGIN 
+                IF OLD.book_id <> NEW.book_id THEN 
+                    UPDATE vnu_books SET nums = nums - 1 WHERE id = OLD.book_id; 
+                    UPDATE vnu_books SET nums = nums + 1 WHERE id = NEW.book_id; 
+                END IF; 
+             END",
+            // Case 4: Physical delete word - Handle cascade delete issue
+            "CREATE TRIGGER tr_word_physical_delete BEFORE DELETE ON vnu_words 
+             FOR EACH ROW BEGIN 
+                UPDATE vnu_books SET nums = nums - 1 
+                WHERE id IN (SELECT book_id FROM vnu_mapbw WHERE word_id = OLD.id); 
+             END"
         ];
 
-        foreach ($queries as $sql) { $db->exec($sql); }
-        
+        foreach ($queries as $sql) {
+            $db->exec($sql);
+        }
+
         // Store SHA-256 hashed password (not plaintext)
         $hashedPassword = hash('sha256', C_ADMIN_PASSINIT);
         $db->prepare("INSERT IGNORE INTO vnb_users (id, name, pass, dispname) VALUES (1, ?, ?, 'Administrator')")->execute([C_ADMIN_NAME, $hashedPassword]);
         initSystemPosData();
         $ret->v = true;
-    } catch (Exception $e) { $ret->e = $e->getMessage(); }
+    } catch (Exception $e) {
+        $ret->e = $e->getMessage();
+    }
     return $ret;
 }
 
-function initSystemPosData() {
+function initSystemPosData()
+{
     $db = DB::vnb();
     $posData = [
         ['n.', '{"en": "noun", "zh": "名词"}'],
@@ -128,7 +156,9 @@ function initSystemPosData() {
         ['na.', '{"en": "not applicable", "zh": "不适用"}']
     ];
     $stmt = $db->prepare("INSERT IGNORE INTO vnb_pos (pos, name) VALUES (?, ?)");
-    foreach ($posData as $row) { $stmt->execute($row); }
+    foreach ($posData as $row) {
+        $stmt->execute($row);
+    }
 }
 
 /**
@@ -155,7 +185,8 @@ function initSystemPosData() {
  * @param string $uname Username to delete
  * @return stdClass Object with v (boolean success) and optional e (error message)
  */
-function deleteVnbUserData($uname) {
+function deleteVnbUserData($uname)
+{
     $ret = new stdClass();
     $ret->v = false;
     try {
@@ -183,26 +214,27 @@ function deleteVnbUserData($uname) {
  * 
  * @return stdClass Object with v (boolean success) and optional e (error message)
  */
-function resetVnbInitData() {
+function resetVnbInitData()
+{
     $ret = new stdClass();
     $ret->v = false;
     try {
         $db = DB::vnb();
         $db->beginTransaction();
-        
+
         // Delete all non-admin users (CASCADE will clean up all related data)
         $db->exec("DELETE FROM vnb_users WHERE name NOT IN ('admin')");
-        
+
         // Clear POS data
         $db->exec("DELETE FROM vnb_pos");
-        
+
         // Re-initialize POS standards
         initSystemPosData();
-        
+
         $db->commit();
         $ret->v = true;
     } catch (Exception $e) {
-        if($db) $db->rollBack();
+        if ($db) $db->rollBack();
         $ret->e = $e->getMessage();
     }
     return $ret;
