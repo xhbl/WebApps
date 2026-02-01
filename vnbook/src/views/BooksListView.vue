@@ -32,6 +32,9 @@
             </van-popover>
           </div>
         </template>
+        <template #right-icon>
+          <img src="/resources/icons/favicon-192.png" class="right-more-icon" />
+        </template>
       </van-cell>
     </div>
 
@@ -61,6 +64,9 @@
                   </template>
                 </van-popover>
               </div>
+            </template>
+            <template #right-icon>
+              <img src="/resources/icons/vnb-more.png" class="right-more-icon" />
             </template>
           </van-cell>
           <van-empty
@@ -351,5 +357,11 @@ const onConfirmDeleteBook = async () => {
   display: flex;
   align-items: center;
   height: 100%;
+}
+
+.right-more-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 </style>
