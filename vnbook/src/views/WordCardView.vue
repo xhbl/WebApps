@@ -25,20 +25,20 @@
         :show-indicators="true"
         @change="onChange"
       >
-        <van-swipe-item v-for="w in wordsStore.words" :key="w.Id">
+        <van-swipe-item v-for="w in wordsStore.words" :key="w.id">
           <div class="card">
-            <h1 class="name">{{ w.name }}</h1>
+            <h1 class="name">{{ w.word }}</h1>
             <h2 class="phon" v-if="w.phon">[{{ w.phon }}]</h2>
 
             <div class="exps" v-if="w.explanations && w.explanations.length">
-              <div class="exp" v-for="e in w.explanations" :key="e.Id">
+              <div class="exp" v-for="e in w.explanations" :key="e.id">
                 <h3 class="abbr">{{ e.abbr }}</h3>
                 <div class="exp-text">
-                  {{ e.exp_ch }}<span v-if="e.exp"> ({{ e.exp }})</span>
+                  {{ e.exp_ch }}<span v-if="e.exp.en"> ({{ e.exp.en }})</span>
                 </div>
                 <div class="sens" v-if="e.sentences && e.sentences.length">
-                  <div class="sen" v-for="s in e.sentences" :key="s.Id">
-                    <div class="sen-en">{{ s.sen }}</div>
+                  <div class="sen" v-for="s in e.sentences" :key="s.id">
+                    <div class="sen-en">{{ s.sen.en }}</div>
                     <div class="sen-ch" v-if="s.sen_ch">{{ s.sen_ch }}</div>
                   </div>
                 </div>
@@ -103,7 +103,7 @@ const isDesktop = computed(() => {
 })
 
 const initialIndex = computed(() => {
-  const idx = wordsStore.words.findIndex((w) => w.Id === wid)
+  const idx = wordsStore.words.findIndex((w) => w.id === wid)
   return idx >= 0 ? idx : 0
 })
 
@@ -117,7 +117,7 @@ const onChange = (index: number) => {
     wordsStore.setCurrentWord(w)
     // 更新 URL 参数，以便刷新时保持在当前单词
     router.replace({
-      params: { ...route.params, wid: String(w.Id) },
+      params: { ...route.params, wid: String(w.id) },
     })
   }
 }

@@ -5,7 +5,7 @@
       <van-form @submit="onSubmit">
         <van-cell-group>
           <van-field
-            v-model="edit.sen"
+            v-model="edit.sen.en"
             label="英文例句"
             placeholder="请输入英文例句"
             :rules="[{ required: true, message: '请输入英文例句' }]"
@@ -55,11 +55,12 @@ watch(show, (v) => emit('update:modelValue', v))
 const isNew = computed(() => !props.sentence || props.sentence._new === 1)
 
 const edit = ref<Sentence>({
-  Id: props.sentence?.Id || 0,
-  eid: props.eid,
-  sen: props.sentence?.sen || '',
+  id: props.sentence?.id || 0,
+  exp_id: props.eid,
+  sen: props.sentence?.sen || { en: '', zh: '' },
   sen_ch: props.sentence?.sen_ch || '',
   hide: props.sentence?.hide || 0,
+  time_c: props.sentence?.time_c || '',
   _new: props.sentence?._new ?? 1,
 })
 

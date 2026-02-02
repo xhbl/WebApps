@@ -25,7 +25,7 @@
             rows="2"
           />
           <van-field
-            v-model="edit.exp"
+            v-model="edit.exp.en"
             label="英文释义（可选）"
             placeholder="请输入英文释义"
             type="textarea"
@@ -77,10 +77,12 @@ const lexCatOptions = computed(() => {
 
 const edit = ref<Explanation>({
   id: props.explanation?.id || 0,
-  wid: props.wid,
+  word_id: props.wid,
+  pos: props.explanation?.pos || '',
+  exp: props.explanation?.exp || { en: '', zh: '' },
+  time_c: props.explanation?.time_c || '',
   lid: props.explanation?.lid || 0,
   exp_ch: props.explanation?.exp_ch || '',
-  exp: props.explanation?.exp || '',
   abbr: props.explanation?.abbr || '',
   hide: props.explanation?.hide || 0,
   _new: props.explanation?._new ?? 1,

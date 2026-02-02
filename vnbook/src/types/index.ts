@@ -32,6 +32,11 @@ export interface Explanation {
   time_c: string
   sentences?: Sentence[]
   _new?: number
+  // 扩展字段
+  lid?: number
+  exp_ch?: string
+  abbr?: string
+  hide?: number
 }
 
 export interface Sentence {
@@ -43,6 +48,9 @@ export interface Sentence {
   }
   time_c: string
   _new?: number
+  // 扩展字段
+  sen_ch?: string
+  hide?: number
 }
 
 export interface User {
