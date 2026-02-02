@@ -5,7 +5,6 @@
         <van-icon name="arrow-left" size="22" @click="onClickLeft" />
       </template>
       <template #right>
-        <van-icon name="plus" size="22" class="right-icon-spacing" @click="openAddWord" />
         <van-icon name="ellipsis" size="22" @click="openMenu" />
       </template>
     </van-nav-bar>
@@ -17,23 +16,22 @@
           <van-cell
             v-for="w in wordsStore.words"
             :key="w.id"
-            :title="w.word"
-            :label="w.phon ? `[${w.phon}]` : ''"
+            :label="getWordDefinition(w)"
             is-link
             @click="openWordCard(w)"
           >
-            <template #icon>
-              <div class="icon-wrapper">
-                <van-icon name="edit" class="word-edit-icon" />
-              </div>
+            <template #title>
+              <span class="word-text">{{ w.word }}</span>
+              <span v-if="w.phon" class="word-phon">/{{ w.phon }}/</span>
             </template>
           </van-cell>
-          <van-empty
-            v-if="wordsStore.words.length === 0"
-            description="暂无单词，点击左上角➕新建"
-          />
+          <van-empty v-if="wordsStore.words.length === 0" description="暂无单词，点击下方➕新建" />
         </div>
       </van-pull-refresh>
+    </div>
+
+    <div class="bottom-bar van-hairline--top">
+      <van-icon name="plus" size="22" class="bottom-bar-icon" @click="openAddWord" />
     </div>
 
     <AppMenu />
@@ -116,6 +114,16 @@ const openAddWord = () => {
   showWordNew.value = true
 }
 
+const getWordDefinition = (w: Word) => {
+  if (!w.explanations || w.explanations.length === 0) return ''
+  return w.explanations
+    .map((e) => {
+      const zh = (e.exp as any)?.zh || ''
+      return `${e.pos} ${zh}`
+    })
+    .join('; ')
+}
+
 const onConfirmDeleteWord = async () => {
   if (!pendingDeleteWord) return
   await wordsStore.deleteWord(pendingDeleteWord)
@@ -145,6 +153,7 @@ const { openMenu, AppMenu } = useAppMenu({
 
 .content {
   padding-top: 0px;
+  padding-bottom: var(--van-nav-bar-height);
 }
 
 .loading {
@@ -168,34 +177,26 @@ const { openMenu, AppMenu } = useAppMenu({
 :deep(.van-cell__title) {
   font-size: var(--van-font-size-lg);
   font-weight: 500;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 :deep(.van-cell__label) {
   font-size: var(--van-font-size-md);
+  color: var(--van-gray-7);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-/* 单词列表 图标优化 */
-:deep(.word-edit-icon) {
-  font-size: 24px;
-  margin-right: 12px;
-  color: var(--van-primary-color);
-  display: flex;
-  align-items: center;
-  height: 100%;
+.word-text {
+  font-weight: bold;
 }
 
-/* 确保单元格内容与图标对齐 */
-:deep(.van-cell) {
-  align-items: center;
-}
-
-.icon-wrapper {
-  display: flex;
-  align-items: center;
-  height: 100%;
-}
-
-.right-icon-spacing {
-  margin-right: 16px;
+.word-phon {
+  margin-left: 1em;
+  font-size: var(--van-font-size-md);
+  color: var(--van-gray-6);
 }
 
 .custom-dialog-container {
@@ -209,5 +210,22 @@ const { openMenu, AppMenu } = useAppMenu({
   text-align: center;
   word-break: normal;
   overflow-wrap: break-word;
+}
+
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--van-nav-bar-height);
+  background: var(--van-nav-bar-background);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.bottom-bar-icon {
+  color: var(--van-nav-bar-icon-color);
 }
 </style>
