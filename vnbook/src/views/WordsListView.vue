@@ -1,5 +1,5 @@
 <template>
-  <div class="words-manage-view">
+  <div class="words-manage-view" @click="closeAllPopovers">
     <van-nav-bar :title="pageTitle" fixed placeholder>
       <template #left>
         <van-icon name="arrow-left" size="22" @click="onClickLeft" />
@@ -37,12 +37,18 @@
                       >
                         <van-icon name="volume-o" size="22" class="list-item-action-icon" />
                       </div>
-                      <div
-                        v-if="mode === 'edit'"
-                        class="list-left-icon"
-                        @click.stop="openWordCard(w)"
-                      >
-                        <van-icon name="edit" size="22" class="list-item-action-icon" />
+                      <div v-if="mode === 'edit'" class="list-left-icon" @click.stop>
+                        <van-popover
+                          v-model:show="showWordPopover[w.id]"
+                          :actions="wordActions"
+                          :placement="getWordPopoverPlacement(w)"
+                          @select="(action) => onWordAction(action, w)"
+                          @open="onPopoverOpen(w.id)"
+                        >
+                          <template #reference>
+                            <van-icon name="edit" size="22" class="list-item-action-icon" />
+                          </template>
+                        </van-popover>
                       </div>
                       <div v-if="mode === 'select'" class="list-left-icon" @click.stop>
                         <van-checkbox :name="w.id" icon-size="22px" />
@@ -68,8 +74,18 @@
                   <div v-if="mode === 'audio'" class="list-left-icon" @click.stop="playAudio(w)">
                     <van-icon name="volume-o" size="22" class="list-item-action-icon" />
                   </div>
-                  <div v-if="mode === 'edit'" class="list-left-icon" @click.stop="openWordCard(w)">
-                    <van-icon name="edit" size="22" class="list-item-action-icon" />
+                  <div v-if="mode === 'edit'" class="list-left-icon" @click.stop>
+                    <van-popover
+                      v-model:show="showWordPopover[w.id]"
+                      :actions="wordActions"
+                      :placement="getWordPopoverPlacement(w)"
+                      @select="(action) => onWordAction(action, w)"
+                      @open="onPopoverOpen(w.id)"
+                    >
+                      <template #reference>
+                        <van-icon name="edit" size="22" class="list-item-action-icon" />
+                      </template>
+                    </van-popover>
                   </div>
                   <div v-if="mode === 'select'" class="list-left-icon" @click.stop>
                     <van-checkbox :name="w.id" icon-size="22px" />
@@ -100,18 +116,18 @@
             <span class="select-all-text">全选</span>
           </div>
           <van-icon
-            name="delete-o"
-            size="22"
-            class="bottom-bar-icon"
-            :class="{ disabled: checkedIds.length === 0, 'danger-icon': checkedIds.length > 0 }"
-            @click="onBatchDelete"
-          />
-          <van-icon
             name="bookmark-o"
             size="22"
             class="bottom-bar-icon"
             :class="{ disabled: checkedIds.length === 0 }"
             @click="onBatchBookmark"
+          />
+          <van-icon
+            name="delete-o"
+            size="22"
+            class="bottom-bar-icon"
+            :class="{ disabled: checkedIds.length === 0, 'danger-icon': checkedIds.length > 0 }"
+            @click="onBatchDelete"
           />
         </div>
         <div class="bottom-bar-right">
@@ -186,6 +202,8 @@ import { useWordsStore, type WordsStore } from '@/stores/words'
 import { useAppMenu } from '@/composables/useAppMenu'
 import WordNewDialog from '@/components/WordNewDialog.vue'
 import type { Word } from '@/types'
+import { toast } from '@/utils/toast'
+import * as wordsApi from '@/api/words'
 
 const route = useRoute()
 const router = useRouter()
@@ -206,6 +224,53 @@ const mode = ref<ViewMode>(savedMode === 'edit' || savedMode === 'audio' ? saved
 const previousMode = ref<ViewMode>('none')
 const checkedIds = ref<number[]>([])
 let pendingDeleteWord: Word | null = null
+
+const showWordPopover = ref<Record<number, boolean>>({})
+const wordActions = [
+  { text: '编辑', icon: 'edit', key: 'edit' },
+  { text: '加入复习', icon: 'bookmark-o', key: 'review' },
+]
+
+const onPopoverOpen = (id: number) => {
+  for (const key in showWordPopover.value) {
+    const k = Number(key)
+    if (k !== id) {
+      showWordPopover.value[k] = false
+    }
+  }
+}
+
+const closeAllPopovers = () => {
+  for (const key in showWordPopover.value) {
+    showWordPopover.value[Number(key)] = false
+  }
+}
+
+const getWordPopoverPlacement = (w: Word) => {
+  const index = wordsStore.words.indexOf(w)
+  if (wordsStore.words.length > 5 && index >= wordsStore.words.length - 2) {
+    return 'top-start'
+  }
+  return 'bottom-start'
+}
+
+const onWordAction = async (action: { key: string }, w: Word) => {
+  showWordPopover.value[w.id] = false
+  if (action.key === 'edit') {
+    openWordCard(w)
+  } else if (action.key === 'review') {
+    try {
+      const res = await wordsApi.saveWord({ ...w, book_id: -1, _new: 1 })
+      if (res.data.success) {
+        toast.showSuccess('已加入复习本')
+      } else {
+        toast.showFail('加入失败')
+      }
+    } catch {
+      toast.showFail('操作失败')
+    }
+  }
+}
 
 const pageTitle = computed(() => {
   if (bid === 0) return '全部单词'
@@ -344,6 +409,15 @@ const openWordCard = (w: Word) => {
 const playAudio = (w: Word) => {
   if ('speechSynthesis' in window) {
     const msg = new SpeechSynthesisUtterance(w.word)
+    msg.lang = 'en-US' // 设置为美式英语
+
+    // 优先选择美式英语语音
+    const voices = window.speechSynthesis.getVoices()
+    const usVoice = voices.find((voice) => voice.lang === 'en-US')
+    if (usVoice) {
+      msg.voice = usVoice
+    }
+
     window.speechSynthesis.speak(msg)
   }
 }
@@ -563,9 +637,10 @@ const { openMenu, AppMenu } = useAppMenu({
   z-index: 101;
 }
 
-/* 调整索引栏样式，使其颜色更柔和 */
+/* 调整索引栏样式 */
 :deep(.van-index-anchor) {
   color: var(--van-gray-6);
+  line-height: 24px;
 }
 
 :deep(.van-index-bar__sidebar) {
