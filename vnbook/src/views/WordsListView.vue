@@ -22,76 +22,34 @@
               <van-checkbox-group v-model="checkedIds">
                 <div v-for="group in wordsStore.groupedWords" :key="group.key">
                   <van-index-anchor :index="group.key" />
-                  <van-cell
+                  <word-list-item
                     v-for="w in group.words"
                     :key="w.id"
-                    :label="getWordDefinition(w)"
-                    is-link
-                    @click="onWordItemClick(w)"
-                  >
-                    <template #icon>
-                      <div v-if="mode === 'audio'" class="icon-wrapper" @click.stop="playAudio(w)">
-                        <van-icon name="volume-o" class="list-leading-icon" />
-                      </div>
-                      <div v-if="mode === 'edit'" class="icon-wrapper" @click.stop>
-                        <van-popover
-                          v-model:show="showWordPopover[w.id]"
-                          :actions="wordActions"
-                          :placement="getWordPopoverPlacement(w)"
-                          @select="(action) => onWordAction(action, w)"
-                          @open="onPopoverOpen(w.id)"
-                        >
-                          <template #reference>
-                            <van-icon name="edit" class="list-leading-icon" />
-                          </template>
-                        </van-popover>
-                      </div>
-                      <div v-if="mode === 'select'" class="icon-wrapper" @click.stop>
-                        <van-checkbox :name="w.id" />
-                      </div>
-                    </template>
-                    <template #title>
-                      <span class="word-text">{{ w.word }}</span>
-                      <span v-if="w.phon" class="word-phon">/{{ w.phon }}/</span>
-                    </template>
-                  </van-cell>
+                    :word="w"
+                    :mode="mode"
+                    :show-popover="showWordPopover[w.id] ?? false"
+                    :popover-placement="getWordPopoverPlacement(w)"
+                    @update:show-popover="(val) => (showWordPopover[w.id] = val)"
+                    @open-popover="onPopoverOpen(w.id)"
+                    @action="onWordAction"
+                    @click="onWordItemClick"
+                  />
                 </div>
               </van-checkbox-group>
             </van-index-bar>
             <van-checkbox-group v-else v-model="checkedIds">
-              <van-cell
+              <word-list-item
                 v-for="w in wordsStore.words"
                 :key="w.id"
-                :label="getWordDefinition(w)"
-                is-link
-                @click="onWordItemClick(w)"
-              >
-                <template #icon>
-                  <div v-if="mode === 'audio'" class="icon-wrapper" @click.stop="playAudio(w)">
-                    <van-icon name="volume-o" class="list-leading-icon" />
-                  </div>
-                  <div v-if="mode === 'edit'" class="icon-wrapper" @click.stop>
-                    <van-popover
-                      v-model:show="showWordPopover[w.id]"
-                      :actions="wordActions"
-                      :placement="getWordPopoverPlacement(w)"
-                      @select="(action) => onWordAction(action, w)"
-                      @open="onPopoverOpen(w.id)"
-                    >
-                      <template #reference>
-                        <van-icon name="edit" class="list-leading-icon" />
-                      </template>
-                    </van-popover>
-                  </div>
-                  <div v-if="mode === 'select'" class="icon-wrapper" @click.stop>
-                    <van-checkbox :name="w.id" />
-                  </div>
-                </template>
-                <template #title>
-                  <span class="word-text">{{ w.word }}</span>
-                  <span v-if="w.phon" class="word-phon">/{{ w.phon }}/</span>
-                </template>
-              </van-cell>
+                :word="w"
+                :mode="mode"
+                :show-popover="showWordPopover[w.id] ?? false"
+                :popover-placement="getWordPopoverPlacement(w)"
+                @update:show-popover="(val) => (showWordPopover[w.id] = val)"
+                @open-popover="onPopoverOpen(w.id)"
+                @action="onWordAction"
+                @click="onWordItemClick"
+              />
             </van-checkbox-group>
           </div>
           <van-empty v-else description="暂无单词，点击下方➕新建" />
@@ -189,7 +147,9 @@ import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
 import { useWordsStore, type WordsStore } from '@/stores/words'
 import { useAppMenu } from '@/composables/useAppMenu'
+import { usePopoverMap } from '@/composables/usePopoverMap'
 import WordNewDialog from '@/components/WordNewDialog.vue'
+import WordListItem from '@/components/WordListItem.vue'
 import type { Word } from '@/types'
 import { toast } from '@/utils/toast'
 import * as wordsApi from '@/api/words'
@@ -214,26 +174,11 @@ const previousMode = ref<ViewMode>('none')
 const checkedIds = ref<number[]>([])
 let pendingDeleteWord: Word | null = null
 
-const showWordPopover = ref<Record<number, boolean>>({})
-const wordActions = [
-  { text: '编辑', icon: 'edit', key: 'edit' },
-  { text: '加入复习', icon: 'bookmark-o', key: 'review' },
-]
-
-const onPopoverOpen = (id: number) => {
-  for (const key in showWordPopover.value) {
-    const k = Number(key)
-    if (k !== id) {
-      showWordPopover.value[k] = false
-    }
-  }
-}
-
-const closeAllPopovers = () => {
-  for (const key in showWordPopover.value) {
-    showWordPopover.value[Number(key)] = false
-  }
-}
+const {
+  popoverMap: showWordPopover,
+  onOpen: onPopoverOpen,
+  closeAll: closeAllPopovers,
+} = usePopoverMap()
 
 const getWordPopoverPlacement = (w: Word) => {
   const index = wordsStore.words.indexOf(w)
@@ -364,16 +309,6 @@ const onWordItemClick = (w: Word) => {
   }
 }
 
-const getWordDefinition = (w: Word) => {
-  if (!w.explanations || w.explanations.length === 0) return ''
-  return w.explanations
-    .map((e) => {
-      const zh = e.exp?.zh || ''
-      return `${e.pos} ${zh}`
-    })
-    .join('; ')
-}
-
 const onConfirmDeleteWord = async () => {
   if (mode.value === 'select' && checkedIds.value.length > 0) {
     for (const id of checkedIds.value) {
@@ -393,22 +328,6 @@ const onConfirmDeleteWord = async () => {
 const openWordCard = (w: Word) => {
   wordsStore.setCurrentWord(w)
   router.push(`/books/${bid}/words/${w.id}`)
-}
-
-const playAudio = (w: Word) => {
-  if ('speechSynthesis' in window) {
-    const msg = new SpeechSynthesisUtterance(w.word)
-    msg.lang = 'en-US' // 设置为美式英语
-
-    // 优先选择美式英语语音
-    const voices = window.speechSynthesis.getVoices()
-    const usVoice = voices.find((voice) => voice.lang === 'en-US')
-    if (usVoice) {
-      msg.voice = usVoice
-    }
-
-    window.speechSynthesis.speak(msg)
-  }
 }
 
 const { openMenu, AppMenu } = useAppMenu({
@@ -515,16 +434,6 @@ const { openMenu, AppMenu } = useAppMenu({
   text-overflow: ellipsis;
 }
 
-.word-text {
-  font-weight: bold;
-}
-
-.word-phon {
-  margin-left: 1em;
-  font-size: var(--van-font-size-md);
-  color: var(--van-gray-6);
-}
-
 .custom-dialog-container {
   padding: 8px 24px 24px;
 }
@@ -593,26 +502,6 @@ const { openMenu, AppMenu } = useAppMenu({
 .bottom-bar-icon.active {
   background-color: var(--van-nav-bar-icon-color);
   color: #fff;
-}
-
-.icon-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  width: 40px; /* 扩大点击宽度 */
-  height: 44px; /* 扩大点击高度 */
-  margin-left: -16px; /* 向左延伸至边缘 */
-  padding-left: 10px; /* 修正图标视觉位置 */
-  margin-right: 0;
-  cursor: pointer;
-}
-
-.list-leading-icon {
-  font-size: 22px;
-  color: var(--van-nav-bar-icon-color);
-  display: flex;
-  align-items: center;
-  height: 100%;
 }
 
 .select-all-container {

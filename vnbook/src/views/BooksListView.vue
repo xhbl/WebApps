@@ -22,7 +22,7 @@
           <template #icon>
             <div class="icon-wrapper" @click.stop>
               <van-popover
-                v-model:show="showReviewBookPopover"
+                v-model:show="popoverMap['review']"
                 :actions="reviewBookPopoverActions"
                 placement="bottom-start"
                 @select="onReviewBookAction"
@@ -57,11 +57,11 @@
             <template #icon>
               <div class="icon-wrapper" @click.stop>
                 <van-popover
-                  v-model:show="showBookPopover[b.id]"
+                  v-model:show="popoverMap[b.id]"
                   :actions="getBookActions(b)"
                   :placement="getBookPopoverPlacement(index)"
                   @select="(action) => onBookAction(action, b)"
-                  @open="onPopoverOpen('book', b.id)"
+                  @open="onPopoverOpen(b.id)"
                 >
                   <template #reference>
                     <van-icon name="label-o" class="list-leading-icon" />
@@ -84,7 +84,7 @@
             <template #icon>
               <div class="icon-wrapper" @click.stop>
                 <van-popover
-                  v-model:show="showAllWordsPopover"
+                  v-model:show="popoverMap['all']"
                   :actions="allWordsPopoverActions"
                   :placement="booksStore.books.length > 5 ? 'top-start' : 'bottom-start'"
                   @select="onAllWordsAction"
@@ -141,6 +141,7 @@ import { useRouter } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
 import { useAppMenu } from '@/composables/useAppMenu'
+import { usePopoverMap } from '@/composables/usePopoverMap'
 import BookEditorDialog from '@/components/BookEditorDialog.vue'
 import type { Book } from '@/types'
 
@@ -191,46 +192,25 @@ const openNewBook = () => {
   showEditor.value = true
 }
 
-const showAllWordsPopover = ref(false)
+const { popoverMap, onOpen: onPopoverOpen, closeAll: closeAllPopovers } = usePopoverMap()
+
 const allWordsPopoverActions = [{ text: '隐藏', icon: 'closed-eye', key: 'hide' }]
 
 const onAllWordsAction = (action: { key: string }) => {
   if (action.key === 'hide') {
-    showAllWordsPopover.value = false
+    popoverMap.value['all'] = false
     showAllWords.value = false
     authStore.updateUserConfig({ hideAllWords: true })
   }
 }
 
-const showReviewBookPopover = ref(false)
 const reviewBookPopoverActions = [{ text: '隐藏', icon: 'closed-eye', key: 'hide' }]
 
 const onReviewBookAction = (action: { key: string }) => {
   if (action.key === 'hide') {
-    showReviewBookPopover.value = false
+    popoverMap.value['review'] = false
     showReviewBook.value = false
     authStore.updateUserConfig({ hideReviewBook: true })
-  }
-}
-
-const onPopoverOpen = (type: 'all' | 'review' | 'book', id?: number) => {
-  if (type !== 'all') showAllWordsPopover.value = false
-  if (type !== 'review') showReviewBookPopover.value = false
-
-  // 关闭其他书籍的 popover
-  for (const key in showBookPopover.value) {
-    const k = Number(key)
-    if (type !== 'book' || k !== id) {
-      showBookPopover.value[k] = false
-    }
-  }
-}
-
-const closeAllPopovers = () => {
-  showAllWordsPopover.value = false
-  showReviewBookPopover.value = false
-  for (const key in showBookPopover.value) {
-    showBookPopover.value[Number(key)] = false
   }
 }
 
@@ -251,8 +231,6 @@ const getBookPopoverPlacement = (index: number) => {
   }
   return 'bottom-start'
 }
-
-const showBookPopover = ref<Record<number, boolean>>({})
 
 const getBookActions = (b: Book) => {
   const actions = [{ text: '编辑', icon: 'edit', key: 'edit' }]
@@ -281,9 +259,9 @@ const getBookActions = (b: Book) => {
 }
 
 const onBookAction = (action: { key: string }, b: Book) => {
-  showBookPopover.value[b.id] = false
+  popoverMap.value[b.id] = false
   if (action.key === 'edit') {
-    showBookPopover.value[b.id] = false
+    popoverMap.value[b.id] = false
     editBook(b)
   } else if (action.key === 'pin') {
     booksStore.togglePin(b)

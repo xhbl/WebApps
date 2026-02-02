@@ -9,6 +9,9 @@ import legacy from '@vitejs/plugin-legacy'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // 添加这一行：使用相对路径
+  // 这样打包后的 index.html 引用 JS/CSS 就会变成 ./assets/xxx.js
+  base: './',
   plugins: [
     vue(),
     vueDevTools(),
