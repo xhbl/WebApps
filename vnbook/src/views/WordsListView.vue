@@ -44,35 +44,67 @@
     </div>
 
     <div class="bottom-bar van-hairline--top">
-      <div class="bottom-bar-left">
-        <van-icon
-          name="volume-o"
-          size="22"
-          class="bottom-bar-icon"
-          :class="{ active: mode === 'audio' }"
-          @click="toggleMode('audio')"
-        />
-        <van-icon
-          name="edit"
-          size="22"
-          class="bottom-bar-icon"
-          :class="{ active: mode === 'edit' }"
-          @click="toggleMode('edit')"
-        />
-      </div>
-      <div class="bottom-bar-center">
-        <van-icon name="plus" size="32" class="bottom-bar-icon" @click="openAddWord" />
-      </div>
-      <div class="bottom-bar-right">
-        <van-icon
-          name="passed"
-          size="22"
-          class="bottom-bar-icon"
-          :class="{ active: mode === 'select' }"
-          @click="toggleMode('select')"
-        />
-        <van-icon name="list-switch" size="22" class="bottom-bar-icon" />
-      </div>
+      <template v-if="mode === 'select'">
+        <div class="bottom-bar-left select-mode-left">
+          <div class="select-all-container" @click="toggleSelectAll">
+            <van-checkbox
+              :model-value="isAllSelected"
+              :indeterminate="isIndeterminate"
+              icon-size="22px"
+              @click.stop="toggleSelectAll"
+            />
+            <span class="select-all-text">全选</span>
+          </div>
+          <van-icon
+            name="delete-o"
+            size="22"
+            class="bottom-bar-icon"
+            :class="{ disabled: checkedIds.length === 0 }"
+            @click="onBatchDelete"
+          />
+          <van-icon
+            name="bookmark-o"
+            size="22"
+            class="bottom-bar-icon"
+            :class="{ disabled: checkedIds.length === 0 }"
+            @click="onBatchBookmark"
+          />
+        </div>
+        <div class="bottom-bar-right">
+          <van-icon name="close" size="22" class="bottom-bar-icon" @click="toggleMode('select')" />
+        </div>
+      </template>
+      <template v-else>
+        <div class="bottom-bar-left">
+          <van-icon
+            name="volume-o"
+            size="22"
+            class="bottom-bar-icon"
+            :class="{ active: mode === 'audio' }"
+            @click="toggleMode('audio')"
+          />
+          <van-icon
+            name="edit"
+            size="22"
+            class="bottom-bar-icon"
+            :class="{ active: mode === 'edit' }"
+            @click="toggleMode('edit')"
+          />
+        </div>
+        <div class="bottom-bar-center">
+          <van-icon name="plus" size="32" class="bottom-bar-icon" @click="openAddWord" />
+        </div>
+        <div class="bottom-bar-right">
+          <van-icon
+            name="passed"
+            size="22"
+            class="bottom-bar-icon"
+            :class="{ active: isSelectMode }"
+            @click="toggleMode('select')"
+          />
+          <van-icon name="list-switch" size="22" class="bottom-bar-icon" />
+        </div>
+      </template>
     </div>
 
     <AppMenu />
@@ -99,6 +131,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
+import { useAuthStore } from '@/stores/auth'
 import { useWordsStore, type WordsStore } from '@/stores/words'
 import { useAppMenu } from '@/composables/useAppMenu'
 import WordNewDialog from '@/components/WordNewDialog.vue'
@@ -107,6 +140,7 @@ import type { Word } from '@/types'
 const route = useRoute()
 const router = useRouter()
 const booksStore = useBooksStore()
+const authStore = useAuthStore()
 const wordsStore: WordsStore = useWordsStore()
 
 const bid = Number(route.params.bid)
@@ -116,7 +150,10 @@ const loading = ref(true)
 const showDeleteDialog = ref(false)
 const deleteDialogTitle = ref('')
 const deleteDialogMessage = ref('')
-const mode = ref<'none' | 'edit' | 'select' | 'audio'>('none')
+type ViewMode = 'none' | 'edit' | 'audio' | 'select'
+const savedMode = authStore.userInfo?.cfg?.wordsListMode
+const mode = ref<ViewMode>(savedMode === 'edit' || savedMode === 'audio' ? savedMode : 'none')
+const previousMode = ref<ViewMode>('none')
 const checkedIds = ref<number[]>([])
 let pendingDeleteWord: Word | null = null
 
@@ -129,6 +166,8 @@ const pageTitle = computed(() => {
 
   return booksStore.currentBook?.id === bid ? booksStore.currentBook.title : '单词列表'
 })
+
+const isSelectMode = computed(() => mode.value === 'select')
 
 onMounted(async () => {
   loading.value = true
@@ -157,15 +196,54 @@ const openAddWord = () => {
   showWordNew.value = true
 }
 
-const toggleMode = (target: 'edit' | 'select' | 'audio') => {
+const toggleMode = (target: Exclude<ViewMode, 'none'>) => {
+  if (target === 'select') {
+    if (mode.value === 'select') {
+      mode.value = previousMode.value
+    } else {
+      previousMode.value = mode.value
+      mode.value = 'select'
+      checkedIds.value = []
+    }
+    return
+  }
+
   if (mode.value === target) {
     mode.value = 'none'
   } else {
     mode.value = target
-    if (target === 'select') {
-      checkedIds.value = []
-    }
   }
+
+  const modeToSave = mode.value === 'edit' || mode.value === 'audio' ? mode.value : 'none'
+  authStore.updateUserConfig({ wordsListMode: modeToSave })
+}
+
+const isAllSelected = computed(() => {
+  return wordsStore.words.length > 0 && checkedIds.value.length === wordsStore.words.length
+})
+
+const isIndeterminate = computed(() => {
+  return checkedIds.value.length > 0 && checkedIds.value.length < wordsStore.words.length
+})
+
+const toggleSelectAll = () => {
+  if (isAllSelected.value) {
+    checkedIds.value = []
+  } else {
+    checkedIds.value = wordsStore.words.map((w) => w.id)
+  }
+}
+
+const onBatchDelete = () => {
+  if (checkedIds.value.length === 0) return
+  deleteDialogTitle.value = '批量删除'
+  deleteDialogMessage.value = `确定要删除选中的 ${checkedIds.value.length} 个单词吗？`
+  showDeleteDialog.value = true
+}
+
+const onBatchBookmark = () => {
+  if (checkedIds.value.length === 0) return
+  // TODO: Implement add to review book
 }
 
 const onWordItemClick = (w: Word) => {
@@ -189,11 +267,18 @@ const getWordDefinition = (w: Word) => {
 }
 
 const onConfirmDeleteWord = async () => {
-  if (!pendingDeleteWord) return
-  await wordsStore.deleteWord(pendingDeleteWord)
-  // editorWord.value = null
-  showDeleteDialog.value = false
-  pendingDeleteWord = null
+  if (mode.value === 'select' && checkedIds.value.length > 0) {
+    for (const id of checkedIds.value) {
+      const w = wordsStore.words.find((word) => word.id === id)
+      if (w) await wordsStore.deleteWord(w)
+    }
+    checkedIds.value = []
+    showDeleteDialog.value = false
+  } else if (pendingDeleteWord) {
+    await wordsStore.deleteWord(pendingDeleteWord)
+    showDeleteDialog.value = false
+    pendingDeleteWord = null
+  }
   await wordsStore.loadWords(bid)
 }
 
@@ -341,5 +426,23 @@ const { openMenu, AppMenu } = useAppMenu({
 
 .list-item-action-icon {
   color: var(--van-nav-bar-icon-color);
+}
+
+.select-all-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.select-all-text {
+  font-size: 14px;
+  color: var(--van-text-color);
+  white-space: nowrap;
+}
+
+.bottom-bar-icon.disabled {
+  color: var(--van-gray-5);
+  pointer-events: none;
 }
 </style>
