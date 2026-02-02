@@ -72,25 +72,36 @@ function updateBooks($items)
                 $bid = $db->lastInsertId();
 
                 $item->id = $bid;
-                $item->user_id = $uid;
-                $item->nums = 0;
-                $item->hide = 0;
-                $item->ptop = $ptop;
-                $item->sorder = $sorder;
-                $item->time_c = date('Y-m-d H:i:s');
-                $item->_new = 0;
             } else {
                 // Update existing book (ownership verified)
-                $stmt = $db->prepare("UPDATE vnu_books SET title = ?, hide = ?, ptop = ?, sorder = ? WHERE id = ? AND user_id = ?");
-                $stmt->execute([$item->title ?? 'Untitled', $item->hide ?? 0, $item->ptop ?? 0, $item->sorder ?? 0, $item->id, $uid]);
-
-                // Refresh from DB
-                $stmt = $db->prepare("SELECT * FROM vnu_books WHERE id = ? AND user_id = ?");
-                $stmt->execute([$item->id, $uid]);
-                $book = $stmt->fetch(PDO::FETCH_ASSOC);
-                $item = (object)$book;
-                $item->_new = 0;
+                // Use dynamic update to avoid resetting fields (like sorder) to 0 if not provided in request
+                $fields = [];
+                $params = [];
+                $updatableFields = ['title', 'hide', 'ptop', 'sorder'];
+                foreach ($updatableFields as $f) {
+                    if (isset($item->$f)) {
+                        $fields[] = "$f = ?";
+                        $params[] = $item->$f;
+                    }
+                }
+                // Construct and execute the SQL only if there are changes
+                if (!empty($fields)) {
+                    // Join fields with commas and append WHERE clause for security (ownership check)
+                    $sql = "UPDATE vnu_books SET " . implode(", ", $fields) . " WHERE id = ? AND user_id = ?";
+                    // Add WHERE clause parameters (id and uid) to the array
+                    array_push($params, $item->id, $uid);
+                    // Execute prepared statement
+                    $db->prepare($sql)->execute($params);
+                }
             }
+
+            // Refresh from DB (Unified for both Insert and Update)
+            // This ensures we get the correct data types (int for id) and server-generated fields (time_c)
+            $stmt = $db->prepare("SELECT * FROM vnu_books WHERE id = ? AND user_id = ?");
+            $stmt->execute([$item->id, $uid]);
+            $book = $stmt->fetch(PDO::FETCH_ASSOC);
+            $item = (object)$book;
+            $item->_new = 0;
 
             $out[] = $item;
         }

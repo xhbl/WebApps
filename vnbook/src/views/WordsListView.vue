@@ -1,10 +1,11 @@
 <template>
   <div class="words-manage-view">
-    <van-nav-bar :title="booksStore.currentBook?.title || '单词列表'" fixed placeholder>
+    <van-nav-bar :title="pageTitle" fixed placeholder>
       <template #left>
         <van-icon name="arrow-left" size="22" @click="onClickLeft" />
       </template>
       <template #right>
+        <van-icon name="plus" size="22" class="right-icon-spacing" @click="openAddWord" />
         <van-icon name="ellipsis" size="22" @click="openMenu" />
       </template>
     </van-nav-bar>
@@ -56,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { useWordsStore, type WordsStore } from '@/stores/words'
@@ -78,14 +79,24 @@ const deleteDialogTitle = ref('')
 const deleteDialogMessage = ref('')
 let pendingDeleteWord: Word | null = null
 
+const pageTitle = computed(() => {
+  if (bid === 0) return '全部单词'
+  if (bid === -1) return '复习本'
+  // 优先从 books 列表中查找，确保获取到编辑后的最新标题
+  const b = booksStore.books.find((b) => b.id === bid)
+  if (b) return b.title
+
+  return booksStore.currentBook?.id === bid ? booksStore.currentBook.title : '单词列表'
+})
+
 onMounted(async () => {
   loading.value = true
-  if (!booksStore.currentBook) {
-    const loaded = await booksStore.loadBooks()
-    if (loaded) {
-      const b = booksStore.books.find((b) => b.id === bid)
-      if (b) booksStore.setCurrentBook(b)
-    }
+  if (booksStore.books.length === 0) {
+    await booksStore.loadBooks()
+  }
+  if (bid > 0) {
+    const b = booksStore.books.find((b) => b.id === bid)
+    if (b) booksStore.setCurrentBook(b)
   }
   await wordsStore.loadWords(bid)
   loading.value = false
@@ -181,6 +192,10 @@ const { openMenu, AppMenu } = useAppMenu({
   display: flex;
   align-items: center;
   height: 100%;
+}
+
+.right-icon-spacing {
+  margin-right: 16px;
 }
 
 .custom-dialog-container {
