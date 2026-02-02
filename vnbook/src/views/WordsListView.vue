@@ -59,7 +59,7 @@
             name="delete-o"
             size="22"
             class="bottom-bar-icon"
-            :class="{ disabled: checkedIds.length === 0 }"
+            :class="{ disabled: checkedIds.length === 0, 'danger-icon': checkedIds.length > 0 }"
             @click="onBatchDelete"
           />
           <van-icon
@@ -102,7 +102,12 @@
             :class="{ active: isSelectMode }"
             @click="toggleMode('select')"
           />
-          <van-icon name="list-switch" size="22" class="bottom-bar-icon" />
+          <van-icon
+            name="list-switch"
+            size="22"
+            class="bottom-bar-icon"
+            @click="wordsStore.toggleSortMode"
+          />
         </div>
       </template>
     </div>
@@ -297,7 +302,56 @@ const playAudio = (w: Word) => {
 const { openMenu, AppMenu } = useAppMenu({
   showUser: false,
   showLogout: false,
-  items: [{ name: '添加单词', icon: 'plus', handler: openAddWord }],
+  get items() {
+    if (mode.value === 'select') {
+      const actions = []
+      if (checkedIds.value.length > 0) {
+        actions.push({
+          name: '删除',
+          icon: 'delete-o',
+          handler: onBatchDelete,
+          color: 'var(--van-danger-color)',
+        })
+        actions.push({
+          name: '加入复习本',
+          icon: 'bookmark-o',
+          handler: onBatchBookmark,
+        })
+      }
+      actions.push({ name: '退出批量管理', icon: 'close', handler: () => toggleMode('select') })
+      return actions
+    }
+    return [
+      { name: '添加单词', icon: 'plus', handler: openAddWord },
+      {
+        // 循环切换：默认 -> 语音 -> 编辑 -> 默认
+        name:
+          mode.value === 'edit'
+            ? '关闭编辑模式'
+            : mode.value === 'audio'
+              ? '显示编辑模式'
+              : '显示语音模式',
+        icon: mode.value === 'none' ? 'volume-o' : 'edit',
+        handler: () => {
+          if (mode.value === 'edit')
+            toggleMode('edit') // 关闭
+          else if (mode.value === 'audio')
+            toggleMode('edit') // 切换到编辑
+          else toggleMode('audio') // 切换到语音
+        },
+      },
+      {
+        name: '批量管理',
+        icon: 'passed',
+        handler: () => toggleMode('select'),
+      },
+      {
+        name: wordsStore.sortMode === 'date' ? '按字母排序' : '按时间排序',
+        icon: 'exchange',
+        handler: () => wordsStore.toggleSortMode(),
+      },
+    ]
+  },
 })
 </script>
 
@@ -444,5 +498,9 @@ const { openMenu, AppMenu } = useAppMenu({
 .bottom-bar-icon.disabled {
   color: var(--van-gray-5);
   pointer-events: none;
+}
+
+.bottom-bar-icon.danger-icon {
+  color: var(--van-danger-color);
 }
 </style>
