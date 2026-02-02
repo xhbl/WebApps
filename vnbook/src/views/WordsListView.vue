@@ -347,7 +347,7 @@ const { openMenu, AppMenu } = useAppMenu({
       },
       {
         name: wordsStore.sortMode === 'date' ? '按字母排序' : '按时间排序',
-        icon: 'exchange',
+        icon: 'list-switch',
         handler: () => wordsStore.toggleSortMode(),
       },
     ]
@@ -462,6 +462,11 @@ const { openMenu, AppMenu } = useAppMenu({
   transition:
     background-color 0.2s,
     color 0.2s;
+}
+
+.bottom-bar-icon:not(.active):active {
+  /* Replicate the press effect from van-nav-bar */
+  background-color: var(--van-active-color);
 }
 
 .bottom-bar-icon.active {
