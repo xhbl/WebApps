@@ -13,25 +13,66 @@
       <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
         <div v-if="loading" class="loading">加载中...</div>
         <div v-else>
-          <van-cell
-            v-for="w in wordsStore.words"
-            :key="w.id"
-            :label="getWordDefinition(w)"
-            is-link
-            @click="openWordCard(w)"
-          >
-            <template #title>
-              <span class="word-text">{{ w.word }}</span>
-              <span v-if="w.phon" class="word-phon">/{{ w.phon }}/</span>
-            </template>
-          </van-cell>
+          <van-checkbox-group v-model="checkedIds">
+            <van-cell
+              v-for="w in wordsStore.words"
+              :key="w.id"
+              :label="getWordDefinition(w)"
+              is-link
+              @click="onWordItemClick(w)"
+            >
+              <template #icon>
+                <div v-if="mode === 'audio'" class="list-left-icon" @click.stop="playAudio(w)">
+                  <van-icon name="volume-o" size="22" class="list-item-action-icon" />
+                </div>
+                <div v-if="mode === 'edit'" class="list-left-icon" @click.stop="openWordCard(w)">
+                  <van-icon name="edit" size="22" class="list-item-action-icon" />
+                </div>
+                <div v-if="mode === 'select'" class="list-left-icon" @click.stop>
+                  <van-checkbox :name="w.id" icon-size="22px" />
+                </div>
+              </template>
+              <template #title>
+                <span class="word-text">{{ w.word }}</span>
+                <span v-if="w.phon" class="word-phon">/{{ w.phon }}/</span>
+              </template>
+            </van-cell>
+          </van-checkbox-group>
           <van-empty v-if="wordsStore.words.length === 0" description="暂无单词，点击下方➕新建" />
         </div>
       </van-pull-refresh>
     </div>
 
     <div class="bottom-bar van-hairline--top">
-      <van-icon name="plus" size="22" class="bottom-bar-icon" @click="openAddWord" />
+      <div class="bottom-bar-left">
+        <van-icon
+          name="volume-o"
+          size="22"
+          class="bottom-bar-icon"
+          :class="{ active: mode === 'audio' }"
+          @click="toggleMode('audio')"
+        />
+        <van-icon
+          name="edit"
+          size="22"
+          class="bottom-bar-icon"
+          :class="{ active: mode === 'edit' }"
+          @click="toggleMode('edit')"
+        />
+      </div>
+      <div class="bottom-bar-center">
+        <van-icon name="plus" size="32" class="bottom-bar-icon" @click="openAddWord" />
+      </div>
+      <div class="bottom-bar-right">
+        <van-icon
+          name="passed"
+          size="22"
+          class="bottom-bar-icon"
+          :class="{ active: mode === 'select' }"
+          @click="toggleMode('select')"
+        />
+        <van-icon name="list-switch" size="22" class="bottom-bar-icon" />
+      </div>
     </div>
 
     <AppMenu />
@@ -75,6 +116,8 @@ const loading = ref(true)
 const showDeleteDialog = ref(false)
 const deleteDialogTitle = ref('')
 const deleteDialogMessage = ref('')
+const mode = ref<'none' | 'edit' | 'select' | 'audio'>('none')
+const checkedIds = ref<number[]>([])
 let pendingDeleteWord: Word | null = null
 
 const pageTitle = computed(() => {
@@ -114,11 +157,32 @@ const openAddWord = () => {
   showWordNew.value = true
 }
 
+const toggleMode = (target: 'edit' | 'select' | 'audio') => {
+  if (mode.value === target) {
+    mode.value = 'none'
+  } else {
+    mode.value = target
+    if (target === 'select') {
+      checkedIds.value = []
+    }
+  }
+}
+
+const onWordItemClick = (w: Word) => {
+  if (mode.value === 'select') {
+    const idx = checkedIds.value.indexOf(w.id)
+    if (idx === -1) checkedIds.value.push(w.id)
+    else checkedIds.value.splice(idx, 1)
+  } else {
+    openWordCard(w)
+  }
+}
+
 const getWordDefinition = (w: Word) => {
   if (!w.explanations || w.explanations.length === 0) return ''
   return w.explanations
     .map((e) => {
-      const zh = (e.exp as any)?.zh || ''
+      const zh = e.exp?.zh || ''
       return `${e.pos} ${zh}`
     })
     .join('; ')
@@ -136,6 +200,13 @@ const onConfirmDeleteWord = async () => {
 const openWordCard = (w: Word) => {
   wordsStore.setCurrentWord(w)
   router.push(`/books/${bid}/words/${w.id}`)
+}
+
+const playAudio = (w: Word) => {
+  if ('speechSynthesis' in window) {
+    const msg = new SpeechSynthesisUtterance(w.word)
+    window.speechSynthesis.speak(msg)
+  }
 }
 
 const { openMenu, AppMenu } = useAppMenu({
@@ -220,12 +291,55 @@ const { openMenu, AppMenu } = useAppMenu({
   height: var(--van-nav-bar-height);
   background: var(--van-nav-bar-background);
   display: flex;
-  justify-content: center;
   align-items: center;
   z-index: 100;
+  padding: 0 16px;
+}
+
+.bottom-bar-left {
+  flex: 1;
+  display: flex;
+  justify-content: flex-start;
+  gap: 24px;
+}
+
+.bottom-bar-center {
+  display: flex;
+  justify-content: center;
+  width: 40px;
+}
+
+.bottom-bar-right {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 24px;
 }
 
 .bottom-bar-icon {
+  color: var(--van-nav-bar-icon-color);
+  padding: 4px;
+  border-radius: 4px;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.bottom-bar-icon.active {
+  background-color: var(--van-nav-bar-icon-color);
+  color: #fff;
+}
+
+.list-left-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  width: 24px;
+  height: 24px;
+}
+
+.list-item-action-icon {
   color: var(--van-nav-bar-icon-color);
 }
 </style>
