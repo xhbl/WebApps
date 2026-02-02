@@ -7,15 +7,18 @@ import type { Word, Explanation, Sentence, SortMode, GroupedWords } from '@/type
 import { toast } from '@/utils/toast'
 import { showDialog } from 'vant'
 import { useBooksStore } from '@/stores/books'
+import { useAuthStore } from '@/stores/auth'
 
 function defineWordsStore() {
+  const authStore = useAuthStore()
   // State
   /**
    * 当前单词本的单词列表（已由接口按 bookId 过滤）
    */
   const words = ref<Word[]>([])
   const currentWord = ref<Word | null>(null)
-  const sortMode = ref<SortMode>('date')
+  const savedSortMode = authStore.userInfo?.cfg?.wordsListSortMode
+  const sortMode = ref<SortMode>(savedSortMode === 'alpha' ? 'alpha' : 'date')
 
   // Getters
   /**
@@ -135,6 +138,7 @@ function defineWordsStore() {
    */
   const toggleSortMode = () => {
     sortMode.value = sortMode.value === 'date' ? 'alpha' : 'date'
+    authStore.updateUserConfig({ wordsListSortMode: sortMode.value })
     sortWords()
   }
   const saveWord = async (word: Word) => {

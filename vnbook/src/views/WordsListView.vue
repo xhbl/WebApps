@@ -13,32 +13,76 @@
       <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
         <div v-if="loading" class="loading">加载中...</div>
         <div v-else>
-          <van-checkbox-group v-model="checkedIds">
-            <van-cell
-              v-for="w in wordsStore.words"
-              :key="w.id"
-              :label="getWordDefinition(w)"
-              is-link
-              @click="onWordItemClick(w)"
+          <div v-if="wordsStore.words.length > 0">
+            <van-index-bar
+              v-if="wordsStore.sortMode === 'alpha'"
+              :index-list="indexList"
+              :sticky-offset-top="46"
             >
-              <template #icon>
-                <div v-if="mode === 'audio'" class="list-left-icon" @click.stop="playAudio(w)">
-                  <van-icon name="volume-o" size="22" class="list-item-action-icon" />
+              <van-checkbox-group v-model="checkedIds">
+                <div v-for="group in wordsStore.groupedWords" :key="group.key">
+                  <van-index-anchor :index="group.key" />
+                  <van-cell
+                    v-for="w in group.words"
+                    :key="w.id"
+                    :label="getWordDefinition(w)"
+                    is-link
+                    @click="onWordItemClick(w)"
+                  >
+                    <template #icon>
+                      <div
+                        v-if="mode === 'audio'"
+                        class="list-left-icon"
+                        @click.stop="playAudio(w)"
+                      >
+                        <van-icon name="volume-o" size="22" class="list-item-action-icon" />
+                      </div>
+                      <div
+                        v-if="mode === 'edit'"
+                        class="list-left-icon"
+                        @click.stop="openWordCard(w)"
+                      >
+                        <van-icon name="edit" size="22" class="list-item-action-icon" />
+                      </div>
+                      <div v-if="mode === 'select'" class="list-left-icon" @click.stop>
+                        <van-checkbox :name="w.id" icon-size="22px" />
+                      </div>
+                    </template>
+                    <template #title>
+                      <span class="word-text">{{ w.word }}</span>
+                      <span v-if="w.phon" class="word-phon">/{{ w.phon }}/</span>
+                    </template>
+                  </van-cell>
                 </div>
-                <div v-if="mode === 'edit'" class="list-left-icon" @click.stop="openWordCard(w)">
-                  <van-icon name="edit" size="22" class="list-item-action-icon" />
-                </div>
-                <div v-if="mode === 'select'" class="list-left-icon" @click.stop>
-                  <van-checkbox :name="w.id" icon-size="22px" />
-                </div>
-              </template>
-              <template #title>
-                <span class="word-text">{{ w.word }}</span>
-                <span v-if="w.phon" class="word-phon">/{{ w.phon }}/</span>
-              </template>
-            </van-cell>
-          </van-checkbox-group>
-          <van-empty v-if="wordsStore.words.length === 0" description="暂无单词，点击下方➕新建" />
+              </van-checkbox-group>
+            </van-index-bar>
+            <van-checkbox-group v-else v-model="checkedIds">
+              <van-cell
+                v-for="w in wordsStore.words"
+                :key="w.id"
+                :label="getWordDefinition(w)"
+                is-link
+                @click="onWordItemClick(w)"
+              >
+                <template #icon>
+                  <div v-if="mode === 'audio'" class="list-left-icon" @click.stop="playAudio(w)">
+                    <van-icon name="volume-o" size="22" class="list-item-action-icon" />
+                  </div>
+                  <div v-if="mode === 'edit'" class="list-left-icon" @click.stop="openWordCard(w)">
+                    <van-icon name="edit" size="22" class="list-item-action-icon" />
+                  </div>
+                  <div v-if="mode === 'select'" class="list-left-icon" @click.stop>
+                    <van-checkbox :name="w.id" icon-size="22px" />
+                  </div>
+                </template>
+                <template #title>
+                  <span class="word-text">{{ w.word }}</span>
+                  <span v-if="w.phon" class="word-phon">/{{ w.phon }}/</span>
+                </template>
+              </van-cell>
+            </van-checkbox-group>
+          </div>
+          <van-empty v-else description="暂无单词，点击下方➕新建" />
         </div>
       </van-pull-refresh>
     </div>
@@ -103,9 +147,10 @@
             @click="toggleMode('select')"
           />
           <van-icon
-            name="list-switch"
+            name="sort"
             size="22"
             class="bottom-bar-icon"
+            :class="{ active: wordsStore.sortMode === 'alpha' }"
             @click="wordsStore.toggleSortMode"
           />
         </div>
@@ -171,6 +216,10 @@ const pageTitle = computed(() => {
 
   return booksStore.currentBook?.id === bid ? booksStore.currentBook.title : '单词列表'
 })
+
+const indexList = computed(() =>
+  wordsStore.sortMode === 'alpha' ? wordsStore.groupedWords.map((g) => g.key) : [],
+)
 
 const isSelectMode = computed(() => mode.value === 'select')
 
@@ -346,8 +395,8 @@ const { openMenu, AppMenu } = useAppMenu({
         handler: () => toggleMode('select'),
       },
       {
-        name: wordsStore.sortMode === 'date' ? '按字母排序' : '按时间排序',
-        icon: 'list-switch',
+        name: wordsStore.sortMode === 'alpha' ? '关闭字母排序' : '按字母排序',
+        icon: 'sort',
         handler: () => wordsStore.toggleSortMode(),
       },
     ]
@@ -507,5 +556,19 @@ const { openMenu, AppMenu } = useAppMenu({
 
 .bottom-bar-icon.danger-icon {
   color: var(--van-danger-color);
+}
+
+/* 修复索引栏吸顶时覆盖导航栏的问题 */
+:deep(.van-nav-bar--fixed) {
+  z-index: 101;
+}
+
+/* 调整索引栏样式，使其颜色更柔和 */
+:deep(.van-index-anchor) {
+  color: var(--van-gray-6);
+}
+
+:deep(.van-index-bar__sidebar) {
+  color: var(--van-gray-6);
 }
 </style>
