@@ -2,10 +2,10 @@
   <div class="words-manage-view" @click="closeAllPopovers">
     <van-nav-bar :title="pageTitle" fixed placeholder>
       <template #left>
-        <van-icon name="arrow-left" size="22" @click="onClickLeft" />
+        <van-icon name="arrow-left" class="nav-bar-icon" @click="onClickLeft" />
       </template>
       <template #right>
-        <van-icon name="ellipsis" size="22" @click="openMenu" />
+        <van-icon name="ellipsis" class="nav-bar-icon" @click="openMenu" />
       </template>
     </van-nav-bar>
 
@@ -30,14 +30,10 @@
                     @click="onWordItemClick(w)"
                   >
                     <template #icon>
-                      <div
-                        v-if="mode === 'audio'"
-                        class="list-left-icon"
-                        @click.stop="playAudio(w)"
-                      >
-                        <van-icon name="volume-o" size="24" class="list-item-action-icon" />
+                      <div v-if="mode === 'audio'" class="icon-wrapper" @click.stop="playAudio(w)">
+                        <van-icon name="volume-o" class="list-leading-icon" />
                       </div>
-                      <div v-if="mode === 'edit'" class="list-left-icon" @click.stop>
+                      <div v-if="mode === 'edit'" class="icon-wrapper" @click.stop>
                         <van-popover
                           v-model:show="showWordPopover[w.id]"
                           :actions="wordActions"
@@ -46,12 +42,12 @@
                           @open="onPopoverOpen(w.id)"
                         >
                           <template #reference>
-                            <van-icon name="edit" size="24" class="list-item-action-icon" />
+                            <van-icon name="edit" class="list-leading-icon" />
                           </template>
                         </van-popover>
                       </div>
-                      <div v-if="mode === 'select'" class="list-left-icon" @click.stop>
-                        <van-checkbox :name="w.id" icon-size="24px" />
+                      <div v-if="mode === 'select'" class="icon-wrapper" @click.stop>
+                        <van-checkbox :name="w.id" />
                       </div>
                     </template>
                     <template #title>
@@ -71,10 +67,10 @@
                 @click="onWordItemClick(w)"
               >
                 <template #icon>
-                  <div v-if="mode === 'audio'" class="list-left-icon" @click.stop="playAudio(w)">
-                    <van-icon name="volume-o" size="24" class="list-item-action-icon" />
+                  <div v-if="mode === 'audio'" class="icon-wrapper" @click.stop="playAudio(w)">
+                    <van-icon name="volume-o" class="list-leading-icon" />
                   </div>
-                  <div v-if="mode === 'edit'" class="list-left-icon" @click.stop>
+                  <div v-if="mode === 'edit'" class="icon-wrapper" @click.stop>
                     <van-popover
                       v-model:show="showWordPopover[w.id]"
                       :actions="wordActions"
@@ -83,12 +79,12 @@
                       @open="onPopoverOpen(w.id)"
                     >
                       <template #reference>
-                        <van-icon name="edit" size="24" class="list-item-action-icon" />
+                        <van-icon name="edit" class="list-leading-icon" />
                       </template>
                     </van-popover>
                   </div>
-                  <div v-if="mode === 'select'" class="list-left-icon" @click.stop>
-                    <van-checkbox :name="w.id" icon-size="24px" />
+                  <div v-if="mode === 'select'" class="icon-wrapper" @click.stop>
+                    <van-checkbox :name="w.id" />
                   </div>
                 </template>
                 <template #title>
@@ -110,61 +106,54 @@
             <van-checkbox
               :model-value="isAllSelected"
               :indeterminate="isIndeterminate"
-              icon-size="22px"
               @click.stop="toggleSelectAll"
             />
             <span class="select-all-text">全选</span>
           </div>
           <van-icon
             name="bookmark-o"
-            size="22"
             class="bottom-bar-icon"
             :class="{ disabled: checkedIds.length === 0 }"
             @click="onBatchBookmark"
           />
           <van-icon
             name="delete-o"
-            size="22"
             class="bottom-bar-icon"
             :class="{ disabled: checkedIds.length === 0, 'danger-icon': checkedIds.length > 0 }"
             @click="onBatchDelete"
           />
         </div>
         <div class="bottom-bar-right">
-          <van-icon name="close" size="22" class="bottom-bar-icon" @click="toggleMode('select')" />
+          <van-icon name="close" class="bottom-bar-icon" @click="toggleMode('select')" />
         </div>
       </template>
       <template v-else>
         <div class="bottom-bar-left">
           <van-icon
             name="volume-o"
-            size="22"
             class="bottom-bar-icon"
             :class="{ active: mode === 'audio' }"
             @click="toggleMode('audio')"
           />
           <van-icon
             name="edit"
-            size="22"
             class="bottom-bar-icon"
             :class="{ active: mode === 'edit' }"
             @click="toggleMode('edit')"
           />
         </div>
         <div class="bottom-bar-center">
-          <van-icon name="plus" size="32" class="bottom-bar-icon" @click="openAddWord" />
+          <van-icon name="plus" class="bottom-bar-icon large-icon" @click="openAddWord" />
         </div>
         <div class="bottom-bar-right">
           <van-icon
             name="passed"
-            size="22"
             class="bottom-bar-icon"
             :class="{ active: isSelectMode }"
             @click="toggleMode('select')"
           />
           <van-icon
             name="sort"
-            size="22"
             class="bottom-bar-icon"
             :class="{ active: wordsStore.sortMode === 'alpha' }"
             @click="wordsStore.toggleSortMode"
@@ -501,6 +490,10 @@ const { openMenu, AppMenu } = useAppMenu({
   cursor: pointer;
 }
 
+.nav-bar-icon {
+  font-size: 22px;
+}
+
 /* 调整标题字号 */
 :deep(.van-nav-bar__title) {
   font-size: var(--van-font-size-xl);
@@ -579,12 +572,17 @@ const { openMenu, AppMenu } = useAppMenu({
 }
 
 .bottom-bar-icon {
+  font-size: 22px;
   color: var(--van-nav-bar-icon-color);
   padding: 4px;
   border-radius: 4px;
   transition:
     background-color 0.2s,
     color 0.2s;
+}
+
+.bottom-bar-icon.large-icon {
+  font-size: 32px;
 }
 
 .bottom-bar-icon:not(.active):active {
@@ -597,7 +595,7 @@ const { openMenu, AppMenu } = useAppMenu({
   color: #fff;
 }
 
-.list-left-icon {
+.icon-wrapper {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -605,11 +603,16 @@ const { openMenu, AppMenu } = useAppMenu({
   height: 44px; /* 扩大点击高度 */
   margin-left: -16px; /* 向左延伸至边缘 */
   padding-left: 10px; /* 修正图标视觉位置 */
-  margin-right: 2px;
+  margin-right: 0;
+  cursor: pointer;
 }
 
-.list-item-action-icon {
+.list-leading-icon {
+  font-size: 22px;
   color: var(--van-nav-bar-icon-color);
+  display: flex;
+  align-items: center;
+  height: 100%;
 }
 
 .select-all-container {

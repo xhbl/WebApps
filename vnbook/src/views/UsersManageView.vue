@@ -2,10 +2,10 @@
   <div class="users-manage-view">
     <van-nav-bar title="用户管理" fixed placeholder>
       <template #left>
-        <van-icon name="plus" size="22" @click="openNewUser" />
+        <van-icon name="plus" class="nav-bar-icon" @click="openNewUser" />
       </template>
       <template #right>
-        <van-icon name="ellipsis" size="22" @click="openMenu" />
+        <van-icon name="ellipsis" class="nav-bar-icon" @click="openMenu" />
       </template>
     </van-nav-bar>
 
@@ -22,8 +22,8 @@
             @click="editUser(u)"
           >
             <template #icon>
-              <div class="icon-wrapper" @click.stop>
-                <van-icon name="user-o" class="user-list-icon" />
+              <div class="icon-wrapper">
+                <van-icon name="user-o" class="list-leading-icon" />
               </div>
             </template>
           </van-cell>
@@ -132,6 +132,10 @@ const deleteUser = async (u: User) => {
   cursor: pointer;
 }
 
+.nav-bar-icon {
+  font-size: 22px;
+}
+
 /* 优化 ActionSheet 内部图标间距 */
 :deep(.van-action-sheet__item) {
   display: flex;
@@ -154,10 +158,10 @@ const deleteUser = async (u: User) => {
   font-size: var(--van-font-size-md);
 }
 
-/* 用户列表 图标优化 */
-:deep(.user-list-icon) {
-  font-size: 24px;
-  color: var(--van-primary-color);
+/* 列表前导图标 */
+.list-leading-icon {
+  font-size: 22px;
+  color: var(--van-text-color);
   display: flex;
   align-items: center;
   height: 100%; /* 确保在 Cell 容器中垂直居中 */
@@ -171,7 +175,8 @@ const deleteUser = async (u: User) => {
   height: 44px; /* 扩大点击高度 */
   margin-left: -16px; /* 向左延伸至边缘 */
   padding-left: 10px; /* 修正图标视觉位置 */
-  margin-right: 6px;
+  margin-right: 2px;
+  cursor: pointer;
 }
 
 /* 确保单元格内容与图标对齐 */

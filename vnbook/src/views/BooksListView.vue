@@ -2,10 +2,10 @@
   <div class="books-manage-view" @click="closeAllPopovers">
     <van-nav-bar :title="userBookTitle" fixed placeholder>
       <template #left>
-        <van-icon name="plus" size="22" @click="openNewBook" />
+        <van-icon name="plus" class="nav-bar-icon" @click="openNewBook" />
       </template>
       <template #right>
-        <van-icon name="ellipsis" size="22" @click="openMenu" />
+        <van-icon name="ellipsis" class="nav-bar-icon" @click="openMenu" />
       </template>
     </van-nav-bar>
 
@@ -29,7 +29,7 @@
                 @open="onPopoverOpen('review')"
               >
                 <template #reference>
-                  <van-icon name="bookmark" class="book-edit-icon" />
+                  <van-icon name="bookmark" class="list-leading-icon" />
                 </template>
               </van-popover>
             </div>
@@ -64,7 +64,7 @@
                   @open="onPopoverOpen('book', b.id)"
                 >
                   <template #reference>
-                    <van-icon name="label-o" class="book-edit-icon" />
+                    <van-icon name="label-o" class="list-leading-icon" />
                   </template>
                 </van-popover>
               </div>
@@ -91,7 +91,7 @@
                   @open="onPopoverOpen('all')"
                 >
                   <template #reference>
-                    <van-icon name="label" class="book-edit-icon" />
+                    <van-icon name="label" class="list-leading-icon" />
                   </template>
                 </van-popover>
               </div>
@@ -362,6 +362,11 @@ const onConfirmDeleteBook = async () => {
   font-weight: 700;
   cursor: pointer;
 }
+
+.nav-bar-icon {
+  font-size: 22px;
+}
+
 /* 优化 ActionSheet 内部图标间距 */
 :deep(.van-action-sheet__item) {
   display: flex;
@@ -383,9 +388,9 @@ const onConfirmDeleteBook = async () => {
   font-size: var(--van-font-size-md);
 }
 
-/* 用户列表 图标优化 */
-:deep(.book-edit-icon) {
-  font-size: 24px;
+/* 列表前导图标 */
+.list-leading-icon {
+  font-size: 22px;
   color: var(--van-primary-color);
   display: flex;
   align-items: center;
@@ -445,7 +450,8 @@ const onConfirmDeleteBook = async () => {
   height: 44px; /* 扩大点击高度 */
   margin-left: -16px; /* 向左延伸至边缘 */
   padding-left: 10px; /* 修正图标视觉位置 */
-  margin-right: 4px;
+  margin-right: 2px;
+  cursor: pointer;
 }
 
 .right-more-icon {
