@@ -1,5 +1,5 @@
 <template>
-  <div class="books-manage-view">
+  <div class="books-manage-view" @click="closeAllPopovers">
     <van-nav-bar :title="userBookTitle" fixed placeholder>
       <template #left>
         <van-icon name="plus" size="22" @click="openNewBook" />
@@ -26,6 +26,7 @@
                 :actions="reviewBookPopoverActions"
                 placement="bottom-start"
                 @select="onReviewBookAction"
+                @open="onPopoverOpen('review')"
               >
                 <template #reference>
                   <van-icon name="bookmark" class="book-edit-icon" />
@@ -34,7 +35,7 @@
             </div>
           </template>
           <template #right-icon>
-            <img src="/resources/icons/favicon-192.png" class="right-more-icon" />
+            <img src="/resources/icons/vnb-review.png" class="right-more-icon" />
           </template>
         </van-cell>
       </div>
@@ -60,6 +61,7 @@
                   :actions="getBookActions(b)"
                   :placement="getBookPopoverPlacement(index)"
                   @select="(action) => onBookAction(action, b)"
+                  @open="onPopoverOpen('book', b.id)"
                 >
                   <template #reference>
                     <van-icon name="label-o" class="book-edit-icon" />
@@ -86,6 +88,7 @@
                   :actions="allWordsPopoverActions"
                   :placement="booksStore.books.length > 5 ? 'top-start' : 'bottom-start'"
                   @select="onAllWordsAction"
+                  @open="onPopoverOpen('all')"
                 >
                   <template #reference>
                     <van-icon name="label" class="book-edit-icon" />
@@ -94,7 +97,7 @@
               </div>
             </template>
             <template #right-icon>
-              <img src="/resources/icons/favicon-192.png" class="right-more-icon" />
+              <img src="/resources/icons/vnb-all.png" class="right-more-icon" />
             </template>
           </van-cell>
           <van-empty
@@ -210,6 +213,27 @@ const onReviewBookAction = (action: { key: string }) => {
   }
 }
 
+const onPopoverOpen = (type: 'all' | 'review' | 'book', id?: number) => {
+  if (type !== 'all') showAllWordsPopover.value = false
+  if (type !== 'review') showReviewBookPopover.value = false
+
+  // 关闭其他书籍的 popover
+  for (const key in showBookPopover.value) {
+    const k = Number(key)
+    if (type !== 'book' || k !== id) {
+      showBookPopover.value[k] = false
+    }
+  }
+}
+
+const closeAllPopovers = () => {
+  showAllWordsPopover.value = false
+  showReviewBookPopover.value = false
+  for (const key in showBookPopover.value) {
+    showBookPopover.value[Number(key)] = false
+  }
+}
+
 const toggleShowAllWords = () => {
   showAllWords.value = !showAllWords.value
   authStore.updateUserConfig({ hideAllWords: !showAllWords.value })
@@ -275,14 +299,14 @@ const { openMenu, AppMenu, UserDialog } = useAppMenu({
     return [
       { name: '新建单词本', icon: 'plus', handler: openNewBook },
       {
-        name: showAllWords.value ? '隐藏[全部单词]' : '显示[全部单词]',
-        icon: showAllWords.value ? 'closed-eye' : 'eye-o',
-        handler: toggleShowAllWords,
-      },
-      {
         name: showReviewBook.value ? '隐藏[复习本]' : '显示[复习本]',
         icon: showReviewBook.value ? 'closed-eye' : 'eye-o',
         handler: toggleShowReviewBook,
+      },
+      {
+        name: showAllWords.value ? '隐藏[全部单词]' : '显示[全部单词]',
+        icon: showAllWords.value ? 'closed-eye' : 'eye-o',
+        handler: toggleShowAllWords,
       },
     ]
   },
