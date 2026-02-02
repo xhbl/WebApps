@@ -35,7 +35,7 @@
                         class="list-left-icon"
                         @click.stop="playAudio(w)"
                       >
-                        <van-icon name="volume-o" size="22" class="list-item-action-icon" />
+                        <van-icon name="volume-o" size="24" class="list-item-action-icon" />
                       </div>
                       <div v-if="mode === 'edit'" class="list-left-icon" @click.stop>
                         <van-popover
@@ -46,12 +46,12 @@
                           @open="onPopoverOpen(w.id)"
                         >
                           <template #reference>
-                            <van-icon name="edit" size="22" class="list-item-action-icon" />
+                            <van-icon name="edit" size="24" class="list-item-action-icon" />
                           </template>
                         </van-popover>
                       </div>
                       <div v-if="mode === 'select'" class="list-left-icon" @click.stop>
-                        <van-checkbox :name="w.id" icon-size="22px" />
+                        <van-checkbox :name="w.id" icon-size="24px" />
                       </div>
                     </template>
                     <template #title>
@@ -72,7 +72,7 @@
               >
                 <template #icon>
                   <div v-if="mode === 'audio'" class="list-left-icon" @click.stop="playAudio(w)">
-                    <van-icon name="volume-o" size="22" class="list-item-action-icon" />
+                    <van-icon name="volume-o" size="24" class="list-item-action-icon" />
                   </div>
                   <div v-if="mode === 'edit'" class="list-left-icon" @click.stop>
                     <van-popover
@@ -83,12 +83,12 @@
                       @open="onPopoverOpen(w.id)"
                     >
                       <template #reference>
-                        <van-icon name="edit" size="22" class="list-item-action-icon" />
+                        <van-icon name="edit" size="24" class="list-item-action-icon" />
                       </template>
                     </van-popover>
                   </div>
                   <div v-if="mode === 'select'" class="list-left-icon" @click.stop>
-                    <van-checkbox :name="w.id" icon-size="22px" />
+                    <van-checkbox :name="w.id" icon-size="24px" />
                   </div>
                 </template>
                 <template #title>
@@ -450,10 +450,10 @@ const { openMenu, AppMenu } = useAppMenu({
         // 循环切换：默认 -> 语音 -> 编辑 -> 默认
         name:
           mode.value === 'edit'
-            ? '关闭编辑模式'
+            ? '关闭编辑栏'
             : mode.value === 'audio'
-              ? '显示编辑模式'
-              : '显示语音模式',
+              ? '显示编辑栏'
+              : '显示语音栏',
         icon: mode.value === 'none' ? 'volume-o' : 'edit',
         handler: () => {
           if (mode.value === 'edit')
@@ -600,10 +600,12 @@ const { openMenu, AppMenu } = useAppMenu({
 .list-left-icon {
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-right: 12px;
-  width: 24px;
-  height: 24px;
+  justify-content: flex-start;
+  width: 40px; /* 扩大点击宽度 */
+  height: 44px; /* 扩大点击高度 */
+  margin-left: -16px; /* 向左延伸至边缘 */
+  padding-left: 10px; /* 修正图标视觉位置 */
+  margin-right: 2px;
 }
 
 .list-item-action-icon {

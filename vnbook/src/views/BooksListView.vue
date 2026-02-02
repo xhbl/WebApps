@@ -386,7 +386,6 @@ const onConfirmDeleteBook = async () => {
 /* 用户列表 图标优化 */
 :deep(.book-edit-icon) {
   font-size: 24px;
-  margin-right: 12px;
   color: var(--van-primary-color);
   display: flex;
   align-items: center;
@@ -441,7 +440,12 @@ const onConfirmDeleteBook = async () => {
 .icon-wrapper {
   display: flex;
   align-items: center;
-  height: 100%;
+  justify-content: flex-start;
+  width: 40px; /* 扩大点击宽度 */
+  height: 44px; /* 扩大点击高度 */
+  margin-left: -16px; /* 向左延伸至边缘 */
+  padding-left: 10px; /* 修正图标视觉位置 */
+  margin-right: 4px;
 }
 
 .right-more-icon {

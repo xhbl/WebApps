@@ -22,7 +22,9 @@
             @click="editUser(u)"
           >
             <template #icon>
-              <van-icon name="user-o" class="user-list-icon" />
+              <div class="icon-wrapper" @click.stop>
+                <van-icon name="user-o" class="user-list-icon" />
+              </div>
             </template>
           </van-cell>
           <van-empty
@@ -155,11 +157,21 @@ const deleteUser = async (u: User) => {
 /* 用户列表 图标优化 */
 :deep(.user-list-icon) {
   font-size: 24px;
-  margin-right: 12px;
   color: var(--van-primary-color);
   display: flex;
   align-items: center;
   height: 100%; /* 确保在 Cell 容器中垂直居中 */
+}
+
+.icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 40px; /* 扩大点击宽度 */
+  height: 44px; /* 扩大点击高度 */
+  margin-left: -16px; /* 向左延伸至边缘 */
+  padding-left: 10px; /* 修正图标视觉位置 */
+  margin-right: 6px;
 }
 
 /* 确保单元格内容与图标对齐 */
