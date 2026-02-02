@@ -2,7 +2,7 @@
   <div class="words-manage-view">
     <van-nav-bar :title="booksStore.currentBook?.title || '单词列表'" fixed placeholder>
       <template #left>
-        <van-icon name="plus" size="22" @click="openAddWord" />
+        <van-icon name="arrow-left" size="22" @click="onClickLeft" />
       </template>
       <template #right>
         <van-icon name="ellipsis" size="22" @click="openMenu" />
@@ -22,7 +22,9 @@
             @click="openWordCard(w)"
           >
             <template #icon>
-              <van-icon name="edit" class="word-edit-icon" />
+              <div class="icon-wrapper">
+                <van-icon name="edit" class="word-edit-icon" />
+              </div>
             </template>
           </van-cell>
           <van-empty
@@ -95,6 +97,10 @@ const onRefresh = async () => {
   refreshing.value = false
 }
 
+const onClickLeft = () => {
+  router.back()
+}
+
 const openAddWord = () => {
   showWordNew.value = true
 }
@@ -121,29 +127,72 @@ const { openMenu, AppMenu } = useAppMenu({
 </script>
 
 <style scoped>
-.words-view {
+.words-manage-view {
   min-height: 100vh;
-  padding-top: 54px; /* 预留导航高度，避免内容被覆盖 */
-  box-sizing: border-box;
+  background-color: var(--van-background);
 }
-.nav-bar-fixed {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 2000;
-  background: #fff;
+
+.content {
+  padding-top: 0px;
 }
-.nav-bar-fixed :deep(.van-nav-bar__title) {
-  font-size: 20px;
+
+.loading {
+  padding: 20px;
+  text-align: center;
+  color: var(--van-text-color-3);
 }
-.icon-btn :deep(.van-icon) {
-  font-size: 18px;
+
+/* 图标点击样式 */
+.van-icon {
   font-weight: 700;
+  cursor: pointer;
 }
-.group-title {
-  padding: 8px 12px;
-  color: #969799;
-  font-size: 14px;
+
+/* 调整标题字号 */
+:deep(.van-nav-bar__title) {
+  font-size: var(--van-font-size-xl);
+}
+
+/* 调整列表字号 */
+:deep(.van-cell__title) {
+  font-size: var(--van-font-size-lg);
+  font-weight: 500;
+}
+:deep(.van-cell__label) {
+  font-size: var(--van-font-size-md);
+}
+
+/* 单词列表 图标优化 */
+:deep(.word-edit-icon) {
+  font-size: 24px;
+  margin-right: 12px;
+  color: var(--van-primary-color);
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+/* 确保单元格内容与图标对齐 */
+:deep(.van-cell) {
+  align-items: center;
+}
+
+.icon-wrapper {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.custom-dialog-container {
+  padding: 8px 24px 24px;
+}
+
+.delete-message {
+  font-size: var(--van-dialog-message-font-size);
+  line-height: var(--van-dialog-message-line-height);
+  color: var(--van-dialog-message-color);
+  text-align: center;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 </style>
