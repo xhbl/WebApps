@@ -44,6 +44,11 @@ const router = createRouter({
   routes,
 })
 
+// 关键：禁用浏览器原生的滚动恢复，防止与手动控制冲突，解决视口变化导致的页面错乱
+if (window.history && 'scrollRestoration' in window.history) {
+  window.history.scrollRestoration = 'manual'
+}
+
 // 路由守卫
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()

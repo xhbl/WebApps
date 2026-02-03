@@ -1,6 +1,6 @@
 <template>
   <div class="users-manage-view">
-    <van-nav-bar title="用户管理" fixed placeholder>
+    <van-nav-bar title="用户管理" fixed :placeholder="false" z-index="100">
       <template #left>
         <van-icon name="plus" class="nav-bar-icon" @click="openNewUser" />
       </template>
@@ -44,8 +44,15 @@
   </div>
 </template>
 
+<script lang="ts">
+export default {
+  name: 'UsersManage',
+}
+</script>
+
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref, onActivated } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { showDialog } from 'vant'
 import { useUsersStore } from '@/stores/users'
 import { useAppMenu } from '@/composables/useAppMenu'
@@ -59,8 +66,17 @@ const editorUser = ref<User | null>(null)
 const refreshing = ref(false)
 const loading = ref(true)
 
-onMounted(async () => {
-  loading.value = true
+const scrollTop = ref(0)
+
+onBeforeRouteLeave((to, from, next) => {
+  scrollTop.value = window.scrollY
+  next()
+})
+
+onActivated(async () => {
+  if (scrollTop.value > 0) window.scrollTo(0, scrollTop.value)
+
+  if (usersStore.users.length === 0) loading.value = true
   try {
     await usersStore.loadUsers()
   } catch (error) {
@@ -113,6 +129,7 @@ const deleteUser = async (u: User) => {
 <style scoped>
 .users-manage-view {
   min-height: 100vh;
+  padding-top: var(--van-nav-bar-height);
   background-color: var(--van-background);
 }
 

@@ -1,6 +1,6 @@
 <template>
   <div class="books-manage-view" @click="closeAllPopovers">
-    <van-nav-bar :title="userBookTitle" fixed placeholder>
+    <van-nav-bar :title="userBookTitle" fixed :placeholder="false" z-index="100">
       <template #left>
         <van-icon name="plus" class="nav-bar-icon" @click="openNewBook" />
       </template>
@@ -135,9 +135,15 @@
   </div>
 </template>
 
+<script lang="ts">
+export default {
+  name: 'BooksList',
+}
+</script>
+
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, onActivated } from 'vue'
+import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
 import { useAppMenu } from '@/composables/useAppMenu'
@@ -175,8 +181,17 @@ const totalWords = computed(() => {
   return booksStore.books.reduce((sum, b) => sum + b.nums, 0)
 })
 
-onMounted(async () => {
-  loading.value = true
+const scrollTop = ref(0)
+
+onBeforeRouteLeave((to, from, next) => {
+  scrollTop.value = window.scrollY
+  next()
+})
+
+onActivated(async () => {
+  if (scrollTop.value > 0) window.scrollTo(0, scrollTop.value)
+
+  if (booksStore.books.length === 0) loading.value = true
   try {
     await booksStore.loadBooks()
   } catch (error) {
@@ -327,6 +342,7 @@ const onConfirmDeleteBook = async () => {
 <style scoped>
 .books-manage-view {
   min-height: 100vh;
+  padding-top: var(--van-nav-bar-height);
   background-color: var(--van-background);
 }
 

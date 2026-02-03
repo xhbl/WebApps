@@ -1,6 +1,6 @@
 <template>
   <div class="words-manage-view" @click="closeAllPopovers">
-    <van-nav-bar :title="pageTitle" fixed placeholder>
+    <van-nav-bar :title="pageTitle" fixed :placeholder="false" z-index="100">
       <template #left>
         <van-icon name="arrow-left" class="nav-bar-icon" @click="onClickLeft" />
       </template>
@@ -140,9 +140,15 @@
   </div>
 </template>
 
+<script lang="ts">
+export default {
+  name: 'WordsList',
+}
+</script>
+
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, ref, onActivated } from 'vue'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
 import { useWordsStore, type WordsStore } from '@/stores/words'
@@ -160,7 +166,7 @@ const booksStore = useBooksStore()
 const authStore = useAuthStore()
 const wordsStore: WordsStore = useWordsStore()
 
-const bid = Number(route.params.bid)
+const bid = computed(() => Number(route.params.bid))
 const showWordNew = ref(false)
 const refreshing = ref(false)
 const loading = ref(true)
@@ -173,6 +179,14 @@ const mode = ref<ViewMode>(savedMode === 'edit' || savedMode === 'audio' ? saved
 const previousMode = ref<ViewMode>('none')
 const checkedIds = ref<number[]>([])
 let pendingDeleteWord: Word | null = null
+
+const scrollTop = ref(0)
+const currentBid = ref<number | null>(null)
+
+onBeforeRouteLeave((to, from, next) => {
+  scrollTop.value = window.scrollY
+  next()
+})
 
 const {
   popoverMap: showWordPopover,
@@ -207,37 +221,45 @@ const onWordAction = async (action: { key: string }, w: Word) => {
 }
 
 const pageTitle = computed(() => {
-  if (bid === 0) return '全部单词'
-  if (bid === -1) return '复习本'
+  if (bid.value === 0) return '全部单词'
+  if (bid.value === -1) return '复习本'
   // 优先从 books 列表中查找，确保获取到编辑后的最新标题
-  const b = booksStore.books.find((b) => b.id === bid)
+  const b = booksStore.books.find((b) => b.id === bid.value)
   if (b) return b.title
 
-  return booksStore.currentBook?.id === bid ? booksStore.currentBook.title : '单词列表'
+  return booksStore.currentBook?.id === bid.value ? booksStore.currentBook.title : '单词列表'
 })
 
 const indexList = computed(() =>
   wordsStore.sortMode === 'alpha' ? wordsStore.groupedWords.map((g) => g.key) : [],
 )
 
-const isSelectMode = computed(() => mode.value === 'select')
+onActivated(async () => {
+  const newBid = bid.value
+  if (currentBid.value !== newBid) {
+    currentBid.value = newBid
+    loading.value = true
+    wordsStore.clearWords()
+    window.scrollTo(0, 0)
 
-onMounted(async () => {
-  loading.value = true
-  if (booksStore.books.length === 0) {
-    await booksStore.loadBooks()
+    if (booksStore.books.length === 0) {
+      await booksStore.loadBooks()
+    }
+    if (newBid > 0) {
+      const b = booksStore.books.find((b) => b.id === newBid)
+      if (b) booksStore.setCurrentBook(b)
+    }
+    await wordsStore.loadWords(newBid)
+    loading.value = false
+  } else {
+    if (scrollTop.value > 0) window.scrollTo(0, scrollTop.value)
+    await wordsStore.loadWords(newBid)
   }
-  if (bid > 0) {
-    const b = booksStore.books.find((b) => b.id === bid)
-    if (b) booksStore.setCurrentBook(b)
-  }
-  await wordsStore.loadWords(bid)
-  loading.value = false
 })
 
 const onRefresh = async () => {
   refreshing.value = true
-  await wordsStore.loadWords(bid)
+  await wordsStore.loadWords(bid.value)
   refreshing.value = false
 }
 
@@ -274,6 +296,8 @@ const toggleMode = (target: Exclude<ViewMode, 'none'>) => {
 const isAllSelected = computed(() => {
   return wordsStore.words.length > 0 && checkedIds.value.length === wordsStore.words.length
 })
+
+const isSelectMode = computed(() => mode.value === 'select')
 
 const isIndeterminate = computed(() => {
   return checkedIds.value.length > 0 && checkedIds.value.length < wordsStore.words.length
@@ -322,12 +346,12 @@ const onConfirmDeleteWord = async () => {
     showDeleteDialog.value = false
     pendingDeleteWord = null
   }
-  await wordsStore.loadWords(bid)
+  await wordsStore.loadWords(bid.value)
 }
 
 const openWordCard = (w: Word) => {
   wordsStore.setCurrentWord(w)
-  router.push(`/books/${bid}/words/${w.id}`)
+  router.push(`/books/${bid.value}/words/${w.id}`)
 }
 
 const { openMenu, AppMenu } = useAppMenu({
@@ -389,6 +413,7 @@ const { openMenu, AppMenu } = useAppMenu({
 <style scoped>
 .words-manage-view {
   min-height: 100vh;
+  padding-top: var(--van-nav-bar-height);
   background-color: var(--van-background);
 }
 

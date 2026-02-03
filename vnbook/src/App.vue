@@ -8,7 +8,9 @@ const route = useRoute()
   <div class="app-root">
     <router-view v-slot="{ Component }">
       <transition :name="(route.meta?.transition as string) || 'slide'" mode="out-in">
-        <component :is="Component" />
+        <keep-alive :include="['BooksList', 'WordsList', 'UsersManage']">
+          <component :is="Component" />
+        </keep-alive>
       </transition>
     </router-view>
   </div>
