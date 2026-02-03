@@ -1,10 +1,6 @@
 <?php
 require_once 'dbcfg.php';
 
-// CORS headers for Vite proxy compatibility
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: text/html; charset=utf-8');
 
 // Enable error reporting for debugging
@@ -36,7 +32,7 @@ if (extension_loaded('mysqli')) {
 // 5. Test PDO support
 if (extension_loaded('pdo')) {
     echo "<p>📦 <b>PDO Extension:</b> <span style='color:green;'>Loaded</span></p>";
-    
+
     // Check for PDO MySQL driver
     $pdo_drivers = PDO::getAvailableDrivers();
     if (in_array('mysql', $pdo_drivers)) {
@@ -64,17 +60,17 @@ try {
 
     // Step 2: Check if target database exists
     $dbCheckResult = $conn->query("SHOW DATABASES LIKE '" . C_VNB_DB_NAME . "'");
-    
+
     if ($dbCheckResult && $dbCheckResult->num_rows > 0) {
         // Database exists, select it and view tables
         $conn->select_db(C_VNB_DB_NAME);
         echo "<p>✅ <b>Database:</b> <span style='color:green;'>" . C_VNB_DB_NAME . " exists</span></p>";
-        
+
         // Query table count
         $result = $conn->query("SHOW TABLES");
         if ($result) {
             echo "<p>📊 <b>Table Count:</b> " . $result->num_rows . "</p>";
-            
+
             if ($result->num_rows > 0) {
                 echo "<p style='color:gray; font-size:0.9em;'>Table List: ";
                 $tables = [];
@@ -91,11 +87,10 @@ try {
     }
 
     $conn->close();
-
 } catch (Exception $e) {
     $errorMsg = $e->getMessage();
     echo "<p>❌ <b>Connection Failed:</b> <span style='color:red;'>" . $errorMsg . "</span></p>";
-    
+
     // Show different tips based on error message
     if (strpos($errorMsg, 'Access denied') !== false) {
         // Authentication failed

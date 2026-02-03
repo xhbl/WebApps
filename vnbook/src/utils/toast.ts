@@ -15,8 +15,12 @@ class SmartToast {
    * 如果请求在 200ms 内完成，则不会显示
    */
   showLoading(message = '') {
+    this.hideLoading()
+
     // 延迟 200ms 后才显示 loading
-    this.loadingTimer = window.setTimeout(() => {
+    const timerId = window.setTimeout(() => {
+      if (this.loadingTimer !== timerId) return
+
       showToast({
         type: 'loading',
         message, // 空字符串则只显示 spinner
@@ -25,6 +29,7 @@ class SmartToast {
         className: 'custom-toast',
       })
     }, this.DEBOUNCE_DELAY)
+    this.loadingTimer = timerId
   }
 
   /**

@@ -5,8 +5,8 @@ import type { ApiResponse } from '@/types'
 
 // 创建 axios 实例
 const request: AxiosInstance = axios.create({
-  baseURL: '/api',
-  timeout: 30000,
+  baseURL: './api',
+  timeout: 20000,
   withCredentials: true, // 携带 Cookie
   headers: {
     'Content-Type': 'application/json',
@@ -65,8 +65,8 @@ request.interceptors.response.use(
           // 清除会话信息
           localStorage.removeItem('sessionId')
           localStorage.removeItem('userInfo')
-          // 跳转到登录页
-          window.location.href = '/login'
+          // 跳转到登录页（使用相对路径，支持子目录部署）
+          window.location.href = '#/login'
           break
         case 403:
           message = '没有权限'

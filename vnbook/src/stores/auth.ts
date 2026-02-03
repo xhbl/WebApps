@@ -29,6 +29,13 @@ export const useAuthStore = defineStore('auth', () => {
   const userDisplayName = computed(() => {
     return userInfo.value?.dname?.trim() || userInfo.value?.uname || ''
   })
+  /**
+   * 获取当前用户的默认主页路由
+   */
+  const homeRoute = computed(() => {
+    if (isAdmin.value) return { name: 'UsersManage' }
+    return { name: 'BooksList' }
+  })
 
   // Actions
   /**
@@ -96,21 +103,12 @@ export const useAuthStore = defineStore('auth', () => {
   const logout = async () => {
     try {
       await authApi.logout()
-      toast.showSuccess('已退出登录')
-      // 延迟跳转，确保 Toast 显示后再跳转
-      setTimeout(() => {
-        clearAuth(false) // 仅清除存储，保留内存状态防止 UI 闪烁
-        window.location.href = '/login'
-      }, 300)
-      return true
     } catch (error) {
       console.error('Logout failed:', error)
-      clearAuth(false)
-      // 即使出错也要跳转到登录页
-      setTimeout(() => {
-        window.location.href = '/login'
-      }, 500)
-      return false
+    } finally {
+      // 无论 API 是否成功，都必须彻底清除本地和内存中的认证状态
+      // 这样 isLoggedIn 才会变为 false，路由守卫才会放行
+      clearAuth(true)
     }
   }
 
@@ -182,6 +180,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoggedIn,
     isAdmin,
     userDisplayName,
+    homeRoute,
     login,
     checkLogin,
     logout,

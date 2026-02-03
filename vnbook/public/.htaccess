@@ -1,0 +1,25 @@
+# ============================================
+# Apache 配置文件 - vnbook 项目优化
+# ============================================
+
+# 1. Gzip 压缩配置
+# 作用：压缩文本资源以减少传输体积，提高加载速度
+# 支持的文件类型：HTML、CSS、JavaScript、JSON
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json
+</IfModule>
+
+# 2. 缓存控制配置
+# 作用：HTML 文件禁用缓存，确保用户总是获取最新版本
+# 原因：SPA 应用需要始终加载最新的 index.html，以获取最新的资源哈希
+# 说明：只有在 mod_headers 模块开启时才执行
+<IfModule mod_headers.c>
+    <FilesMatch "\.(html)$">
+        # 禁用浏览器缓存
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        # 旧版浏览器兼容
+        Header set Pragma "no-cache"
+        # 标记为已过期
+        Header set Expires 0
+    </FilesMatch>
+</IfModule>

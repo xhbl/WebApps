@@ -1,47 +1,102 @@
+################################################################################
+# Docker Compose 配置文件 - vnbook 项目
+# ===============================================================================
+# 用于本地开发环境的容器编排
+# 启动命令：docker-compose up -d
+# 停止命令：docker-compose down
+################################################################################
+
 services:
-  # 1. PHP + Apache 服务
+  ################################################################################
+  # 1. PHP + Apache 服务 - 后端 API 服务器
+  ################################################################################
   php-api:
+    # 使用本地 Dockerfile 构建镜像
     build: ./.docker
+    # 容器退出后自动重启
     restart: always
+    # 容器名称（方便通过 docker ps 识别）
     container_name: vnbook-php
+
+    # 卷映射（将主机路径挂载到容器内）
     volumes:
-      # 映射你的 API 代码目录
+      # 映射 API 代码目录
+      # ./public/api -> 主机的 API 文件夹
+      # /var/www/html -> 容器内的 Apache 根目录
       - ./public/api:/var/www/html
-      # 映射 Xdebug 配置
+      # 映射 Xdebug 调试配置（用于 VS Code 远程调试）
       - ./.docker/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+
+    # 端口映射
+    # 8080:80 -> 主机 8080 端口 -> 容器 Apache 80 端口
+    # 访问地址：http://localhost:8080
     ports:
       - '8080:80'
+
+    # 允许从容器内访问主机
+    # 用于 Xdebug 将调试信息回传到主机 IDE
     extra_hosts:
       - 'host.docker.internal:host-gateway'
+
+    # 使用自定义网络，方便容器间通信
     networks:
       - vnbook-network
 
-  # 2. MariaDB 数据库 (虽然你用 NAS，但本地留一个做开发测试非常方便)
+  ################################################################################
+  # 2. MariaDB 数据库 - 本地开发数据库
+  ################################################################################
+  # 说明：虽然生产环境数据存储在 NAS 上，但本地留一个容器便于开发测试
   db:
+    # 使用官方 MariaDB 10 镜像
     image: mariadb:10
     restart: always
     container_name: vnbook-db
+
+    # 环境变量配置
     environment:
+      # Root 用户密码（开发环境设置，生产环境请使用强密码）
       MYSQL_ROOT_PASSWORD: _dbpassword
+      # 自动创建的初始数据库名称
       MYSQL_DATABASE: vnbook
+
     networks:
       - vnbook-network
 
-  # 3. phpMyAdmin 数据库管理
+  ################################################################################
+  # 3. phpMyAdmin - 数据库 Web 管理工具
+  ################################################################################
+  # 用途：方便通过浏览器管理数据库
   phpmyadmin:
+    # 使用最新的 phpMyAdmin 镜像
     image: phpmyadmin:latest
     restart: always
     container_name: vnbook-pma
+
+    # 容器依赖关系
     links:
       - db
+
+    # 端口映射
+    # 8081:80 -> 主机 8081 端口 -> 容器 Apache 80 端口
+    # 访问地址：http://localhost:8081
     ports:
       - '8081:80'
+
+    # 环境变量配置
     environment:
+      # 连接的数据库服务名称
       PMA_HOST: db
-      PMA_ARBITRARY: 1 # 允许登录其他服务器（如你的 NAS）
+      # 允许登录任意服务器（包括 NAS 上的数据库）
+      PMA_ARBITRARY: 1
+
     networks:
       - vnbook-network
 
+################################################################################
+# 网络配置
+################################################################################
+# 创建自定义 Bridge 网络，使容器间可以通过服务名相互通信
+# 例如：PHP 容器可以通过 'db' 域名访问 MariaDB 容器
 networks:
   vnbook-network:
     driver: bridge

@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const routes: RouteRecordRaw[] = [
@@ -35,16 +35,12 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'Root',
-    redirect: () => {
-      // 这里不要直接用 authStore，因为可能还没初始化
-      // 路由守卫会处理重定向
-      return '/books'
-    },
+    redirect: { name: 'Login' },
   },
 ]
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHashHistory(),
   routes,
 })
 
@@ -70,23 +66,11 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // 已登录用户访问登录页，重定向
+  // 已登录用户访问登录页，重定向回主页
+  // 注意：退出登录(Logout)时，必须先 await authStore.logout() 确保 isLoggedIn 为 false
+  // 否则跳转到 Login 会被此逻辑拦截并弹回
   if (to.name === 'Login' && authStore.isLoggedIn) {
-    if (authStore.isAdmin) {
-      next({ name: 'UsersManage' })
-    } else {
-      next({ name: 'BooksList' })
-    }
-    return
-  }
-
-  // 根路径重定向：管理员去用户管理，普通用户去单词本
-  if (to.name === 'Root' && authStore.isLoggedIn) {
-    if (authStore.isAdmin) {
-      next({ name: 'UsersManage' })
-    } else {
-      next({ name: 'BooksList' })
-    }
+    next(authStore.homeRoute)
     return
   }
 

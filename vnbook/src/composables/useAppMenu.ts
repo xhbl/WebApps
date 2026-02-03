@@ -1,7 +1,9 @@
 import { ref, computed, defineComponent, h } from 'vue'
+import { useRouter } from 'vue-router'
 import { showDialog, ActionSheet } from 'vant'
 import { useAuthStore } from '@/stores/auth'
 import UserModDialog from '@/components/UserModDialog.vue'
+import { toast } from '@/utils/toast'
 import type { MenuAction } from '@/types'
 
 export interface AppMenuItem {
@@ -21,6 +23,7 @@ export interface UseAppMenuOptions {
 }
 
 export function useAppMenu(options: UseAppMenuOptions = {}) {
+  const router = useRouter()
   const authStore = useAuthStore()
   const showActionSheet = ref(false)
   const openMenu = () => (showActionSheet.value = true)
@@ -87,7 +90,17 @@ export function useAppMenu(options: UseAppMenuOptions = {}) {
           showCancelButton: true,
         })
           .then(async () => {
-            await authStore.logout()
+            toast.showLoading('') // 仅显示转圈动画，视觉上更轻量
+            try {
+              await authStore.logout()
+              toast.showSuccess('已退出登录')
+            } catch (e) {
+              console.error(e)
+              toast.hideLoading()
+            } finally {
+              // 退出后跳转登录页。不带 redirect 参数，以便切换用户后默认进入主页
+              router.replace({ name: 'Login' })
+            }
           })
           .catch(() => {})
         break

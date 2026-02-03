@@ -177,8 +177,13 @@ const totalWords = computed(() => {
 
 onMounted(async () => {
   loading.value = true
-  await booksStore.loadBooks()
-  loading.value = false
+  try {
+    await booksStore.loadBooks()
+  } catch (error) {
+    console.error('Failed to load books:', error)
+  } finally {
+    loading.value = false
+  }
 })
 
 const onRefresh = async () => {
