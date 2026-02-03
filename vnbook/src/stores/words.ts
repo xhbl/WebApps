@@ -17,21 +17,31 @@ function defineWordsStore() {
    */
   const words = ref<Word[]>([])
   const currentWord = ref<Word | null>(null)
+  const searchKeyword = ref('')
   const savedSortMode = authStore.userInfo?.cfg?.wordsListSortMode
   const sortMode = ref<SortMode>(savedSortMode === 'alpha' ? 'alpha' : 'date')
 
   // Getters
   /**
+   * 过滤后的单词列表
+   */
+  const filteredWords = computed(() => {
+    if (!searchKeyword.value) return words.value
+    const k = searchKeyword.value.toLowerCase()
+    return words.value.filter((w) => w.word.toLowerCase().includes(k))
+  })
+
+  /**
    * 分组后的单词列表
    */
   const groupedWords = computed<GroupedWords[]>(() => {
-    if (words.value.length === 0) return []
+    if (filteredWords.value.length === 0) return []
 
     if (sortMode.value === 'date') {
       // 按日期分组
       const groups = new Map<string, Word[]>()
 
-      words.value.forEach((word) => {
+      filteredWords.value.forEach((word) => {
         const date = word.time_c?.split(' ')[0] || '' // 提取日期部分
         if (date && !groups.has(date)) {
           groups.set(date, [])
@@ -50,7 +60,7 @@ function defineWordsStore() {
       // 按字母分组
       const groups = new Map<string, Word[]>()
 
-      words.value.forEach((word) => {
+      filteredWords.value.forEach((word) => {
         const letter = word.word.charAt(0).toUpperCase()
         if (!groups.has(letter)) {
           groups.set(letter, [])
@@ -131,6 +141,13 @@ function defineWordsStore() {
       // 按字母顺序
       words.value.sort((a, b) => a.word.localeCompare(b.word))
     }
+  }
+
+  /**
+   * 设置搜索关键字
+   */
+  const setSearchKeyword = (k: string) => {
+    searchKeyword.value = k
   }
 
   /**
@@ -439,6 +456,7 @@ function defineWordsStore() {
   const clearWords = () => {
     words.value = []
     currentWord.value = null
+    searchKeyword.value = ''
   }
 
   return {
@@ -446,6 +464,8 @@ function defineWordsStore() {
     currentWord,
     sortMode,
     groupedWords,
+    searchKeyword,
+    filteredWords,
     loadWords,
     sortWords,
     toggleSortMode,
@@ -457,6 +477,7 @@ function defineWordsStore() {
     saveSentence,
     deleteSentence,
     setCurrentWord,
+    setSearchKeyword,
     findWordByName,
     clearWords,
   }

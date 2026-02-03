@@ -1,19 +1,40 @@
 <template>
   <div class="words-manage-view" @click="closeAllPopovers">
-    <van-nav-bar :title="pageTitle" fixed :placeholder="false" z-index="100">
-      <template #left>
-        <van-icon name="arrow-left" class="nav-bar-icon" @click="onClickLeft" />
-      </template>
-      <template #right>
-        <van-icon name="ellipsis" class="nav-bar-icon" @click="openMenu" />
-      </template>
-    </van-nav-bar>
+    <!-- 顶部区域：搜索栏 或 导航栏 -->
+    <div class="top-bar-container">
+      <van-search
+        v-if="isSearchActive"
+        ref="searchRef"
+        v-model="searchText"
+        show-action
+        placeholder="搜索单词"
+        shape="round"
+        class="fixed-search"
+        @update:model-value="onSearchUpdate"
+        @cancel="exitSearchMode"
+        @search="onSearchConfirm"
+      />
+      <van-nav-bar v-else :title="pageTitle" fixed :placeholder="false" z-index="100">
+        <template #left>
+          <van-icon name="arrow-left" class="nav-bar-icon" @click="onClickLeft" />
+        </template>
+        <template #right>
+          <van-icon
+            name="search"
+            class="nav-bar-icon"
+            style="margin-right: 12px"
+            @click="enterSearchMode"
+          />
+          <van-icon name="ellipsis" class="nav-bar-icon" @click="openMenu" />
+        </template>
+      </van-nav-bar>
+    </div>
 
     <div class="content">
       <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
         <div v-if="loading" class="loading">加载中...</div>
         <div v-else>
-          <div v-if="wordsStore.words.length > 0">
+          <div v-if="wordsStore.filteredWords.length > 0">
             <van-index-bar
               v-if="wordsStore.sortMode === 'alpha'"
               :index-list="indexList"
@@ -29,6 +50,7 @@
                     :mode="mode"
                     :show-popover="showWordPopover[w.id] ?? false"
                     :popover-placement="getWordPopoverPlacement(w)"
+                    :highlight="wordsStore.searchKeyword"
                     @update:show-popover="(val) => (showWordPopover[w.id] = val)"
                     @open-popover="onPopoverOpen(w.id)"
                     @action="onWordAction"
@@ -39,12 +61,13 @@
             </van-index-bar>
             <van-checkbox-group v-else v-model="checkedIds">
               <word-list-item
-                v-for="w in wordsStore.words"
+                v-for="w in wordsStore.filteredWords"
                 :key="w.id"
                 :word="w"
                 :mode="mode"
                 :show-popover="showWordPopover[w.id] ?? false"
                 :popover-placement="getWordPopoverPlacement(w)"
+                :highlight="wordsStore.searchKeyword"
                 @update:show-popover="(val) => (showWordPopover[w.id] = val)"
                 @open-popover="onPopoverOpen(w.id)"
                 @action="onWordAction"
@@ -52,7 +75,10 @@
               />
             </van-checkbox-group>
           </div>
-          <van-empty v-else description="暂无单词，点击下方➕新建" />
+          <van-empty
+            v-else
+            :description="wordsStore.searchKeyword ? '未找到相关单词' : '暂无单词，点击下方➕新建'"
+          />
         </div>
       </van-pull-refresh>
     </div>
@@ -152,7 +178,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { computed, ref, onActivated } from 'vue'
+import { computed, ref, onActivated, nextTick } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
@@ -164,6 +190,7 @@ import WordListItem from '@/components/WordListItem.vue'
 import type { Word } from '@/types'
 import { toast } from '@/utils/toast'
 import * as wordsApi from '@/api/words'
+import type { SearchInstance } from 'vant'
 
 const route = useRoute()
 const router = useRouter()
@@ -187,6 +214,9 @@ let pendingDeleteWord: Word | null = null
 
 const scrollTop = ref(0)
 const currentBid = ref<number | null>(null)
+const searchText = ref('')
+const isSearchActive = ref(false)
+const searchRef = ref<SearchInstance | null>(null)
 
 onBeforeRouteLeave((to, from, next) => {
   scrollTop.value = window.scrollY
@@ -247,6 +277,8 @@ onActivated(async () => {
     if (mode.value === 'select') {
       mode.value = previousMode.value
     }
+    // 切换单词本时重置搜索状态
+    isSearchActive.value = false
     checkedIds.value = []
 
     loading.value = true
@@ -283,6 +315,23 @@ const onClickLeft = () => {
 const openAddWord = () => {
   showWordNew.value = true
 }
+
+const enterSearchMode = () => {
+  isSearchActive.value = true
+  // 保持原有搜索词，方便用户继续搜索，如果需要清空可在此处处理
+  window.scrollTo(0, 0)
+  nextTick(() => searchRef.value?.focus())
+}
+
+const exitSearchMode = () => {
+  isSearchActive.value = false
+  searchText.value = ''
+  wordsStore.setSearchKeyword('')
+}
+
+const onSearchUpdate = (val: string) => wordsStore.setSearchKeyword(val)
+
+const onSearchConfirm = () => searchRef.value?.blur()
 
 const toggleMode = (target: Exclude<ViewMode, 'none'>) => {
   if (target === 'select') {
@@ -439,6 +488,15 @@ const { openMenu, AppMenu } = useAppMenu({
   padding: 20px;
   text-align: center;
   color: var(--van-text-color-3);
+}
+
+/* 顶部搜索栏固定样式 */
+.fixed-search {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
 }
 
 /* 图标点击样式 */

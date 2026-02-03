@@ -29,7 +29,11 @@
     </template>
 
     <template #title>
-      <span class="word-text">{{ word.word }}</span>
+      <span class="word-text">
+        <template v-for="(seg, i) in wordSegments" :key="i">
+          <span :class="{ highlight: seg.isMatch }">{{ seg.text }}</span>
+        </template>
+      </span>
       <span v-if="word.phon" class="word-phon">/{{ word.phon }}/</span>
     </template>
   </van-cell>
@@ -45,6 +49,7 @@ const props = defineProps<{
   mode: 'none' | 'edit' | 'audio' | 'select'
   showPopover: boolean
   popoverPlacement: PopoverPlacement
+  highlight?: string
 }>()
 
 const emit = defineEmits<{
@@ -67,6 +72,22 @@ const definition = computed(() => {
       return `${e.pos} ${zh}`
     })
     .join('; ')
+})
+
+const wordSegments = computed(() => {
+  if (!props.highlight) return [{ text: props.word.word, isMatch: false }]
+
+  const text = props.word.word
+  const keyword = props.highlight
+  const regex = new RegExp(`(${keyword})`, 'gi')
+  const parts = text.split(regex)
+
+  return parts
+    .filter((part) => part)
+    .map((part) => ({
+      text: part,
+      isMatch: part.toLowerCase() === keyword.toLowerCase(),
+    }))
 })
 
 const playAudio = () => {
@@ -122,5 +143,9 @@ const onSelect = (action: { key: string }) => {
   margin-left: 1em;
   font-size: var(--van-font-size-md);
   color: var(--van-gray-6);
+}
+
+.highlight {
+  color: var(--van-primary-color);
 }
 </style>
