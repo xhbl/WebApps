@@ -25,12 +25,20 @@ function getWords($bid, $wid = null)
     $uid = $_SESSION['user_id'];
 
     try {
-        // Get words for this book (only those mapped to this book)
-        $sql = "SELECT w.id, w.user_id, w.word, w.phon, w.time_c, m.book_id, m.id as map_id
-                FROM vnu_words w
-                LEFT JOIN vnu_mapbw m ON w.id = m.word_id AND m.book_id = ?
-                WHERE w.user_id = ? AND m.id IS NOT NULL";
-        $params = [$bid, $uid];
+        if ($bid == 0) {
+            // Fetch all words for the user (All Words view)
+            $sql = "SELECT w.id, w.user_id, w.word, w.phon, w.time_c
+                    FROM vnu_words w
+                    WHERE w.user_id = ?";
+            $params = [$uid];
+        } else {
+            // Get words for this book (only those mapped to this book)
+            $sql = "SELECT w.id, w.user_id, w.word, w.phon, w.time_c, m.book_id, m.id as map_id
+                    FROM vnu_words w
+                    LEFT JOIN vnu_mapbw m ON w.id = m.word_id AND m.book_id = ?
+                    WHERE w.user_id = ? AND m.id IS NOT NULL";
+            $params = [$bid, $uid];
+        }
 
         if ($wid) {
             $sql .= " AND w.id = ?";
@@ -327,20 +335,35 @@ function deleteWords($bid, $items)
         $db->beginTransaction();
 
         foreach ($items as $item) {
-            // Delete word-book mapping
-            $stmt = $db->prepare("DELETE FROM vnu_mapbw WHERE word_id = ? AND book_id = ? AND user_id = ?");
-            $stmt->execute([$item->id, $bid, $uid]);
+            if ($bid == 0) {
+                // In "All Words" mode, delete the word directly.
+                // ON DELETE CASCADE will remove mappings, explanations, sentences.
+                $stmt = $db->prepare("DELETE FROM vnu_words WHERE id = ? AND user_id = ?");
+                $stmt->execute([$item->id, $uid]);
+            } else {
+                // Specific book mode
 
-            // Check if word is in any other books
-            $stmt = $db->prepare("SELECT COUNT(*) as cnt FROM vnu_mapbw WHERE word_id = ?");
-            $stmt->execute([$item->id]);
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                // 1. Check if the word is associated with this book (sanity check)
+                $stmt = $db->prepare("SELECT id FROM vnu_mapbw WHERE word_id = ? AND book_id = ? AND user_id = ?");
+                $stmt->execute([$item->id, $bid, $uid]);
+                if (!$stmt->fetch()) {
+                    continue; // Not in this book, nothing to do
+                }
 
-            // If orphaned, delete word and related data
-            if ($result['cnt'] == 0) {
-                $db->exec("DELETE FROM vnu_sentences WHERE exp_id IN (SELECT id FROM vnu_explanations WHERE word_id = " . $item->id . ")");
-                $db->exec("DELETE FROM vnu_explanations WHERE word_id = " . $item->id);
-                $db->exec("DELETE FROM vnu_words WHERE id = " . $item->id);
+                // 2. Check total associations for this word
+                $stmt = $db->prepare("SELECT COUNT(*) FROM vnu_mapbw WHERE word_id = ?");
+                $stmt->execute([$item->id]);
+                $count = $stmt->fetchColumn();
+
+                if ($count <= 1) {
+                    // It is the only association (which is this book), so delete the word entirely
+                    $stmt = $db->prepare("DELETE FROM vnu_words WHERE id = ? AND user_id = ?");
+                    $stmt->execute([$item->id, $uid]);
+                } else {
+                    // It has other associations, so only delete the mapping for this book
+                    $stmt = $db->prepare("DELETE FROM vnu_mapbw WHERE word_id = ? AND book_id = ? AND user_id = ?");
+                    $stmt->execute([$item->id, $bid, $uid]);
+                }
             }
         }
 
@@ -371,11 +394,8 @@ function deleteExplanations($items)
                 throw new Exception("Unauthorized");
             }
 
-            // Delete sentences first
-            $db->exec("DELETE FROM vnu_sentences WHERE exp_id = " . $item->id);
-
-            // Delete explanation
-            $db->exec("DELETE FROM vnu_explanations WHERE id = " . $item->id);
+            // Database ON DELETE CASCADE handles sentences
+            $db->exec("DELETE FROM vnu_explanations WHERE id = " . (int)$item->id);
         }
 
         $db->commit();

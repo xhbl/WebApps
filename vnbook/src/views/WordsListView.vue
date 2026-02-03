@@ -101,7 +101,12 @@
           />
         </div>
         <div class="bottom-bar-center">
-          <van-icon name="plus" class="bottom-bar-icon large-icon" @click="openAddWord" />
+          <van-icon
+            v-if="bid > 0"
+            name="plus"
+            class="bottom-bar-icon large-icon"
+            @click="openAddWord"
+          />
         </div>
         <div class="bottom-bar-right">
           <van-icon
@@ -238,6 +243,12 @@ onActivated(async () => {
   const newBid = bid.value
   if (currentBid.value !== newBid) {
     currentBid.value = newBid
+
+    if (mode.value === 'select') {
+      mode.value = previousMode.value
+    }
+    checkedIds.value = []
+
     loading.value = true
     wordsStore.clearWords()
     window.scrollTo(0, 0)
@@ -248,6 +259,8 @@ onActivated(async () => {
     if (newBid > 0) {
       const b = booksStore.books.find((b) => b.id === newBid)
       if (b) booksStore.setCurrentBook(b)
+    } else {
+      booksStore.setCurrentBook(null)
     }
     await wordsStore.loadWords(newBid)
     loading.value = false
