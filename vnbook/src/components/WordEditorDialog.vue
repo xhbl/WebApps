@@ -41,10 +41,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, nextTick } from 'vue'
 import { useWordsStore } from '@/stores/words'
 import type { Word } from '@/types'
 import { toast } from '@/utils/toast'
+import { useDialogDraft } from '@/composables/useDialogDraft'
 
 const props = defineProps<{
   modelValue: boolean
@@ -72,6 +73,32 @@ const formData = ref({
   definition: '',
 })
 
+// --- 状态持久化逻辑 (使用 Composable) ---
+const { isRestoring, clearDraft } = useDialogDraft({
+  storageKey: 'vnb_word_editor_state',
+  show,
+  watchSource: [formData, step], // 监听表单数据和步骤变化
+  getState: () => ({
+    step: step.value,
+    formData: formData.value,
+    editingWord: props.word,
+    bid: props.bid,
+  }),
+  restoreState: async (state: {
+    step: 'input' | 'detail'
+    formData: typeof formData.value
+    editingWord?: typeof props.word
+    bid?: number
+  }) => {
+    if (state.editingWord) emit('update:word', state.editingWord)
+    // show.value 已由 useDialogDraft 恢复
+
+    await nextTick()
+    step.value = state.step
+    formData.value = state.formData
+  },
+})
+
 // 模拟字典查询
 const queryDictionary = async (text: string) => {
   // TODO: 实现真实的字典查询逻辑
@@ -87,6 +114,8 @@ const queryDictionary = async (text: string) => {
 
 // 初始化表单逻辑提取
 const initForm = () => {
+  if (isRestoring.value) return // 如果正在恢复状态，跳过初始化
+
   if (props.word) {
     // 编辑模式
     step.value = 'detail'
@@ -171,10 +200,14 @@ const onSubmit = async () => {
   const saved = await wordsStore.saveWord(w, props.bid)
   if (saved) {
     show.value = false
+    clearDraft() // 保存成功后清除草稿
   }
 }
 
-const onCancel = () => (show.value = false)
+const onCancel = () => {
+  show.value = false
+  clearDraft() // 取消时清除草稿
+}
 </script>
 
 <style scoped>

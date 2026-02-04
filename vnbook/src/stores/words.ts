@@ -144,7 +144,8 @@ function defineWordsStore() {
       // bid=0 means search globally
       const response = await wordsApi.getWords(0, wordText)
       if (response.data.success === true && response.data.word && response.data.word.length > 0) {
-        const w = response.data.word[0] as any
+        const w = response.data.word[0]
+        if (!w) return null
         // Parse explanations if needed, similar to loadWords
         const word: Word = {
           id: Number(w.id),
@@ -153,7 +154,7 @@ function defineWordsStore() {
           time_c: w.time_c,
           book_count: Number(w.book_count || 0),
           _new: w._new,
-          explanations: (w.explanations || []).map((e: any) => ({
+          explanations: (w.explanations || []).map((e) => ({
             id: Number(e.id),
             word_id: Number(e.word_id),
             pos: e.pos,
