@@ -224,16 +224,24 @@ function defineWordsStore() {
           return savedWord
         }
 
-        if (word._new === 1) {
-          // 新增
-          words.value.push(savedWord)
-          sortWords()
-          toast.showSuccess('添加成功')
+        // 处理新增 (_new=1) 或 关联已有单词 (_new=2)
+        if (word._new === 1 || word._new === 2) {
+          // 检查列表里是否已存在（防止重复添加，例如在“全部单词”视图下）
+          const existingIndex = words.value.findIndex((w) => w.id === savedWord.id)
+          if (existingIndex === -1) {
+            words.value.push(savedWord)
+            sortWords()
+            toast.showSuccess('添加成功')
 
-          // 更新单词本数量
-          const booksStore = useBooksStore()
-          if (booksStore.currentBook) {
-            booksStore.updateBookNums(booksStore.currentBook.id, booksStore.currentBook.nums + 1)
+            // 更新单词本数量
+            const booksStore = useBooksStore()
+            if (booksStore.currentBook) {
+              booksStore.updateBookNums(booksStore.currentBook.id, booksStore.currentBook.nums + 1)
+            }
+          } else {
+            // 如果列表里已有（例如在“全部单词”视图），则更新信息
+            words.value[existingIndex] = savedWord
+            toast.showSuccess('更新成功')
           }
         } else {
           // 更新

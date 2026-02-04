@@ -207,11 +207,13 @@ function updateWords($bid, $items)
             }
 
             // Fetch full word with explanations
-            $stmt = $db->prepare("SELECT * FROM vnu_words WHERE id = ? AND user_id = ?");
+            $stmt = $db->prepare("SELECT *, 
+                (SELECT COUNT(*) FROM vnu_mapbw m WHERE m.word_id = vnu_words.id) as book_count 
+                FROM vnu_words WHERE id = ? AND user_id = ?");
             $stmt->execute([$item->id, $uid]);
             $word = $stmt->fetch(PDO::FETCH_ASSOC);
             $word['explanations'] = getExplanations($item->id);
-            $word['_new'] = 0;
+            $word['_new'] = isset($item->_new) ? $item->_new : 0;
 
             $out[] = (object)$word;
         }

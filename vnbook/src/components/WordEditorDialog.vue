@@ -203,9 +203,13 @@ const onSubmit = async () => {
   // 处理单词已存在的情况 (_new === 2)
   if (saved && saved._new === 2) {
     try {
+      const message =
+        (saved.book_count || 0) > 0
+          ? `单词"${saved.word}"已存在于其他单词本中，要加入此单词本吗？`
+          : `单词"${saved.word}"是一个未入本单词，要加入此单词本吗？`
       await showDialog({
         title: '单词已存在',
-        message: `单词"${saved.word}"已存在于其他单词本中，要加入此单词本吗？`,
+        message,
       })
       // 用户确认后，再次调用 saveWord（此时传入的对象 _new 为 2，后端会执行关联操作）
       const retrySaved = await wordsStore.saveWord(saved, props.bid)
