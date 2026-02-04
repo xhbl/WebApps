@@ -4,11 +4,12 @@ import type { Word, Explanation, Sentence, ApiResponse } from '@/types'
 /**
  * 获取单词列表（包含释义和例句）
  */
-export const getWords = (bookId: number) => {
+export const getWords = (bookId: number, word?: string) => {
   return request.get<ApiResponse>('/words.php', {
     params: {
       bid: bookId,
       req: 'w',
+      word,
     },
   })
 }

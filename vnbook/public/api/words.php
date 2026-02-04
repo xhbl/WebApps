@@ -19,7 +19,7 @@ require_once 'login.php';
 /**
  * Retrieve words for a book with nested explanations
  */
-function getWords($bid, $wid = null)
+function getWords($bid, $wid = null, $word = null)
 {
     $db = DB::vnb();
     $uid = $_SESSION['user_id'];
@@ -44,6 +44,11 @@ function getWords($bid, $wid = null)
         if ($wid) {
             $sql .= " AND w.id = ?";
             $params[] = $wid;
+        }
+
+        if ($word) {
+            $sql .= " AND w.word = ?";
+            $params[] = $word;
         }
 
         $sql .= " ORDER BY w.time_c DESC";
@@ -437,6 +442,7 @@ try {
     $wid = $_GET["wid"] ?? null;
     $eid = $_GET["eid"] ?? null;
     $sid = $_GET["sid"] ?? null;
+    $word = $_GET["word"] ?? null;
 
     // Auto-detect request type if not specified
     if (!$req) {
@@ -448,7 +454,7 @@ try {
     if ($method == 'GET') {
         // Read operations
         if ($req == 'w') {
-            $rows = getWords($bid, $wid);
+            $rows = getWords($bid, $wid, $word);
             if ($rows !== false) {
                 $response = ['success' => true, 'word' => $rows];
             } else {

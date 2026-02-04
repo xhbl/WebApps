@@ -137,6 +137,41 @@ function defineWordsStore() {
   }
 
   /**
+   * 检查单词是否存在（全局）
+   */
+  const checkWordExistence = async (wordText: string) => {
+    try {
+      // bid=0 means search globally
+      const response = await wordsApi.getWords(0, wordText)
+      if (response.data.success === true && response.data.word && response.data.word.length > 0) {
+        const w = response.data.word[0] as any
+        // Parse explanations if needed, similar to loadWords
+        const word: Word = {
+          id: Number(w.id),
+          word: w.word,
+          phon: w.phon,
+          time_c: w.time_c,
+          book_count: Number(w.book_count || 0),
+          _new: w._new,
+          explanations: (w.explanations || []).map((e: any) => ({
+            id: Number(e.id),
+            word_id: Number(e.word_id),
+            pos: e.pos,
+            exp: typeof e.exp === 'string' ? JSON.parse(e.exp) : e.exp,
+            time_c: e.time_c,
+            _new: e._new,
+          })),
+        }
+        return word
+      }
+      return null
+    } catch (error) {
+      console.error('Check word existence failed:', error)
+      return null
+    }
+  }
+
+  /**
    * 排序单词
    */
   const sortWords = () => {
@@ -171,11 +206,11 @@ function defineWordsStore() {
     authStore.updateUserConfig({ wordsListSortMode: sortMode.value })
     sortWords()
   }
-  const saveWord = async (word: Word) => {
+  const saveWord = async (word: Word, bookId?: number) => {
     try {
       // 由 API 层处理 bid 传递
       const booksStore = useBooksStore()
-      const book_id = booksStore.currentBook?.id
+      const book_id = bookId ?? booksStore.currentBook?.id
       const response = await wordsApi.saveWord({ ...word, book_id })
       if (response.data.success === true && response.data.word && response.data.word[0]) {
         const savedWord = response.data.word[0]
@@ -190,7 +225,7 @@ function defineWordsStore() {
 
           if (confirmed && savedWord) {
             // 第二次提交，只添加映射关系
-            return await saveWord(savedWord)
+            return await saveWord(savedWord, bookId)
           }
           return null
         }
@@ -497,6 +532,7 @@ function defineWordsStore() {
     findWordByName,
     clearWords,
     toggleOrphanFilter,
+    checkWordExistence,
   }
 }
 

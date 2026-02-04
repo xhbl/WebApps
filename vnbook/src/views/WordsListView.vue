@@ -174,7 +174,12 @@
     </div>
 
     <AppMenu />
-    <word-new-dialog v-model="showWordNew" :bid="bid" />
+    <word-editor-dialog
+      v-model="showWordEditor"
+      :bid="bid"
+      :word="editingWord"
+      @update:word="editingWord = $event"
+    />
   </div>
 </template>
 
@@ -193,7 +198,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useWordsStore, type WordsStore } from '@/stores/words'
 import { useAppMenu } from '@/composables/useAppMenu'
 import { usePopoverMap } from '@/composables/usePopoverMap'
-import WordNewDialog from '@/components/WordNewDialog.vue'
+import WordEditorDialog from '@/components/WordEditorDialog.vue'
 import WordListItem from '@/components/WordListItem.vue'
 import type { Word } from '@/types'
 import { toast } from '@/utils/toast'
@@ -207,7 +212,8 @@ const authStore = useAuthStore()
 const wordsStore: WordsStore = useWordsStore()
 
 const bid = computed(() => Number(route.params.bid))
-const showWordNew = ref(false)
+const showWordEditor = ref(false)
+const editingWord = ref<Word | null>(null)
 const refreshing = ref(false)
 const loading = ref(true)
 type ViewMode = 'none' | 'edit' | 'audio' | 'select'
@@ -246,7 +252,8 @@ const deleteActionText = computed(() => (bid.value === 0 ? '删除' : '移除'))
 const onWordAction = async (action: { key: string }, w: Word) => {
   showWordPopover.value[w.id] = false
   if (action.key === 'edit') {
-    openWordCard(w)
+    editingWord.value = w
+    showWordEditor.value = true
   } else if (action.key === 'review') {
     try {
       const res = await wordsApi.saveWord({ ...w, book_id: -1, _new: 1 })
@@ -323,7 +330,8 @@ const onClickLeft = () => {
 }
 
 const openAddWord = () => {
-  showWordNew.value = true
+  editingWord.value = null
+  showWordEditor.value = true
 }
 
 const enterSearchMode = () => {
