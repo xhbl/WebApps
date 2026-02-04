@@ -46,6 +46,7 @@ import { useWordsStore } from '@/stores/words'
 import type { Word } from '@/types'
 import { toast } from '@/utils/toast'
 import { useDialogDraft } from '@/composables/useDialogDraft'
+import { showDialog } from 'vant'
 
 const props = defineProps<{
   modelValue: boolean
@@ -198,6 +199,26 @@ const onSubmit = async () => {
   }
 
   const saved = await wordsStore.saveWord(w, props.bid)
+
+  // 处理单词已存在的情况 (_new === 2)
+  if (saved && saved._new === 2) {
+    try {
+      await showDialog({
+        title: '单词已存在',
+        message: `单词"${saved.word}"已存在于其他单词本中，要加入此单词本吗？`,
+      })
+      // 用户确认后，再次调用 saveWord（此时传入的对象 _new 为 2，后端会执行关联操作）
+      const retrySaved = await wordsStore.saveWord(saved, props.bid)
+      if (retrySaved) {
+        show.value = false
+        clearDraft()
+      }
+    } catch {
+      // 用户取消，不做操作
+    }
+    return
+  }
+
   if (saved) {
     show.value = false
     clearDraft() // 保存成功后清除草稿

@@ -5,7 +5,6 @@ import { ref, computed } from 'vue'
 import * as wordsApi from '@/api/words'
 import type { Word, Explanation, Sentence, SortMode, GroupedWords } from '@/types'
 import { toast } from '@/utils/toast'
-import { showDialog } from 'vant'
 import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
 
@@ -213,22 +212,16 @@ function defineWordsStore() {
       const booksStore = useBooksStore()
       const book_id = bookId ?? booksStore.currentBook?.id
       const response = await wordsApi.saveWord({ ...word, book_id })
+      if (!response.data.success) {
+        throw new Error(response.data.message || '保存失败')
+      }
       if (response.data.success === true && response.data.word && response.data.word[0]) {
         const savedWord = response.data.word[0]
 
-        // 检查是否需要二次确认
+        // 如果后端返回 _new=2，说明单词已存在，需要前端确认
+        // 直接返回该对象，由 UI 层处理确认逻辑
         if (savedWord?._new === 2) {
-          // 单词已存在于其他单词本中
-          const confirmed = await showDialog({
-            title: '单词已存在',
-            message: `单词"${savedWord.word}"已存在于其他单词本中，要加入此单词本吗？`,
-          })
-
-          if (confirmed && savedWord) {
-            // 第二次提交，只添加映射关系
-            return await saveWord(savedWord, bookId)
-          }
-          return null
+          return savedWord
         }
 
         if (word._new === 1) {
@@ -258,6 +251,7 @@ function defineWordsStore() {
       return null
     } catch (error) {
       console.error('Save word failed:', error)
+      toast.showFail('保存失败')
       return null
     }
   }
@@ -267,14 +261,9 @@ function defineWordsStore() {
    */
   const deleteWords = async (targetWords: Word[], bookId: number) => {
     try {
-      // 直接调用 API，确保支持批量删除和传递 bookId
-      const response = await fetch(`/api/words.php?req=w&bid=${bookId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(targetWords),
-      })
-      const res = await response.json()
-      if (!res.success) throw new Error(res.message)
+      // 使用封装的 API 调用，自动处理 baseURL 和 headers
+      const response = await wordsApi.deleteWords(bookId, targetWords)
+      if (!response.data.success) throw new Error(response.data.message)
 
       // 从列表中移除
       const targetIds = new Set(targetWords.map((w) => w.id))
@@ -297,6 +286,8 @@ function defineWordsStore() {
       return true
     } catch (error) {
       console.error('Delete words failed:', error)
+      const isAllWords = bookId === 0
+      toast.showFail(isAllWords ? '删除失败' : '移除失败')
       return false
     }
   }
@@ -377,13 +368,6 @@ function defineWordsStore() {
    */
   const deleteExplanation = async (explanation: Explanation) => {
     try {
-      const confirmed = await showDialog({
-        title: '确认删除',
-        message: '确定要删除这条释义吗？',
-      })
-
-      if (!confirmed) return false
-
       await wordsApi.deleteExplanation(explanation)
 
       // 从当前单词的释义列表中移除
@@ -449,13 +433,6 @@ function defineWordsStore() {
    */
   const deleteSentence = async (sentence: Sentence, expId: number) => {
     try {
-      const confirmed = await showDialog({
-        title: '确认删除',
-        message: '确定要删除这条例句吗？',
-      })
-
-      if (!confirmed) return false
-
       await wordsApi.deleteSentence(sentence)
 
       // 从释义的例句列表中移除

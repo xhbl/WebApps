@@ -40,7 +40,6 @@ declare module 'vue' {
     VanSwipeItem: typeof import('vant/es')['SwipeItem']
     WordEditorDialog: typeof import('./src/components/WordEditorDialog.vue')['default']
     WordListItem: typeof import('./src/components/WordListItem.vue')['default']
-    WordNewDialog: typeof import('./src/components/WordNewDialog.vue')['default']
     WordPhonDialog: typeof import('./src/components/WordPhonDialog.vue')['default']
   }
 }

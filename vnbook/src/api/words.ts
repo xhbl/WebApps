@@ -34,6 +34,16 @@ export const deleteWord = (word: Word) => {
 }
 
 /**
+ * 批量删除单词
+ */
+export const deleteWords = (bookId: number, words: Word[]) => {
+  return request.delete<ApiResponse>('/words.php', {
+    data: words,
+    params: { req: 'w', bid: bookId },
+  })
+}
+
+/**
  * 更新单词音标
  */
 export const updateWordPhon = (wordId: number, phon: string) => {
