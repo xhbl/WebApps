@@ -51,7 +51,8 @@ services:
     image: mariadb:10
     restart: always
     container_name: vnbook-db
-
+    ports:
+      - '3306:3306'
     # 环境变量配置
     environment:
       # Root 用户密码（开发环境设置，生产环境请使用强密码）
