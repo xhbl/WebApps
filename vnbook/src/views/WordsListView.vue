@@ -51,6 +51,7 @@
                     :show-popover="showWordPopover[w.id] ?? false"
                     :popover-placement="getWordPopoverPlacement(w)"
                     :highlight="wordsStore.searchKeyword"
+                    :delete-text="deleteActionText"
                     @update:show-popover="(val) => (showWordPopover[w.id] = val)"
                     @open-popover="onPopoverOpen(w.id)"
                     @action="onWordAction"
@@ -68,6 +69,7 @@
                 :show-popover="showWordPopover[w.id] ?? false"
                 :popover-placement="getWordPopoverPlacement(w)"
                 :highlight="wordsStore.searchKeyword"
+                :delete-text="deleteActionText"
                 @update:show-popover="(val) => (showWordPopover[w.id] = val)"
                 @open-popover="onPopoverOpen(w.id)"
                 @action="onWordAction"
@@ -77,7 +79,15 @@
           </div>
           <van-empty
             v-else
-            :description="wordsStore.searchKeyword ? '未找到相关单词' : '暂无单词，点击下方➕新建'"
+            :description="
+              wordsStore.searchKeyword
+                ? '未找到相关单词'
+                : wordsStore.orphanFilter
+                  ? '暂无未入本单词'
+                  : bid <= 0
+                    ? '暂无单词'
+                    : '暂无单词，点击下方➕新建'
+            "
           />
         </div>
       </van-pull-refresh>
@@ -101,9 +111,13 @@
             @click="onBatchBookmark"
           />
           <van-icon
-            name="delete-o"
+            :name="bid === 0 ? 'delete-o' : 'failure'"
             class="bottom-bar-icon"
-            :class="{ disabled: checkedIds.length === 0, 'danger-icon': checkedIds.length > 0 }"
+            :class="{
+              disabled: checkedIds.length === 0,
+              'danger-icon': checkedIds.length > 0 && bid === 0,
+              'warning-icon': checkedIds.length > 0 && bid !== 0,
+            }"
             @click="onBatchDelete"
           />
         </div>
@@ -133,6 +147,14 @@
             class="bottom-bar-icon large-icon"
             @click="openAddWord"
           />
+          <div
+            v-else-if="bid === 0"
+            class="orphan-toggle-btn"
+            :class="{ active: wordsStore.orphanFilter }"
+            @click="wordsStore.toggleOrphanFilter"
+          >
+            <van-icon name="failure" />
+          </div>
         </div>
         <div class="bottom-bar-right">
           <van-icon
@@ -153,21 +175,6 @@
 
     <AppMenu />
     <word-new-dialog v-model="showWordNew" :bid="bid" />
-    <van-dialog
-      v-model:show="showDeleteDialog"
-      :title="deleteDialogTitle"
-      show-cancel-button
-      confirm-button-text="删除"
-      confirm-button-color="var(--van-danger-color)"
-      cancel-button-text="取消"
-      @confirm="onConfirmDeleteWord"
-    >
-      <div class="custom-dialog-container">
-        <div class="delete-message">
-          {{ deleteDialogMessage }}
-        </div>
-      </div>
-    </van-dialog>
   </div>
 </template>
 
@@ -180,6 +187,7 @@ export default {
 <script setup lang="ts">
 import { computed, ref, onActivated, nextTick } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
+import { showDialog } from 'vant'
 import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
 import { useWordsStore, type WordsStore } from '@/stores/words'
@@ -202,15 +210,11 @@ const bid = computed(() => Number(route.params.bid))
 const showWordNew = ref(false)
 const refreshing = ref(false)
 const loading = ref(true)
-const showDeleteDialog = ref(false)
-const deleteDialogTitle = ref('')
-const deleteDialogMessage = ref('')
 type ViewMode = 'none' | 'edit' | 'audio' | 'select'
 const savedMode = authStore.userInfo?.cfg?.wordsListMode
 const mode = ref<ViewMode>(savedMode === 'edit' || savedMode === 'audio' ? savedMode : 'none')
 const previousMode = ref<ViewMode>('none')
 const checkedIds = ref<number[]>([])
-let pendingDeleteWord: Word | null = null
 
 const scrollTop = ref(0)
 const currentBid = ref<number | null>(null)
@@ -237,6 +241,8 @@ const getWordPopoverPlacement = (w: Word) => {
   return 'bottom-start'
 }
 
+const deleteActionText = computed(() => (bid.value === 0 ? '删除' : '移除'))
+
 const onWordAction = async (action: { key: string }, w: Word) => {
   showWordPopover.value[w.id] = false
   if (action.key === 'edit') {
@@ -252,11 +258,15 @@ const onWordAction = async (action: { key: string }, w: Word) => {
     } catch {
       toast.showFail('操作失败')
     }
+  } else if (action.key === 'delete') {
+    await handleDelete([w])
   }
 }
 
 const pageTitle = computed(() => {
-  if (bid.value === 0) return '全部单词'
+  if (bid.value === 0) {
+    return wordsStore.orphanFilter ? '未入本单词' : '全部单词'
+  }
   if (bid.value === -1) return '复习本'
   // 优先从 books 列表中查找，确保获取到编辑后的最新标题
   const b = booksStore.books.find((b) => b.id === bid.value)
@@ -373,11 +383,79 @@ const toggleSelectAll = () => {
   }
 }
 
-const onBatchDelete = () => {
+const handleDelete = async (targets: Word[]) => {
+  if (targets.length === 0) return
+
+  const isAllWords = bid.value === 0
+  const isBatch = targets.length > 1
+  const actionText = isAllWords ? '删除' : '移除'
+  const confirmButtonColor = isAllWords ? 'var(--van-danger-color)' : 'var(--van-warning-color)'
+
+  try {
+    if (isAllWords) {
+      // 全部单词模式：物理删除
+      // 检查是否有单词被其他单词本收录
+      const linkedWordsCount = targets.filter((w) => (w.book_count || 0) > 0).length
+
+      if (linkedWordsCount > 0) {
+        // 第一步确认：提示关联信息
+        const msg = isBatch
+          ? `所选单词中有 ${linkedWordsCount} 个已被单词本收录，确认要删除吗？`
+          : `此单词已在 ${targets[0]?.book_count} 个单词本中收录，确认要删除吗？`
+
+        await showDialog({
+          title: '确认删除',
+          message: msg,
+          confirmButtonText: '下一步',
+          confirmButtonColor: 'var(--van-danger-color)',
+          showCancelButton: true,
+        })
+      }
+
+      // 第二步（或直接）确认：永久删除提示
+      const msg = isBatch
+        ? `删除后将无法恢复，确认删除所选 ${targets.length} 个单词吗？`
+        : `删除后将无法恢复，确认删除单词"${targets[0]?.word}"吗？`
+
+      await showDialog({
+        title: '永久删除',
+        message: msg,
+        confirmButtonText: '删除',
+        confirmButtonColor: 'var(--van-danger-color)',
+        showCancelButton: true,
+      })
+    } else {
+      // 单词本模式：仅移除映射
+      const msg = isBatch
+        ? `确定从当前单词本中移除 所选 ${targets.length} 个单词吗？`
+        : `确定从当前单词本中移除 单词"${targets[0]?.word}"吗？`
+
+      await showDialog({
+        title: '确认移除',
+        message: msg,
+        confirmButtonText: '移除',
+        confirmButtonColor: 'var(--van-warning-color)',
+        showCancelButton: true,
+      })
+    }
+
+    // 执行操作
+    const success = await wordsStore.deleteWords(targets, bid.value)
+    if (success) {
+      // 如果是批量操作，清空选择
+      if (mode.value === 'select') {
+        checkedIds.value = []
+      }
+    }
+  } catch {
+    // Cancelled
+  }
+}
+
+const onBatchDelete = async () => {
   if (checkedIds.value.length === 0) return
-  deleteDialogTitle.value = '批量删除'
-  deleteDialogMessage.value = `确定要删除选中的 ${checkedIds.value.length} 个单词吗？`
-  showDeleteDialog.value = true
+  const targets = wordsStore.words.filter((w) => checkedIds.value.includes(w.id))
+  await handleDelete(targets)
 }
 
 const onBatchBookmark = () => {
@@ -393,22 +471,6 @@ const onWordItemClick = (w: Word) => {
   } else {
     openWordCard(w)
   }
-}
-
-const onConfirmDeleteWord = async () => {
-  if (mode.value === 'select' && checkedIds.value.length > 0) {
-    for (const id of checkedIds.value) {
-      const w = wordsStore.words.find((word) => word.id === id)
-      if (w) await wordsStore.deleteWord(w)
-    }
-    checkedIds.value = []
-    showDeleteDialog.value = false
-  } else if (pendingDeleteWord) {
-    await wordsStore.deleteWord(pendingDeleteWord)
-    showDeleteDialog.value = false
-    pendingDeleteWord = null
-  }
-  await wordsStore.loadWords(bid.value)
 }
 
 const openWordCard = (w: Word) => {
@@ -438,8 +500,19 @@ const { openMenu, AppMenu } = useAppMenu({
       actions.push({ name: '退出批量管理', icon: 'close', handler: () => toggleMode('select') })
       return actions
     }
-    return [
-      { name: '添加单词', icon: 'plus', handler: openAddWord },
+    const items = []
+    if (bid.value > 0) {
+      items.push({ name: '添加单词', icon: 'plus', handler: openAddWord })
+    }
+    if (bid.value === 0) {
+      items.push({
+        name: wordsStore.orphanFilter ? '显示全部单词' : '显示未入本单词',
+        icon: wordsStore.orphanFilter ? 'bars' : 'failure',
+        color: wordsStore.orphanFilter ? undefined : 'var(--van-warning-color)',
+        handler: () => wordsStore.toggleOrphanFilter(),
+      })
+    }
+    items.push(
       {
         // 循环切换：默认 -> 语音 -> 编辑 -> 默认
         name:
@@ -467,7 +540,8 @@ const { openMenu, AppMenu } = useAppMenu({
         icon: 'sort',
         handler: () => wordsStore.toggleSortMode(),
       },
-    ]
+    )
+    return items
   },
 })
 </script>
@@ -622,6 +696,10 @@ const { openMenu, AppMenu } = useAppMenu({
   color: var(--van-danger-color);
 }
 
+.bottom-bar-icon.warning-icon {
+  color: var(--van-warning-color);
+}
+
 /* 修复索引栏吸顶时覆盖导航栏的问题 */
 :deep(.van-nav-bar--fixed) {
   z-index: 101;
@@ -635,5 +713,21 @@ const { openMenu, AppMenu } = useAppMenu({
 
 :deep(.van-index-bar__sidebar) {
   color: var(--van-gray-6);
+}
+
+.orphan-toggle-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 24px;
+  color: var(--van-warning-color);
+}
+
+.orphan-toggle-btn.active {
+  background-color: var(--van-warning-color);
+  color: white;
 }
 </style>

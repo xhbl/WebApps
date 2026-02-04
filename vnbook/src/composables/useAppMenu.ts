@@ -60,7 +60,7 @@ export function useAppMenu(options: UseAppMenuOptions = {}) {
         name: '退出登录',
         key: 'logout',
         icon: options.logoutIcon || 'close',
-        color: 'var(--van-warning-color)',
+        color: 'var(--van-primary-color)',
       })
     }
 

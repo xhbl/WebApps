@@ -50,6 +50,7 @@ const props = defineProps<{
   showPopover: boolean
   popoverPlacement: PopoverPlacement
   highlight?: string
+  deleteText?: string
 }>()
 
 const emit = defineEmits<{
@@ -59,10 +60,21 @@ const emit = defineEmits<{
   (e: 'action', action: { key: string }, word: Word): void
 }>()
 
-const actions = [
-  { text: '编辑', icon: 'edit', key: 'edit' },
-  { text: '加入复习本', icon: 'bookmark-o', key: 'review' },
-]
+const actions = computed(() => {
+  const list: { text: string; icon: string; key: string; className?: string }[] = [
+    { text: '编辑', icon: 'edit', key: 'edit' },
+    { text: '加入复习', icon: 'bookmark-o', key: 'review' },
+  ]
+  if (props.deleteText) {
+    list.push({
+      text: props.deleteText,
+      icon: props.deleteText === '移除' ? 'failure' : 'delete-o',
+      key: 'delete',
+      className: props.deleteText === '移除' ? 'popover-action-remove' : 'popover-action-delete',
+    })
+  }
+  return list
+})
 
 const definition = computed(() => {
   if (!props.word.explanations || props.word.explanations.length === 0) return ''
@@ -147,5 +159,15 @@ const onSelect = (action: { key: string }) => {
 
 .highlight {
   color: var(--van-primary-color);
+}
+</style>
+
+<style>
+/* 全局样式以覆盖 Popover Action 的默认样式 */
+.popover-action-remove {
+  color: var(--van-warning-color);
+}
+.popover-action-delete {
+  color: var(--van-danger-color);
 }
 </style>

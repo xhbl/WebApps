@@ -1,6 +1,6 @@
 <template>
   <div class="word-card-view">
-    <van-nav-bar class="nav-bar-fixed" :title="title">
+    <van-nav-bar class="nav-bar-fixed" :title="title" fixed :placeholder="false" z-index="100">
       <template #left>
         <van-button class="icon-btn" round size="small" icon="arrow-left" @click="goBack" />
       </template>
@@ -71,6 +71,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useWordsStore } from '@/stores/words'
+import { showDialog } from 'vant'
 import type { MenuAction } from '@/types'
 
 const route = useRoute()
@@ -123,12 +124,42 @@ const onChange = (index: number) => {
 }
 
 const openMenu = () => (showMenu.value = true)
-const onSelectAction = (action: MenuAction) => {
-  // 功能暂不实现，占位
+const onSelectAction = async (action: MenuAction) => {
+  const currentWord = wordsStore.words[initialIndex.value]
+  if (!currentWord) return
+
   if (action.key === 'delete') {
-    // TODO: 删除当前单词
+    const isAllWords = bid === 0
+    try {
+      if (isAllWords) {
+        if ((currentWord.book_count || 0) > 0) {
+          await showDialog({
+            title: '确认删除',
+            message: `此单词已在 ${currentWord.book_count} 个单词本中收录，确认要删除吗？`,
+            confirmButtonColor: 'var(--van-danger-color)',
+          })
+        }
+        await showDialog({
+          title: '永久删除',
+          message: `删除后将无法恢复，确认删除单词"${currentWord.word}"吗？`,
+          confirmButtonColor: 'var(--van-danger-color)',
+        })
+      } else {
+        await showDialog({
+          title: '确认移除',
+          message: `确定要从当前单词本移除单词"${currentWord.word}"吗？`,
+          confirmButtonColor: 'var(--van-warning-color)',
+          confirmButtonText: '移除',
+        })
+      }
+      if (await wordsStore.deleteWords([currentWord], bid)) {
+        router.back()
+      }
+    } catch {
+      // Cancelled
+    }
   } else if (action.key === 'edit') {
-    // TODO: 编辑当前单词
+    // 编辑功能通常在列表页或通过弹窗实现，此处暂留空或跳转
   }
 }
 const handleMenuSelect = (action: MenuAction) => onSelectAction(action)
@@ -141,15 +172,10 @@ const swipeNext = () => swipeRef.value?.next()
 <style scoped>
 .word-card-view {
   min-height: 100vh;
-  padding-top: 54px; /* 预留导航高度，避免内容被覆盖 */
+  padding-top: var(--van-nav-bar-height);
   box-sizing: border-box;
 }
 .nav-bar-fixed {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 2000;
   background: #fff;
 }
 .nav-bar-fixed :deep(.van-nav-bar__title) {

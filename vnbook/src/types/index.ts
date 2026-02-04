@@ -18,6 +18,7 @@ export interface Word {
   phon?: string
   time_c: string
   explanations?: Explanation[]
+  book_count?: number
   _new?: number
 }
 

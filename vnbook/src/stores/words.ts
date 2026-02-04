@@ -18,6 +18,7 @@ function defineWordsStore() {
   const words = ref<Word[]>([])
   const currentWord = ref<Word | null>(null)
   const searchKeyword = ref('')
+  const orphanFilter = ref(false)
   const savedSortMode = authStore.userInfo?.cfg?.wordsListSortMode
   const sortMode = ref<SortMode>(savedSortMode === 'alpha' ? 'alpha' : 'date')
 
@@ -26,9 +27,13 @@ function defineWordsStore() {
    * 过滤后的单词列表
    */
   const filteredWords = computed(() => {
-    if (!searchKeyword.value) return words.value
+    let result = words.value
+    if (orphanFilter.value) {
+      result = result.filter((w) => (w.book_count || 0) === 0)
+    }
+    if (!searchKeyword.value) return result
     const k = searchKeyword.value.toLowerCase()
-    return words.value.filter((w) => w.word.toLowerCase().includes(k))
+    return result.filter((w) => w.word.toLowerCase().includes(k))
   })
 
   /**
@@ -94,6 +99,7 @@ function defineWordsStore() {
             word: word.word,
             phon: word.phon,
             time_c: word.time_c,
+            book_count: Number(word.book_count || 0),
             _new: word._new,
             explanations: (word.explanations || []).map((e) => {
               const exp = e as Explanation & { sentences?: unknown[] }
@@ -148,6 +154,13 @@ function defineWordsStore() {
    */
   const setSearchKeyword = (k: string) => {
     searchKeyword.value = k
+  }
+
+  /**
+   * 切换孤儿单词过滤模式
+   */
+  const toggleOrphanFilter = () => {
+    orphanFilter.value = !orphanFilter.value
   }
 
   /**
@@ -214,39 +227,40 @@ function defineWordsStore() {
   }
 
   /**
-   * 删除单词
+   * 批量删除/移除单词
    */
-  const deleteWord = async (word: Word) => {
+  const deleteWords = async (targetWords: Word[], bookId: number) => {
     try {
-      const confirmed = await showDialog({
-        title: '确认删除',
-        message: `确定要删除单词"${word.word}"吗？`,
+      // 直接调用 API，确保支持批量删除和传递 bookId
+      const response = await fetch(`/api/words.php?req=w&bid=${bookId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(targetWords),
       })
-
-      if (!confirmed) return false
-
-      await wordsApi.deleteWord(word)
+      const res = await response.json()
+      if (!res.success) throw new Error(res.message)
 
       // 从列表中移除
-      const index = words.value.findIndex((w) => w.id === word.id)
-      if (index !== -1) {
-        words.value.splice(index, 1)
-      }
+      const targetIds = new Set(targetWords.map((w) => w.id))
+      words.value = words.value.filter((w) => !targetIds.has(w.id))
 
-      if (currentWord.value?.id === word.id) {
+      // 如果当前查看的单词被删除了，重置 currentWord
+      if (currentWord.value && targetIds.has(currentWord.value.id)) {
         currentWord.value = null
       }
 
       // 更新单词本数量
       const booksStore = useBooksStore()
       if (booksStore.currentBook) {
-        booksStore.updateBookNums(booksStore.currentBook.id, booksStore.currentBook.nums - 1)
+        const newCount = Math.max(0, booksStore.currentBook.nums - targetWords.length)
+        booksStore.updateBookNums(booksStore.currentBook.id, newCount)
       }
 
-      toast.showSuccess('删除成功')
+      const isAllWords = bookId === 0
+      toast.showSuccess(isAllWords ? '删除成功' : '移除成功')
       return true
     } catch (error) {
-      console.error('Delete word failed:', error)
+      console.error('Delete words failed:', error)
       return false
     }
   }
@@ -457,6 +471,7 @@ function defineWordsStore() {
     words.value = []
     currentWord.value = null
     searchKeyword.value = ''
+    orphanFilter.value = false
   }
 
   return {
@@ -465,12 +480,13 @@ function defineWordsStore() {
     sortMode,
     groupedWords,
     searchKeyword,
+    orphanFilter,
     filteredWords,
     loadWords,
     sortWords,
     toggleSortMode,
     saveWord,
-    deleteWord,
+    deleteWords,
     updatePhon,
     saveExplanation,
     deleteExplanation,
@@ -480,6 +496,7 @@ function defineWordsStore() {
     setSearchKeyword,
     findWordByName,
     clearWords,
+    toggleOrphanFilter,
   }
 }
 

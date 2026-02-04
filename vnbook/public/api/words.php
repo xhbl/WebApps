@@ -27,7 +27,8 @@ function getWords($bid, $wid = null)
     try {
         if ($bid == 0) {
             // Fetch all words for the user (All Words view)
-            $sql = "SELECT w.id, w.user_id, w.word, w.phon, w.time_c
+            $sql = "SELECT w.id, w.user_id, w.word, w.phon, w.time_c,
+                    (SELECT COUNT(*) FROM vnu_mapbw m WHERE m.word_id = w.id) as book_count
                     FROM vnu_words w
                     WHERE w.user_id = ?";
             $params = [$uid];
@@ -342,28 +343,10 @@ function deleteWords($bid, $items)
                 $stmt->execute([$item->id, $uid]);
             } else {
                 // Specific book mode
-
-                // 1. Check if the word is associated with this book (sanity check)
-                $stmt = $db->prepare("SELECT id FROM vnu_mapbw WHERE word_id = ? AND book_id = ? AND user_id = ?");
+                // Only delete the mapping for this book.
+                // Never delete the word itself from a book view, even if it becomes orphaned.
+                $stmt = $db->prepare("DELETE FROM vnu_mapbw WHERE word_id = ? AND book_id = ? AND user_id = ?");
                 $stmt->execute([$item->id, $bid, $uid]);
-                if (!$stmt->fetch()) {
-                    continue; // Not in this book, nothing to do
-                }
-
-                // 2. Check total associations for this word
-                $stmt = $db->prepare("SELECT COUNT(*) FROM vnu_mapbw WHERE word_id = ?");
-                $stmt->execute([$item->id]);
-                $count = $stmt->fetchColumn();
-
-                if ($count <= 1) {
-                    // It is the only association (which is this book), so delete the word entirely
-                    $stmt = $db->prepare("DELETE FROM vnu_words WHERE id = ? AND user_id = ?");
-                    $stmt->execute([$item->id, $uid]);
-                } else {
-                    // It has other associations, so only delete the mapping for this book
-                    $stmt = $db->prepare("DELETE FROM vnu_mapbw WHERE word_id = ? AND book_id = ? AND user_id = ?");
-                    $stmt->execute([$item->id, $bid, $uid]);
-                }
             }
         }
 

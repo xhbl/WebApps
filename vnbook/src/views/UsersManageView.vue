@@ -134,7 +134,7 @@ const deleteUser = async (u: User) => {
 }
 
 .content {
-  padding-top: 0px;
+  padding-top: var(--van-nav-bar-height);
 }
 
 .loading {
