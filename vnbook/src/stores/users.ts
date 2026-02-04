@@ -28,6 +28,9 @@ export const useUsersStore = defineStore('users', () => {
   const saveUser = async (user: User) => {
     try {
       const response = await usersApi.saveUser(user)
+      if (!response.data.success) {
+        throw new Error(response.data.message || '保存失败')
+      }
       if (response.data.success === true && response.data.user && response.data.user[0]) {
         const savedUser = response.data.user[0]
         if (user._new === 1) {
@@ -53,7 +56,10 @@ export const useUsersStore = defineStore('users', () => {
   /** 删除用户（仅数据处理，弹窗交互由 View 层负责） */
   const deleteUser = async (user: User) => {
     try {
-      await usersApi.deleteUser(user)
+      const response = await usersApi.deleteUser(user)
+      if (!response.data.success) {
+        throw new Error(response.data.message || '删除失败')
+      }
       const index = users.value.findIndex((u) => u.id === user.id)
       if (index !== -1) {
         users.value.splice(index, 1)

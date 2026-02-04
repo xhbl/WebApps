@@ -67,6 +67,9 @@ export const useBooksStore = defineStore('books', () => {
         book.ptop = 0
       }
       const response = await booksApi.saveBook(book)
+      if (!response.data.success) {
+        throw new Error(response.data.message || '保存失败')
+      }
       if (response.data.success === true && response.data.book && response.data.book[0]) {
         const savedBook = response.data.book[0]
 
@@ -99,7 +102,10 @@ export const useBooksStore = defineStore('books', () => {
    */
   const deleteBook = async (book: Book) => {
     try {
-      await booksApi.deleteBook(book)
+      const response = await booksApi.deleteBook(book)
+      if (!response.data.success) {
+        throw new Error(response.data.message || '删除失败')
+      }
       const index = books.value.findIndex((b) => b.id === book.id)
       if (index !== -1) {
         books.value.splice(index, 1)

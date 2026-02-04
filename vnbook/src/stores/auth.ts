@@ -136,7 +136,10 @@ export const useAuthStore = defineStore('auth', () => {
     dispname?: string
   }) => {
     try {
-      await authApi.updateUserInfo(data)
+      const response = await authApi.updateUserInfo(data)
+      if (!response.data.success) {
+        throw new Error(response.data.message || '更新失败')
+      }
 
       // 更新显示名
       if (data.dispname !== undefined && userInfo.value) {
@@ -162,7 +165,10 @@ export const useAuthStore = defineStore('auth', () => {
     const newCfg = { ...(userInfo.value.cfg || {}), ...configPart }
 
     try {
-      await authApi.updateUserInfo({ cfg: newCfg })
+      const response = await authApi.updateUserInfo({ cfg: newCfg })
+      if (!response.data.success) {
+        throw new Error(response.data.message || '更新配置失败')
+      }
 
       // 更新本地状态
       userInfo.value.cfg = newCfg
