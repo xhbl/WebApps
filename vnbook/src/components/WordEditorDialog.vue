@@ -16,18 +16,44 @@
             :class="{ 'readonly-field': step === 'detail' }"
           />
           <template v-if="step === 'detail'">
-            <van-field v-model="formData.phon" label="音标" placeholder="请输入音标" />
+            <van-field v-model="formData.phon" label="音标" placeholder="请输入音标">
+              <template #label>
+                <div class="label-with-icon">
+                  <span>音标</span>
+                  <van-icon
+                    v-if="dictData.found && dictData.phon"
+                    name="replay"
+                    class="replay-icon"
+                    :class="{ disabled: isPhonMatch }"
+                    @click.stop="onResetPhon"
+                  />
+                </div>
+              </template>
+            </van-field>
             <van-field
-              v-model="formData.definition"
-              label="基本释义"
-              type="textarea"
-              rows="3"
+              :model-value="definitionPreview"
+              label="释义"
               readonly
               class="readonly-field"
-              placeholder="暂无释义"
-            />
+            >
+              <template #label>
+                <div class="label-with-icon">
+                  <span>释义</span>
+                  <van-icon name="info-o" class="info-icon" @click.stop="onShowInfo" />
+                </div>
+              </template>
+            </van-field>
           </template>
         </van-cell-group>
+
+        <div v-if="step === 'detail' && dictData.found && dictData.definition" class="dict-section">
+          <div class="dict-title">基本词典</div>
+          <div class="dict-content">
+            <div v-for="(line, index) in dictDataLines" :key="index" class="dict-line">
+              {{ line }}
+            </div>
+          </div>
+        </div>
 
         <div class="actions">
           <van-button round type="primary" native-type="submit">
@@ -43,7 +69,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from 'vue'
 import { useWordsStore } from '@/stores/words'
-import type { Word } from '@/types'
+import type { Word, BaseDictDefinition } from '@/types'
 import { toast } from '@/utils/toast'
 import { useDialogDraft } from '@/composables/useDialogDraft'
 import { showDialog } from 'vant'
@@ -74,20 +100,28 @@ const formData = ref({
   definition: '',
 })
 
+const dictData = ref({
+  phon: '',
+  definition: '',
+  found: false,
+})
+
 // --- 状态持久化逻辑 (使用 Composable) ---
 const { isRestoring, clearDraft } = useDialogDraft({
   storageKey: 'vnb_word_editor_state',
   show,
-  watchSource: [formData, step], // 监听表单数据和步骤变化
+  watchSource: [formData, step, dictData], // 监听表单数据和步骤变化
   getState: () => ({
     step: step.value,
     formData: formData.value,
+    dictData: dictData.value,
     editingWord: props.word,
     bid: props.bid,
   }),
   restoreState: async (state: {
     step: 'input' | 'detail'
     formData: typeof formData.value
+    dictData?: typeof dictData.value
     editingWord?: typeof props.word
     bid?: number
   }) => {
@@ -97,19 +131,37 @@ const { isRestoring, clearDraft } = useDialogDraft({
     await nextTick()
     step.value = state.step
     formData.value = state.formData
+    if (state.dictData) dictData.value = state.dictData
   },
 })
 
-// 模拟字典查询
+// 查询基础词典
 const queryDictionary = async (text: string) => {
-  // TODO: 实现真实的字典查询逻辑
-  // 这里仅做模拟：如果单词是 "test"，返回模拟数据，否则返回空
-  if (text.toLowerCase() === 'test') {
-    formData.value.phon = 'test'
-    formData.value.definition = 'n. 试验；测验；考验\nvt. 测验；考查'
+  if (!text) return
+
+  // 1. 尝试从 Store 中查找（如果是编辑模式，可能已经有 baseInfo）
+  // 注意：props.word 在编辑模式下传入，但如果是新增模式输入单词，props.word 是空的
+  // 所以这里主要依赖 API 查询
+  const info = await wordsStore.lookupDict(text)
+
+  if (info) {
+    // 格式化释义用于展示
+    const defLines = info.definitions.map((d: BaseDictDefinition) => {
+      const meanings = d.meanings?.zh?.join('；') || d.meanings?.en?.join('; ') || ''
+      return `${d.pos} ${meanings}`
+    })
+
+    dictData.value = {
+      phon: info.ipas?.join('; ') || '',
+      definition: defLines.join('\n'),
+      found: true,
+    }
   } else {
-    formData.value.phon = ''
-    formData.value.definition = ''
+    dictData.value = {
+      phon: '',
+      definition: '',
+      found: false,
+    }
   }
 }
 
@@ -122,14 +174,27 @@ const initForm = () => {
     step.value = 'detail'
     formData.value.word = props.word.word
     formData.value.phon = props.word.phon || ''
-    // 尝试从 explanations 中提取释义用于展示（仅展示用）
-    formData.value.definition =
-      props.word.explanations?.map((e) => `${e.pos} ${e.exp_ch || e.exp?.zh || ''}`).join('\n') ||
-      ''
+    // 编辑模式下也查询字典，以便提供重置功能
+    // 优先使用 props.word 中的 baseInfo (如果列表接口已经返回)
+    if (props.word.baseInfo) {
+      const info = props.word.baseInfo
+      const defLines = info.definitions.map((d) => {
+        const meanings = d.meanings?.zh?.join('；') || d.meanings?.en?.join('; ') || ''
+        return `${d.pos} ${meanings}`
+      })
+      dictData.value = {
+        phon: info.ipas?.join('; ') || '',
+        definition: defLines.join('\n'),
+        found: true,
+      }
+    } else {
+      queryDictionary(props.word.word)
+    }
   } else {
     // 新增模式
     step.value = 'input'
     formData.value = { word: '', phon: '', definition: '' }
+    dictData.value = { phon: '', definition: '', found: false }
   }
 }
 
@@ -156,11 +221,60 @@ watch(show, (v) => emit('update:modelValue', v))
 
 const wordsStore = useWordsStore()
 
+const isPhonMatch = computed(() => {
+  return formData.value.phon === dictData.value.phon
+})
+
+const onResetPhon = () => {
+  if (isPhonMatch.value) return
+  showDialog({
+    title: '提示',
+    message: '重置为词典音标吗？',
+    showCancelButton: true,
+  })
+    .then(() => {
+      formData.value.phon = dictData.value.phon
+    })
+    .catch(() => {})
+}
+
+const definitionPreview = computed(() => {
+  const exps = props.word?.explanations
+  if (!exps || exps.length === 0) {
+    return '在单词卡片中编辑'
+  }
+  return exps
+    .map((e) => {
+      const zh = e.exp?.zh || ''
+      return `${e.pos || ''} ${zh}`
+    })
+    .join('; ')
+})
+
+const dictDataLines = computed(() => {
+  if (!dictData.value.definition) return []
+  return dictData.value.definition.split('\n')
+})
+
+const onShowInfo = () => {
+  showDialog({
+    message:
+      '请在单词卡片页中添加和编辑释义及相关例句，根据需要只添加必要的内容在单词本中，可以从词典选择，也可以自行编辑。',
+    showConfirmButton: false,
+    closeOnClickOverlay: true,
+    width: '320px',
+    messageAlign: 'left',
+  })
+}
+
 const onSubmit = async () => {
   // 阶段一：添加（查询）
   if (isNew.value && step.value === 'input') {
     const wordText = formData.value.word.trim()
     formData.value.word = wordText
+
+    // 总是查询字典以获取参考数据
+    await queryDictionary(wordText)
 
     // 检查单词是否存在
     const existingWord = await wordsStore.checkWordExistence(wordText)
@@ -178,10 +292,11 @@ const onSubmit = async () => {
         toast.show(`单词 '${wordText}' 已存在 (未入本)`)
       }
       formData.value.phon = existingWord.phon || ''
-      formData.value.definition =
-        existingWord.explanations?.map((e) => `${e.pos} ${e.exp.zh || ''}`).join('\n') || ''
     } else {
-      await queryDictionary(wordText)
+      // 新词，使用字典数据填充
+      if (dictData.value.found) {
+        formData.value.phon = dictData.value.phon
+      }
     }
     step.value = 'detail'
     return
@@ -279,5 +394,54 @@ h3 {
 :deep(.readonly-field input),
 :deep(.readonly-field textarea) {
   color: var(--van-text-color-2) !important;
+}
+
+.label-with-icon {
+  display: flex;
+  align-items: center;
+}
+
+.replay-icon {
+  margin-left: 4px;
+  cursor: pointer;
+  color: var(--van-primary-color);
+}
+
+.replay-icon.disabled {
+  color: var(--van-gray-5);
+  cursor: default;
+}
+
+.info-icon {
+  margin-left: 4px;
+  cursor: pointer;
+  color: var(--van-primary-color);
+}
+
+.dict-section {
+  margin-top: 10px;
+  padding: 0 16px;
+}
+
+.dict-title {
+  font-size: var(--van-font-size-sm);
+  font-weight: bold;
+  margin-bottom: 6px;
+  text-align: left;
+}
+
+.dict-content {
+  padding: 8px;
+  background-color: #f7f8fa;
+  border-radius: 4px;
+  font-size: var(--van-font-size-md);
+  color: var(--van-text-color-2);
+  line-height: 1.4;
+  max-height: 7.2em; /* 约4行高度 + padding */
+  overflow-y: auto;
+}
+
+.dict-line {
+  margin-bottom: 4px;
 }
 </style>

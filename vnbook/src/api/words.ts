@@ -1,5 +1,5 @@
 import request from './request'
-import type { Word, Explanation, Sentence, ApiResponse } from '@/types'
+import type { Word, Explanation, Sentence, ApiResponse, BaseDictInfo } from '@/types'
 
 /**
  * 获取单词列表（包含释义和例句）
@@ -103,4 +103,13 @@ export const deleteSentence = (sentence: Sentence) => {
  */
 export const getPosList = () => {
   return request.get<ApiResponse>('/pos.php')
+}
+
+/**
+ * 查询基础词典 (va_basedict)
+ */
+export const lookupBaseDict = (word: string) => {
+  return request.get<ApiResponse<BaseDictInfo>>('/words.php', {
+    params: { req: 'dict', word },
+  })
 }

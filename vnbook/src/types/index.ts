@@ -20,6 +20,7 @@ export interface Word {
   explanations?: Explanation[]
   book_count?: number
   _new?: number
+  baseInfo?: BaseDictInfo
 }
 
 export interface Explanation {
@@ -52,6 +53,20 @@ export interface Sentence {
   // 扩展字段
   sen_ch?: string
   hide?: number
+}
+
+export interface BaseDictDefinition {
+  pos: string
+  ipa_idx: number
+  meanings: {
+    zh?: string[]
+    en?: string[]
+  }
+}
+
+export interface BaseDictInfo {
+  ipas: string[]
+  definitions: BaseDictDefinition[]
 }
 
 export interface User {

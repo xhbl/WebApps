@@ -121,6 +121,7 @@ function defineWordsStore() {
                 }),
               }
             }),
+            baseInfo: word.baseInfo,
           }
         })
 
@@ -161,6 +162,7 @@ function defineWordsStore() {
             time_c: e.time_c,
             _new: e._new,
           })),
+          baseInfo: w.baseInfo,
         }
         return word
       }
@@ -495,6 +497,21 @@ function defineWordsStore() {
     orphanFilter.value = false
   }
 
+  /**
+   * 查询基础词典
+   */
+  const lookupDict = async (word: string) => {
+    try {
+      const response = await wordsApi.lookupBaseDict(word)
+      if (response.data.success) {
+        return response.data.data
+      }
+    } catch (e) {
+      console.error('Lookup dict failed', e)
+    }
+    return null
+  }
+
   return {
     words,
     currentWord,
@@ -519,6 +536,7 @@ function defineWordsStore() {
     clearWords,
     toggleOrphanFilter,
     checkWordExistence,
+    lookupDict,
   }
 }
 

@@ -143,6 +143,57 @@ function getSentences($eid, $sid = null)
 }
 
 /**
+ * Helper: Fetch data from Base Dictionary (va_basedict)
+ * @param array $wordList Array of word strings
+ * @return array Map of word -> baseInfo object
+ */
+function getBaseDictData($wordList)
+{
+    if (empty($wordList)) return [];
+
+    $db = DB::base();
+    if (!$db) return []; // Base dict might not be configured
+
+    $placeholders = implode(',', array_fill(0, count($wordList), '?'));
+    $map = [];
+
+    try {
+        // 1. Fetch words and IPAs
+        // Use word_search for case-insensitive matching if needed, but here we match exact word first or rely on DB collation
+        $stmt = $db->prepare("SELECT id, word, ipas FROM words WHERE word IN ($placeholders)");
+        $stmt->execute($wordList);
+        $words = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $wordIds = [];
+        foreach ($words as $w) {
+            $map[$w['word']] = [
+                'ipas' => json_decode($w['ipas']),
+                'definitions' => []
+            ];
+            $wordIds[$w['id']] = $w['word'];
+        }
+
+        if (empty($wordIds)) return $map;
+
+        // 2. Fetch definitions
+        $idPlaceholders = implode(',', array_fill(0, count($wordIds), '?'));
+        $stmt = $db->prepare("SELECT word_id, pos, ipa_idx, meanings FROM definitions WHERE word_id IN ($idPlaceholders) ORDER BY id");
+        $stmt->execute(array_keys($wordIds));
+        $defs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($defs as $d) {
+            $wordStr = $wordIds[$d['word_id']];
+            $d['meanings'] = json_decode($d['meanings']);
+            unset($d['word_id']); // Clean up
+            $map[$wordStr]['definitions'][] = $d;
+        }
+    } catch (Exception $e) {
+        // Ignore base dict errors to avoid breaking main app
+    }
+    return $map;
+}
+
+/**
  * Update words (add new, edit existing, or add existing word to book)
  */
 function updateWords($bid, $items)
@@ -446,6 +497,14 @@ try {
     $sid = $_GET["sid"] ?? null;
     $word = $_GET["word"] ?? null;
 
+    // Handle direct dictionary lookup (req=dict)
+    if ($req == 'dict' && $word) {
+        $dictData = getBaseDictData([$word]);
+        $data = $dictData[$word] ?? null;
+        echo json_encode(['success' => true, 'data' => $data]);
+        exit;
+    }
+
     // Auto-detect request type if not specified
     if (!$req) {
         if ($sid) $req = 's';
@@ -458,6 +517,16 @@ try {
         if ($req == 'w') {
             $rows = getWords($bid, $wid, $word);
             if ($rows !== false) {
+                // Attach Base Dictionary Info
+                $wordList = array_column($rows, 'word');
+                // Filter unique words to reduce query size
+                $uniqueWords = array_unique($wordList);
+                $baseData = getBaseDictData(array_values($uniqueWords));
+
+                foreach ($rows as &$row) {
+                    $row['baseInfo'] = $baseData[$row['word']] ?? null;
+                }
+
                 $response = ['success' => true, 'word' => $rows];
             } else {
                 $response['message'] = 'Error fetching words';
