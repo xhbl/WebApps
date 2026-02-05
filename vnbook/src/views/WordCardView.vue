@@ -1,11 +1,11 @@
 <template>
   <div class="word-card-view">
-    <van-nav-bar class="nav-bar-fixed" :title="title" fixed :placeholder="false" z-index="100">
+    <van-nav-bar :title="title" fixed placeholder z-index="100">
       <template #left>
-        <van-button class="icon-btn" round size="small" icon="arrow-left" @click="goBack" />
+        <van-icon name="arrow-left" class="nav-bar-icon" @click="goBack" />
       </template>
       <template #right>
-        <van-button class="icon-btn" round size="small" icon="ellipsis" @click="openMenu" />
+        <van-icon name="ellipsis" class="nav-bar-icon" @click="openMenu" />
       </template>
     </van-nav-bar>
 
@@ -22,24 +22,34 @@
       <van-swipe
         ref="swipeRef"
         :initial-swipe="initialIndex"
+        class="my-swipe"
         :show-indicators="true"
         @change="onChange"
       >
         <van-swipe-item v-for="w in wordsStore.words" :key="w.id">
           <div class="card">
-            <h1 class="name">{{ w.word }}</h1>
-            <h2 class="phon" v-if="w.phon">[{{ w.phon }}]</h2>
+            <div class="word-row">
+              <span class="word-text">{{ w.word }}</span>
+            </div>
+            <div class="phon-row" v-if="w.phon" @click.stop="playAudio(w.word)">
+              <van-icon name="volume-o" class="phon-icon" />
+              <span class="phon-text">/{{ w.phon }}/</span>
+            </div>
 
             <div class="exps" v-if="w.explanations && w.explanations.length">
-              <div class="exp" v-for="e in w.explanations" :key="e.id">
-                <h3 class="abbr">{{ e.abbr }}</h3>
-                <div class="exp-text">
-                  {{ e.exp_ch }}<span v-if="e.exp.en"> ({{ e.exp.en }})</span>
+              <div class="exp-block" v-for="e in w.explanations" :key="e.id">
+                <div class="exp-header">
+                  <span class="exp-pos">{{ e.pos }}</span>
+                  <span class="exp-cn">{{ e.exp?.zh }}</span>
                 </div>
-                <div class="sens" v-if="e.sentences && e.sentences.length">
-                  <div class="sen" v-for="s in e.sentences" :key="s.id">
-                    <div class="sen-en">{{ s.sen.en }}</div>
-                    <div class="sen-ch" v-if="s.sen_ch">{{ s.sen_ch }}</div>
+                <div class="exp-en" v-if="e.exp?.en">{{ e.exp.en }}</div>
+                <div class="sens-block" v-if="e.sentences && e.sentences.length">
+                  <div class="sen-item" v-for="s in e.sentences" :key="s.id">
+                    <div class="sen-label">例:</div>
+                    <div class="sen-content">
+                      <div class="sen-en">{{ s.sen?.en }}</div>
+                      <div class="sen-ch" v-if="s.sen?.zh">{{ s.sen.zh }}</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -90,7 +100,7 @@ const bid = Number(route.params.bid)
 // 页面加载时确保数据已加载
 onMounted(async () => {
   // 如果 words 为空，重新加载
-  if (!wordsStore.words.length && bid) {
+  if (!wordsStore.words.length && !isNaN(bid)) {
     await wordsStore.loadWords(bid)
   }
 })
@@ -164,6 +174,19 @@ const onSelectAction = async (action: MenuAction) => {
 }
 const handleMenuSelect = (action: MenuAction) => onSelectAction(action)
 
+const playAudio = (text: string) => {
+  if ('speechSynthesis' in window) {
+    const msg = new SpeechSynthesisUtterance(text)
+    msg.lang = 'en-US'
+    const voices = window.speechSynthesis.getVoices()
+    const usVoice = voices.find((voice) => voice.lang === 'en-US')
+    if (usVoice) {
+      msg.voice = usVoice
+    }
+    window.speechSynthesis.speak(msg)
+  }
+}
+
 const goBack = () => router.back()
 const swipePrev = () => swipeRef.value?.prev()
 const swipeNext = () => swipeRef.value?.next()
@@ -171,64 +194,113 @@ const swipeNext = () => swipeRef.value?.next()
 
 <style scoped>
 .word-card-view {
-  min-height: 100vh;
-  padding-top: var(--van-nav-bar-height);
-  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background-color: var(--van-gray-1);
 }
-.nav-bar-fixed {
-  background: #fff;
+:deep(.van-nav-bar__title) {
+  font-size: var(--van-font-size-xl);
 }
-.nav-bar-fixed :deep(.van-nav-bar__title) {
-  font-size: 20px;
-}
-.icon-btn :deep(.van-icon) {
-  font-size: 18px;
+
+.van-icon {
   font-weight: 700;
+  cursor: pointer;
 }
+
+.nav-bar-icon {
+  font-size: 22px;
+}
+
 .swipe-wrap {
-  padding: 8px;
+  height: calc(100vh - var(--van-nav-bar-height));
+  height: calc(100dvh - var(--van-nav-bar-height));
   position: relative;
+  overflow: hidden;
 }
-.swipe-wrap :deep(.van-swipe__indicators) {
-  bottom: 8px;
+.my-swipe {
+  height: 100%;
+}
+:deep(.van-swipe-item) {
+  height: 100%;
+  overflow-y: auto;
+}
+:deep(.van-swipe__indicators) {
+  bottom: 12px;
 }
 .card {
   padding: 16px;
+  padding-bottom: 50px;
+  min-height: 100%;
+  box-sizing: border-box;
 }
-.name {
-  font-size: 32px;
-  margin: 0;
+.word-row {
+  margin-bottom: 8px;
 }
-.phon {
-  font-size: 20px;
-  color: #666;
-  margin: 8px 0 16px;
+.word-text {
+  font-weight: bold;
+  font-size: var(--van-font-size-xl);
+  color: var(--van-text-color);
 }
-.exp {
-  margin: 12px 0;
+.phon-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  color: var(--van-gray-6);
+  font-size: var(--van-font-size-lg);
+  cursor: pointer;
 }
-.abbr {
-  font-size: 14px;
-  color: #1989fa;
-  margin: 0 0 6px;
+.phon-icon {
+  margin-right: 4px;
 }
-.exp-text {
-  font-size: 16px;
+.exp-block {
+  background-color: var(--van-gray-2);
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 12px;
 }
-.sen {
-  margin: 8px 0;
+.exp-header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+  font-size: var(--van-font-size-md);
+}
+.exp-pos {
+  font-weight: bold;
+  margin-right: 8px;
+}
+.exp-en {
+  font-size: var(--van-font-size-md);
+  color: var(--van-gray-6);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+.sen-item {
+  display: flex;
+  font-size: var(--van-font-size-sm);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+.sen-label {
+  margin-right: 4px;
+  white-space: nowrap;
+  color: var(--van-gray-6);
+}
+.sen-content {
+  flex: 1;
 }
 .sen-en {
-  font-size: 15px;
+  color: var(--van-text-color);
 }
 .sen-ch {
-  font-size: 14px;
-  color: #666;
+  color: var(--van-gray-6);
+  margin-top: 2px;
 }
 .nav-btn {
   position: absolute;
   top: auto;
-  bottom: -8px;
+  bottom: 20px;
   transform: scale(0.75);
   z-index: 10;
   display: inline-flex;
