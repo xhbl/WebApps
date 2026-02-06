@@ -42,16 +42,56 @@ def import_sql_file(db_config):
         with open(sql_file, 'r', encoding='utf-8') as f:
             sql_content = f.read()
         
-        # 分割 SQL 语句
-        statements = [s.strip() for s in sql_content.split(';') if s.strip()]
-        total_statements = len(statements)
+        # 智能分割 SQL 语句（处理JSON中可能包含的;）
+        # 识别规则：任何 ; 都可能是语句结束，但需要检查它是否在字符串内
+        statements = []
+        current_stmt = ""
+        in_string = False
+        escape_next = False
         
+        for i, char in enumerate(sql_content):
+            current_stmt += char
+            
+            # 处理字符串逃逸
+            if escape_next:
+                escape_next = False
+                continue
+            
+            if char == '\\':
+                escape_next = True
+                continue
+            
+            # 处理单引号（字符串边界）
+            if char == "'":
+                in_string = not in_string
+                continue
+            
+            # 检查语句结束：; 号（仅在非字符串时）
+            if not in_string and char == ';':
+                stmt = current_stmt.strip()
+                if stmt:
+                    statements.append(stmt)
+                current_stmt = ""
+        
+        # 添加最后一条语句（如果有）
+        if current_stmt.strip():
+            statements.append(current_stmt.strip())
+        
+        total_statements = len(statements)
         print(f"📊 总共 {total_statements} 条 SQL 语句\n")
         
         with connection.cursor() as cursor:
+            successful = 0
+            failed = 0
+            
             for idx, statement in enumerate(statements, 1):
                 try:
+                    # 跳过空语句
+                    if not statement.strip():
+                        continue
+                    
                     cursor.execute(statement)
+                    successful += 1
                     
                     # 显示进度百分比
                     progress = (idx / total_statements) * 100
@@ -62,11 +102,14 @@ def import_sql_file(db_config):
                     print(f"\r进度: [{bar}] {progress:.1f}% ({idx}/{total_statements})", end='', flush=True)
                     
                 except Exception as e:
+                    failed += 1
                     print(f"\n❌ SQL 执行错误 (第 {idx} 条): {e}")
-                    print(f"   语句: {statement[:100]}...")
+                    print(f"   语句: {statement[:80]}...")
             
             connection.commit()
-            print(f"\n\n✅ 成功执行 {total_statements} 条 SQL 语句")
+            print(f"\n\n✅ 成功执行 {successful} 条 SQL 语句")
+            if failed > 0:
+                print(f"⚠️  失败 {failed} 条")
             
             # 验证数据
             cursor.execute("SELECT COUNT(*) as count FROM words;")

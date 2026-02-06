@@ -1,6 +1,11 @@
 import re
 import json
 
+def escape_sql_string(s):
+    """安全的SQL字符串转义：只处理单引号（JSON本身已完整）"""
+    s = s.replace("'", "''")  # 单引号转义为两个单引号
+    return s
+
 def md_to_sql(input_file, output_file):
     with open(input_file, 'r', encoding='utf-8') as f:
         content = f.read()
@@ -31,7 +36,7 @@ def md_to_sql(input_file, output_file):
         first_line_match = re.search(r'^\d+\s+(\S+)', lines[0])
         if not first_line_match:
             continue
-        word_text = first_line_match.group(1).replace("'", "''")
+        word_text = escape_sql_string(first_line_match.group(1))
 
         # 2. 解析音标：去掉 / / 定界符
         ipa_line = lines[1].lstrip('- ').strip()
@@ -41,21 +46,33 @@ def md_to_sql(input_file, output_file):
         if not raw_ipas:
             raw_ipas = [ipa.strip('/') for ipa in re.split(r'\s{2,}', ipa_line) if ipa.strip()]
         
-        ipas_json = json.dumps(raw_ipas, ensure_ascii=False).replace("'", "''")
+        ipas_json = json.dumps(raw_ipas, ensure_ascii=False)
+        ipas_json_escaped = escape_sql_string(ipas_json)
 
-        # 3. 解析词性和释义
+        # 3. 解析词性和释义（中文和英文）
         def_line = lines[2].lstrip('- ').strip()
         # 匹配 词性. 和 紧随其后的 [数组]
         # 使用非贪婪匹配获取第一个出现的完整方括号内容
-        pos_groups = re.findall(r'([a-z\s\']+)\.(\[.*?\](?=\s+[a-z]|$))', def_line)
+        pos_groups_zh = re.findall(r'([a-z\s\']+)\.(\[.*?\](?=\s+[a-z]|$))', def_line)
         
         # 如果上面的正则匹配失败（例如末尾没有更多词性），尝试更宽松的匹配
-        if not pos_groups:
-            pos_groups = re.findall(r'([a-z\s\']+)\.(\[.*?\])', def_line)
+        if not pos_groups_zh:
+            pos_groups_zh = re.findall(r'([a-z\s\']+)\.(\[.*?\])', def_line)
+
+        # 解析英文定义（第4行）
+        pos_groups_en = {}
+        if len(lines) > 3:
+            en_line = lines[3].lstrip('- ').strip()
+            pos_groups_en_list = re.findall(r'([a-z\s\']+)\.(\[.*?\](?=\s+[a-z]|$))', en_line)
+            if not pos_groups_en_list:
+                pos_groups_en_list = re.findall(r'([a-z\s\']+)\.(\[.*?\])', en_line)
+            # 构建词性到英文定义的映射
+            for pos_str, meanings_raw in pos_groups_en_list:
+                pos_groups_en[pos_str.strip()] = meanings_raw
 
         # 提取所有释义内容用于比较
         current_definitions = []
-        for pos_str, meanings_raw in pos_groups:
+        for pos_str, meanings_raw in pos_groups_zh:
             try:
                 meanings_list = json.loads(meanings_raw)
                 current_definitions.append(f"{pos_str.strip()}: {meanings_raw}")
@@ -81,25 +98,60 @@ def md_to_sql(input_file, output_file):
         # 记录第一次出现的单词及其定义
         processed_words[word_text] = definitions_str
 
-        sql_statements.append(f"INSERT INTO `words` (`id`, `word`, `ipas`) VALUES ({word_id_counter}, '{word_text}', '{ipas_json}');")
+        sql_statements.append(f"INSERT INTO `words` (`id`, `word`, `ipas`) VALUES ({word_id_counter}, '{word_text}', '{ipas_json_escaped}');")
 
-        for pos_str, meanings_raw in pos_groups:
+        # 记录已处理的词性，用于避免重复生成
+        processed_pos = set()
+
+        # 第一步：处理中文词性（meanings含"zh"）
+        for pos_str, meanings_raw_zh in pos_groups_zh:
             pos = pos_str.strip() + '.'
             
             try:
                 # 验证是否为合法JSON数组
-                meanings_list = json.loads(meanings_raw)
+                meanings_list_zh = json.loads(meanings_raw_zh)
                 # 包装成 {"zh": [...]}
-                meanings_obj = {"zh": meanings_list}
-                meanings_json = json.dumps(meanings_obj, ensure_ascii=False).replace("'", "''")
+                meanings_obj = {"zh": meanings_list_zh}
+                
+                # 如果英文也有相同词性，则合并到同一条记录
+                if pos_str.strip() in pos_groups_en:
+                    meanings_raw_en = pos_groups_en[pos_str.strip()]
+                    try:
+                        meanings_list_en = json.loads(meanings_raw_en)
+                        meanings_obj["en"] = meanings_list_en
+                    except json.JSONDecodeError:
+                        pass
+                
+                meanings_json = json.dumps(meanings_obj, ensure_ascii=False)
+                # 使用安全的转义
+                meanings_json_escaped = escape_sql_string(meanings_json)
                 
                 sql_statements.append(
                     f"INSERT INTO `definitions` (`word_id`, `pos`, `ipa_idx`, `meanings`) "
-                    f"VALUES ({word_id_counter}, '{pos}', 0, '{meanings_json}');"
+                    f"VALUES ({word_id_counter}, '{pos}', 0, '{meanings_json_escaped}');"
                 )
+                processed_pos.add(pos_str.strip())
             except json.JSONDecodeError:
-                # 如果 JSON 解析失败，可能是因为内容包含特殊字符，进行基础字符串清洗后重试
                 continue
+
+        # 第二步：处理仅在英文出现的词性（meanings含"en"）
+        for pos_str, meanings_raw_en in pos_groups_en_list:
+            if pos_str.strip() not in processed_pos:
+                pos = pos_str.strip() + '.'
+                
+                try:
+                    meanings_list_en = json.loads(meanings_raw_en)
+                    meanings_obj = {"en": meanings_list_en}
+                    meanings_json = json.dumps(meanings_obj, ensure_ascii=False)
+                    # 使用安全的转义
+                    meanings_json_escaped = escape_sql_string(meanings_json)
+                    
+                    sql_statements.append(
+                        f"INSERT INTO `definitions` (`word_id`, `pos`, `ipa_idx`, `meanings`) "
+                        f"VALUES ({word_id_counter}, '{pos}', 0, '{meanings_json_escaped}');"
+                    )
+                except json.JSONDecodeError:
+                    continue
 
         word_id_counter += 1
         sql_statements.append("")
@@ -144,4 +196,4 @@ def md_to_sql(input_file, output_file):
     print(f"{'='*60}\n")
 
 if __name__ == "__main__":
-    md_to_sql('coca_vocab_20k.md', 'va_basedict_data.sql')
+    md_to_sql('coca_vocab_20k_ce.md', 'va_basedict_data.sql')
