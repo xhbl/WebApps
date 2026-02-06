@@ -48,7 +48,7 @@
 
         <div v-if="step === 'detail' && dictData.found && dictData.definition" class="dict-section">
           <div class="dict-title">基本词典</div>
-          <div class="dict-content">
+          <div class="dict-content" ref="dictContentRef">
             <div v-for="(line, index) in dictDataLines" :key="index" class="dict-line">
               {{ line }}
             </div>
@@ -105,6 +105,7 @@ const dictData = ref({
   definition: '',
   found: false,
 })
+const dictContentRef = ref<HTMLElement | null>(null)
 
 // --- 状态持久化逻辑 (使用 Composable) ---
 const { isRestoring, clearDraft } = useDialogDraft({
@@ -135,6 +136,24 @@ const { isRestoring, clearDraft } = useDialogDraft({
   },
 })
 
+const formatDefinitions = (definitions: BaseDictDefinition[]) => {
+  const zhLines = definitions
+    .map((d) => {
+      const meanings = d.meanings?.zh?.join('；')
+      return meanings ? `${d.pos} ${meanings}` : null
+    })
+    .filter((line): line is string => line !== null)
+
+  const enLines = definitions
+    .map((d) => {
+      const meanings = d.meanings?.en?.join('; ')
+      return meanings ? `${d.pos} ${meanings}` : null
+    })
+    .filter((line): line is string => line !== null)
+
+  return [...zhLines, ...enLines].join('\n')
+}
+
 // 查询基础词典
 const queryDictionary = async (text: string) => {
   if (!text) return
@@ -145,15 +164,9 @@ const queryDictionary = async (text: string) => {
   const info = await wordsStore.lookupDict(text)
 
   if (info) {
-    // 格式化释义用于展示
-    const defLines = info.definitions.map((d: BaseDictDefinition) => {
-      const meanings = d.meanings?.zh?.join('；') || d.meanings?.en?.join('; ') || ''
-      return `${d.pos} ${meanings}`
-    })
-
     dictData.value = {
       phon: info.ipas?.join('; ') || '',
-      definition: defLines.join('\n'),
+      definition: formatDefinitions(info.definitions),
       found: true,
     }
   } else {
@@ -178,13 +191,9 @@ const initForm = () => {
     // 优先使用 props.word 中的 baseInfo (如果列表接口已经返回)
     if (props.word.baseInfo) {
       const info = props.word.baseInfo
-      const defLines = info.definitions.map((d) => {
-        const meanings = d.meanings?.zh?.join('；') || d.meanings?.en?.join('; ') || ''
-        return `${d.pos} ${meanings}`
-      })
       dictData.value = {
         phon: info.ipas?.join('; ') || '',
-        definition: defLines.join('\n'),
+        definition: formatDefinitions(info.definitions),
         found: true,
       }
     } else {
@@ -203,6 +212,17 @@ watch(
   (v) => {
     if (v) {
       initForm()
+    }
+  },
+)
+
+// 监听内容变化或弹窗打开，重置滚动条
+watch(
+  () => [dictData.value.definition, step.value, show.value],
+  async () => {
+    await nextTick()
+    if (dictContentRef.value) {
+      dictContentRef.value.scrollTop = 0
     }
   },
 )

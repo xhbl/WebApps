@@ -247,7 +247,7 @@ const swipeNext = () => swipeRef.value?.next()
   align-items: center;
   margin-bottom: 16px;
   color: var(--van-gray-6);
-  font-size: var(--van-font-size-lg);
+  font-size: var(--van-font-size-md);
   cursor: pointer;
 }
 .phon-icon {

@@ -77,13 +77,22 @@ const actions = computed(() => {
 })
 
 const definition = computed(() => {
-  if (!props.word.explanations || props.word.explanations.length === 0) return ''
-  return props.word.explanations
-    .map((e) => {
-      const zh = e.exp?.zh || ''
-      return `${e.pos} ${zh}`
-    })
-    .join('; ')
+  // 1. 优先显示单词本内的中文释义
+  if (props.word.explanations && props.word.explanations.length > 0) {
+    const parts = props.word.explanations.map((e) => e.exp.zh).filter(Boolean)
+    if (parts.length > 0) return parts.join('; ')
+  }
+  // 2. 其次显示基本词典的中文释义
+  if (props.word.baseInfo?.definitions?.length) {
+    const parts = props.word.baseInfo.definitions
+      .map((d) => {
+        const meanings = d.meanings?.zh?.join('；') || ''
+        return meanings ? `${d.pos} ${meanings}`.trim() : null
+      })
+      .filter(Boolean)
+    if (parts.length > 0) return (parts as string[]).join('; ')
+  }
+  return ''
 })
 
 const wordSegments = computed(() => {
