@@ -16,7 +16,7 @@
 
     <div class="swipe-wrap">
       <van-button
-        v-if="isDesktop"
+        v-if="isDesktop && !isSingleMode"
         class="nav-btn nav-prev"
         icon="arrow-left"
         round
@@ -28,10 +28,10 @@
         ref="swipeRef"
         :initial-swipe="initialIndex"
         class="my-swipe"
-        :show-indicators="true"
+        :show-indicators="!isSingleMode"
         @change="onChange"
       >
-        <van-swipe-item v-for="w in wordsStore.words" :key="w.id">
+        <van-swipe-item v-for="w in cardList" :key="w.id">
           <div class="card">
             <div class="sticky-header van-hairline--bottom">
               <div class="word-row">
@@ -150,7 +150,7 @@
         </van-swipe-item>
       </van-swipe>
       <van-button
-        v-if="isDesktop"
+        v-if="isDesktop && !isSingleMode"
         class="nav-btn nav-next"
         icon="arrow"
         round
@@ -205,6 +205,9 @@ const { popoverMap, onOpen: onPopoverOpen, closeAll: closeAllPopovers } = usePop
 const wid = Number(route.params.wid)
 const bid = Number(route.params.bid)
 
+const isSingleMode = computed(() => route.query.single === 'true')
+const autoEdit = computed(() => route.query.edit === 'true')
+
 // 页面加载时确保数据已加载
 onMounted(async () => {
   // 如果 words 为空，重新加载
@@ -213,6 +216,9 @@ onMounted(async () => {
   }
   if (bid > 0 && booksStore.books.length === 0) {
     await booksStore.loadBooks()
+  }
+  if (autoEdit.value) {
+    isEditMode.value = true
   }
 })
 
@@ -224,7 +230,16 @@ const isDesktop = computed(() => {
   return hasFinePointer || canHover
 })
 
+const cardList = computed(() => {
+  if (isSingleMode.value) {
+    const w = wordsStore.words.find((w) => w.id === wid)
+    return w ? [w] : []
+  }
+  return wordsStore.words
+})
+
 const initialIndex = computed(() => {
+  if (isSingleMode.value) return 0
   const idx = wordsStore.words.findIndex((w) => w.id === wid)
   return idx >= 0 ? idx : 0
 })
@@ -247,16 +262,20 @@ const title = computed(() => {
   }
 
   if (wordsStore.words.length === 0) return baseTitle
+  if (isSingleMode.value) return baseTitle
   return `${baseTitle} (${currentIndex.value + 1}/${wordsStore.words.length})`
 })
 
 const onChange = (index: number) => {
   currentIndex.value = index
-  const w = wordsStore.words[index]
+  const w = cardList.value[index]
   if (w) {
     wordsStore.setCurrentWord(w)
     // 更新 URL，以便刷新页面后能停留在当前单词
-    router.replace(`/books/${bid}/words/${w.id}`)
+    router.replace({
+      path: `/books/${bid}/words/${w.id}`,
+      query: route.query,
+    })
   }
 }
 

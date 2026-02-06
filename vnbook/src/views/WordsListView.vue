@@ -252,8 +252,11 @@ const deleteActionText = computed(() => (bid.value === 0 ? '删除' : '移除'))
 const onWordAction = async (action: { key: string }, w: Word) => {
   showWordPopover.value[w.id] = false
   if (action.key === 'edit') {
-    editingWord.value = w
-    showWordEditor.value = true
+    wordsStore.setCurrentWord(w)
+    router.push({
+      path: `/books/${bid.value}/words/${w.id}`,
+      query: { single: 'true', edit: 'true' },
+    })
   } else if (action.key === 'review') {
     try {
       const res = await wordsApi.saveWord({ ...w, book_id: -1, _new: 1 })
@@ -483,7 +486,11 @@ const onWordItemClick = (w: Word) => {
 
 const openWordCard = (w: Word) => {
   wordsStore.setCurrentWord(w)
-  router.push(`/books/${bid.value}/words/${w.id}`)
+  const query: Record<string, string> = {}
+  if (bid.value === 0) {
+    query.single = 'true'
+  }
+  router.push({ path: `/books/${bid.value}/words/${w.id}`, query })
 }
 
 const { openMenu, AppMenu } = useAppMenu({
