@@ -28,7 +28,7 @@
       >
         <van-swipe-item v-for="w in wordsStore.words" :key="w.id">
           <div class="card">
-            <div class="sticky-header">
+            <div class="sticky-header van-hairline--bottom">
               <div class="word-row">
                 <span class="word-text">{{ w.word }}</span>
               </div>
@@ -40,7 +40,7 @@
 
             <div class="card-content">
               <div class="exps" v-if="w.explanations && w.explanations.length">
-                <div class="exp-block" v-for="e in w.explanations" :key="e.id">
+                <div class="exp-item van-hairline--bottom" v-for="e in w.explanations" :key="e.id">
                   <div class="exp-header">
                     <span class="exp-pos">{{ e.pos }}</span>
                     <span class="exp-cn">{{ e.exp?.zh }}</span>
@@ -48,7 +48,9 @@
                   <div class="exp-en" v-if="e.exp?.en">{{ e.exp.en }}</div>
                   <div class="sens-block" v-if="e.sentences && e.sentences.length">
                     <div class="sen-item" v-for="s in e.sentences" :key="s.id">
-                      <div class="sen-label">例:</div>
+                      <div class="sen-label">
+                        <van-icon name="guide-o" />
+                      </div>
                       <div class="sen-content">
                         <div class="sen-en">{{ s.sen?.en }}</div>
                         <div class="sen-ch" v-if="s.sen?.zh">{{ s.sen.zh }}</div>
@@ -56,6 +58,42 @@
                     </div>
                   </div>
                 </div>
+              </div>
+              <div class="empty-exps" v-else>
+                尚未在单词本中添加释义例句内容，请点击右上方图标进入编辑模式添加。
+              </div>
+
+              <div class="dict-tabs" v-if="w.baseInfo?.definitions?.length">
+                <van-tabs
+                  v-model:active="activeTab"
+                  shrink
+                  background="transparent"
+                  :border="false"
+                  line-width="0px"
+                  color="var(--van-primary-color)"
+                >
+                  <van-tab title="基本词典">
+                    <div class="dict-content-box">
+                      <div
+                        v-for="(item, idx) in getDictZh(w.baseInfo.definitions)"
+                        :key="'zh' + idx"
+                        class="dict-item"
+                      >
+                        <span class="dict-pos">{{ item.pos }}</span>
+                        <span class="dict-text-zh">{{ item.text }}</span>
+                      </div>
+                      <div
+                        v-for="(item, idx) in getDictEn(w.baseInfo.definitions)"
+                        :key="'en' + idx"
+                        class="dict-item"
+                      >
+                        <span class="dict-pos">{{ item.pos }}</span>
+                        <span class="dict-text-en">{{ item.text }}</span>
+                      </div>
+                    </div>
+                  </van-tab>
+                  <!-- <van-tab title="其它词典"></van-tab> -->
+                </van-tabs>
               </div>
             </div>
           </div>
@@ -87,7 +125,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { useWordsStore } from '@/stores/words'
 import { showDialog } from 'vant'
-import type { MenuAction } from '@/types'
+import type { MenuAction, BaseDictDefinition } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -99,6 +137,7 @@ const menuActions = [
   { name: '删除', key: 'delete' },
   { name: '编辑', key: 'edit' },
 ]
+const activeTab = ref(0)
 
 const wid = Number(route.params.wid)
 const bid = Number(route.params.bid)
@@ -212,6 +251,27 @@ const playAudio = (text: string) => {
   }
 }
 
+const getDictZh = (defs: BaseDictDefinition[]) => {
+  return defs
+    .map((d) => {
+      const text = d.meanings?.zh?.join('；')
+      return text ? { pos: d.pos, text } : null
+    })
+    .filter((item): item is { pos: string; text: string } => item !== null)
+}
+
+const getDictEn = (defs: BaseDictDefinition[]) => {
+  const list: { pos: string; text: string }[] = []
+  defs.forEach((d) => {
+    if (d.meanings?.en) {
+      d.meanings.en.forEach((text) => {
+        if (text) list.push({ pos: d.pos, text })
+      })
+    }
+  })
+  return list
+}
+
 const goBack = () => router.back()
 const swipePrev = () => swipeRef.value?.prev()
 const swipeNext = () => swipeRef.value?.next()
@@ -227,7 +287,7 @@ const swipeNext = () => swipeRef.value?.next()
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  background-color: var(--van-gray-1);
+  background-color: var(--van-background);
 }
 :deep(.van-nav-bar__title) {
   font-size: var(--van-font-size-lg);
@@ -270,7 +330,7 @@ const swipeNext = () => swipeRef.value?.next()
   padding: 8px 10px 6px 16px;
 }
 .card-content {
-  padding: 5px 16px 50px 16px;
+  padding: 4px 16px 30px 16px;
 }
 .word-row {
   margin-bottom: 2px;
@@ -292,11 +352,15 @@ const swipeNext = () => swipeRef.value?.next()
   margin-right: 4px;
   color: var(--van-primary-color);
 }
-.exp-block {
-  background-color: var(--van-gray-2);
-  border-radius: 4px;
-  padding: 8px;
-  margin-bottom: 8px;
+.empty-exps {
+  padding: 12px 0 0;
+  color: var(--van-text-color-3);
+  font-size: var(--van-font-size-md);
+  text-align: center;
+}
+.exp-item {
+  position: relative;
+  padding: 7px 0;
 }
 .exp-header {
   display: flex;
@@ -311,7 +375,7 @@ const swipeNext = () => swipeRef.value?.next()
 }
 .exp-en {
   font-size: var(--van-font-size-md);
-  color: var(--van-gray-6);
+  color: var(--van-text-color-2);
   margin-bottom: 4px;
   line-height: 1.4;
 }
@@ -324,7 +388,7 @@ const swipeNext = () => swipeRef.value?.next()
 .sen-label {
   margin-right: 4px;
   white-space: nowrap;
-  color: var(--van-gray-6);
+  color: var(--van-text-color-2);
 }
 .sen-content {
   flex: 1;
@@ -333,7 +397,7 @@ const swipeNext = () => swipeRef.value?.next()
   color: var(--van-text-color);
 }
 .sen-ch {
-  color: var(--van-gray-6);
+  color: var(--van-text-color-2);
   margin-top: 2px;
 }
 .nav-btn {
@@ -351,5 +415,38 @@ const swipeNext = () => swipeRef.value?.next()
 }
 .nav-next {
   right: 6px;
+}
+
+.dict-tabs {
+  margin-top: 16px;
+  --van-tabs-line-height: 30px;
+}
+:deep(.van-tabs__nav) {
+  background-color: transparent;
+  padding-left: 0;
+}
+:deep(.van-tab) {
+  padding: 0 16px 0 0;
+}
+:deep(.van-tab--active) {
+  font-weight: bold;
+}
+.dict-content-box {
+  padding: 5px 0;
+}
+.dict-item {
+  margin-bottom: 6px;
+  font-size: var(--van-font-size-md);
+  line-height: 1.4;
+}
+.dict-pos {
+  font-weight: bold;
+  margin-right: 8px;
+}
+.dict-text-zh {
+  color: var(--van-text-color);
+}
+.dict-text-en {
+  color: var(--van-text-color-2);
 }
 </style>

@@ -144,12 +144,12 @@ const formatDefinitions = (definitions: BaseDictDefinition[]) => {
     })
     .filter((line): line is string => line !== null)
 
-  const enLines = definitions
-    .map((d) => {
-      const meanings = d.meanings?.en?.join('; ')
-      return meanings ? `${d.pos} ${meanings}` : null
+  const enLines: string[] = []
+  definitions.forEach((d) => {
+    d.meanings?.en?.forEach((m) => {
+      if (m) enLines.push(`${d.pos} ${m}`)
     })
-    .filter((line): line is string => line !== null)
+  })
 
   return [...zhLines, ...enLines].join('\n')
 }
