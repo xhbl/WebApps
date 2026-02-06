@@ -1,6 +1,6 @@
 <template>
   <div class="word-card-view">
-    <van-nav-bar :title="title" fixed placeholder z-index="100">
+    <van-nav-bar :title="title" :fixed="false" z-index="100">
       <template #left>
         <van-icon name="arrow-left" class="nav-bar-icon" @click="goBack" />
       </template>
@@ -28,27 +28,31 @@
       >
         <van-swipe-item v-for="w in wordsStore.words" :key="w.id">
           <div class="card">
-            <div class="word-row">
-              <span class="word-text">{{ w.word }}</span>
-            </div>
-            <div class="phon-row" v-if="w.phon" @click.stop="playAudio(w.word)">
-              <van-icon name="volume-o" class="phon-icon" />
-              <span class="phon-text">/{{ w.phon }}/</span>
+            <div class="sticky-header">
+              <div class="word-row">
+                <span class="word-text">{{ w.word }}</span>
+              </div>
+              <div class="phon-row" v-if="w.phon" @click.stop="playAudio(w.word)">
+                <van-icon name="volume-o" class="phon-icon" />
+                <span class="phon-text">/{{ w.phon }}/</span>
+              </div>
             </div>
 
-            <div class="exps" v-if="w.explanations && w.explanations.length">
-              <div class="exp-block" v-for="e in w.explanations" :key="e.id">
-                <div class="exp-header">
-                  <span class="exp-pos">{{ e.pos }}</span>
-                  <span class="exp-cn">{{ e.exp?.zh }}</span>
-                </div>
-                <div class="exp-en" v-if="e.exp?.en">{{ e.exp.en }}</div>
-                <div class="sens-block" v-if="e.sentences && e.sentences.length">
-                  <div class="sen-item" v-for="s in e.sentences" :key="s.id">
-                    <div class="sen-label">例:</div>
-                    <div class="sen-content">
-                      <div class="sen-en">{{ s.sen?.en }}</div>
-                      <div class="sen-ch" v-if="s.sen?.zh">{{ s.sen.zh }}</div>
+            <div class="card-content">
+              <div class="exps" v-if="w.explanations && w.explanations.length">
+                <div class="exp-block" v-for="e in w.explanations" :key="e.id">
+                  <div class="exp-header">
+                    <span class="exp-pos">{{ e.pos }}</span>
+                    <span class="exp-cn">{{ e.exp?.zh }}</span>
+                  </div>
+                  <div class="exp-en" v-if="e.exp?.en">{{ e.exp.en }}</div>
+                  <div class="sens-block" v-if="e.sentences && e.sentences.length">
+                    <div class="sen-item" v-for="s in e.sentences" :key="s.id">
+                      <div class="sen-label">例:</div>
+                      <div class="sen-content">
+                        <div class="sen-en">{{ s.sen?.en }}</div>
+                        <div class="sen-ch" v-if="s.sen?.zh">{{ s.sen.zh }}</div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -78,14 +82,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useBooksStore } from '@/stores/books'
 import { useWordsStore } from '@/stores/words'
 import { showDialog } from 'vant'
 import type { MenuAction } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
+const booksStore = useBooksStore()
 const wordsStore = useWordsStore()
 const swipeRef = ref()
 const showMenu = ref(false)
@@ -103,6 +109,9 @@ onMounted(async () => {
   if (!wordsStore.words.length && !isNaN(bid)) {
     await wordsStore.loadWords(bid)
   }
+  if (bid > 0 && booksStore.books.length === 0) {
+    await booksStore.loadBooks()
+  }
 })
 
 // 检测是否为桌面设备（非触摸屏或支持悬停）
@@ -118,24 +127,40 @@ const initialIndex = computed(() => {
   return idx >= 0 ? idx : 0
 })
 
+const currentIndex = ref(initialIndex.value)
+
+watch(initialIndex, (val) => {
+  currentIndex.value = val
+})
+
 const title = computed(() => {
-  return `第${initialIndex.value + 1}个 / 共${wordsStore.words.length}个`
+  let baseTitle = '单词卡片'
+  if (bid === 0) {
+    baseTitle = wordsStore.orphanFilter ? '未入本单词' : '全部单词'
+  } else if (bid === -1) {
+    baseTitle = '复习本'
+  } else {
+    const book = booksStore.books.find((b) => b.id === bid)
+    if (book) baseTitle = book.title
+  }
+
+  if (wordsStore.words.length === 0) return baseTitle
+  return `${baseTitle} (${currentIndex.value + 1}/${wordsStore.words.length})`
 })
 
 const onChange = (index: number) => {
+  currentIndex.value = index
   const w = wordsStore.words[index]
   if (w) {
     wordsStore.setCurrentWord(w)
-    // 更新 URL 参数，以便刷新时保持在当前单词
-    router.replace({
-      params: { ...route.params, wid: String(w.id) },
-    })
+    // 更新 URL，以便刷新页面后能停留在当前单词
+    router.replace(`/books/${bid}/words/${w.id}`)
   }
 }
 
 const openMenu = () => (showMenu.value = true)
 const onSelectAction = async (action: MenuAction) => {
-  const currentWord = wordsStore.words[initialIndex.value]
+  const currentWord = wordsStore.words[currentIndex.value]
   if (!currentWord) return
 
   if (action.key === 'delete') {
@@ -194,13 +219,18 @@ const swipeNext = () => swipeRef.value?.next()
 
 <style scoped>
 .word-card-view {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
   height: 100vh;
   height: 100dvh;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   background-color: var(--van-gray-1);
 }
 :deep(.van-nav-bar__title) {
-  font-size: var(--van-font-size-xl);
+  font-size: var(--van-font-size-lg);
 }
 
 .van-icon {
@@ -213,8 +243,7 @@ const swipeNext = () => swipeRef.value?.next()
 }
 
 .swipe-wrap {
-  height: calc(100vh - var(--van-nav-bar-height));
-  height: calc(100dvh - var(--van-nav-bar-height));
+  flex: 1;
   position: relative;
   overflow: hidden;
 }
@@ -229,35 +258,45 @@ const swipeNext = () => swipeRef.value?.next()
   bottom: 12px;
 }
 .card {
-  padding: 16px;
-  padding-bottom: 50px;
+  padding: 0;
   min-height: 100%;
   box-sizing: border-box;
 }
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--van-nav-bar-background);
+  padding: 8px 10px 6px 16px;
+}
+.card-content {
+  padding: 5px 16px 50px 16px;
+}
 .word-row {
-  margin-bottom: 8px;
+  margin-bottom: 2px;
 }
 .word-text {
   font-weight: bold;
-  font-size: var(--van-font-size-xl);
+  font-size: calc(var(--van-font-size-xl) + 2px);
   color: var(--van-text-color);
 }
 .phon-row {
   display: flex;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 0;
   color: var(--van-gray-6);
   font-size: var(--van-font-size-md);
   cursor: pointer;
 }
 .phon-icon {
   margin-right: 4px;
+  color: var(--van-primary-color);
 }
 .exp-block {
   background-color: var(--van-gray-2);
   border-radius: 4px;
   padding: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 .exp-header {
   display: flex;
@@ -273,13 +312,13 @@ const swipeNext = () => swipeRef.value?.next()
 .exp-en {
   font-size: var(--van-font-size-md);
   color: var(--van-gray-6);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   line-height: 1.4;
 }
 .sen-item {
   display: flex;
   font-size: var(--van-font-size-sm);
-  margin-top: 8px;
+  margin-top: 4px;
   line-height: 1.4;
 }
 .sen-label {
