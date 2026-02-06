@@ -1,7 +1,12 @@
 <template>
-  <van-popup v-model:show="show" round position="bottom" :style="{ height: '70%' }">
+  <van-popup
+    v-model:show="show"
+    round
+    position="bottom"
+    :style="{ height: mode === 'phon' ? '40%' : '70%' }"
+  >
     <div class="editor">
-      <h3>{{ isNew ? '添加单词' : '编辑单词' }}</h3>
+      <h3>{{ title }}</h3>
       <van-form @submit="onSubmit">
         <van-cell-group>
           <van-field
@@ -31,6 +36,7 @@
               </template>
             </van-field>
             <van-field
+              v-if="mode === 'full'"
               :model-value="definitionPreview"
               label="释义"
               readonly
@@ -46,7 +52,10 @@
           </template>
         </van-cell-group>
 
-        <div v-if="step === 'detail' && dictData.found && dictData.definition" class="dict-section">
+        <div
+          v-if="mode === 'full' && step === 'detail' && dictData.found && dictData.definition"
+          class="dict-section"
+        >
           <div class="dict-title">基本词典</div>
           <div class="dict-content" ref="dictContentRef">
             <div v-for="(line, index) in dictDataLines" :key="index" class="dict-line">
@@ -78,6 +87,7 @@ const props = defineProps<{
   modelValue: boolean
   bid: number
   word?: Word | null
+  mode?: 'full' | 'phon'
 }>()
 
 const emit = defineEmits<{
@@ -92,6 +102,12 @@ watch(
 )
 
 const isNew = computed(() => !props.word || props.word._new === 1)
+const mode = computed(() => props.mode || 'full')
+const title = computed(() => {
+  if (mode.value === 'phon') return '编辑音标'
+  return isNew.value ? '添加单词' : '编辑单词'
+})
+
 const step = ref<'input' | 'detail'>('input')
 
 const formData = ref({

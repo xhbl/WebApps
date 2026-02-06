@@ -474,6 +474,25 @@ function defineWordsStore() {
   }
 
   /**
+   * 移动释义（客户端）
+   */
+  const moveExplanation = (wordId: number, expId: number, direction: number) => {
+    const word = words.value.find((w) => w.id === wordId)
+    if (!word || !word.explanations) return
+
+    const index = word.explanations.findIndex((e) => e.id === expId)
+    if (index === -1) return
+
+    const targetIndex = index + direction
+    if (targetIndex < 0 || targetIndex >= word.explanations.length) return
+
+    // Swap elements
+    const currentExp = word.explanations[index]!
+    word.explanations.splice(index, 1)
+    word.explanations.splice(targetIndex, 0, currentExp)
+  }
+
+  /**
    * 设置当前单词
    */
   const setCurrentWord = (word: Word | null) => {
@@ -530,6 +549,7 @@ function defineWordsStore() {
     deleteExplanation,
     saveSentence,
     deleteSentence,
+    moveExplanation,
     setCurrentWord,
     setSearchKeyword,
     findWordByName,

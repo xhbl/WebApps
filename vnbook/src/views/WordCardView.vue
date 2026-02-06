@@ -1,5 +1,5 @@
 <template>
-  <div class="word-card-view">
+  <div class="word-card-view" @click="closeAllPopovers">
     <van-nav-bar :title="title" :fixed="false" z-index="100">
       <template #left>
         <van-icon name="arrow-left" class="nav-bar-icon" @click="goBack" />
@@ -41,25 +41,45 @@
                 <van-icon name="volume-o" class="phon-icon" />
                 <span class="phon-text">/{{ w.phon }}/</span>
               </div>
-              <div v-if="isEditMode" class="edit-float-icon word-edit" @click.stop="onEditWord(w)">
-                <van-icon name="edit" />
+              <div v-if="isEditMode" class="edit-float-icon word-edit" @click.stop>
+                <van-popover
+                  v-model:show="popoverMap['word-' + w.id]"
+                  :actions="wordActions"
+                  placement="bottom-end"
+                  @select="(action) => onWordAction(action, w)"
+                  @open="onPopoverOpen('word-' + w.id)"
+                >
+                  <template #reference>
+                    <van-icon name="edit" />
+                  </template>
+                </van-popover>
               </div>
             </div>
 
             <div class="card-content">
               <div class="exps" v-if="w.explanations && w.explanations.length">
-                <div class="exp-item van-hairline--bottom" v-for="e in w.explanations" :key="e.id">
+                <div
+                  class="exp-item van-hairline--bottom"
+                  v-for="(e, index) in w.explanations"
+                  :key="e.id"
+                >
                   <div class="exp-header">
                     <span class="exp-pos">{{ e.pos }}</span>
                     <span class="exp-cn">{{ e.exp?.zh }}</span>
                   </div>
                   <div class="exp-en" v-if="e.exp?.en">{{ e.exp.en }}</div>
-                  <div
-                    v-if="isEditMode"
-                    class="edit-float-icon exp-edit"
-                    @click.stop="onEditExp(e)"
-                  >
-                    <van-icon name="edit" />
+                  <div v-if="isEditMode" class="edit-float-icon exp-edit" @click.stop>
+                    <van-popover
+                      v-model:show="popoverMap['exp-' + e.id]"
+                      :actions="getExpActions(e, w)"
+                      :placement="getPopoverPlacement(index, w.explanations.length)"
+                      @select="(action) => onExpAction(action, e, w)"
+                      @open="onPopoverOpen('exp-' + e.id)"
+                    >
+                      <template #reference>
+                        <van-icon name="edit" />
+                      </template>
+                    </van-popover>
                   </div>
                   <div class="sens-block" v-if="e.sentences && e.sentences.length">
                     <div class="sen-item" v-for="s in e.sentences" :key="s.id">
@@ -144,6 +164,7 @@
       v-model="showWordEditor"
       :bid="bid"
       :word="editingWord"
+      :mode="wordEditorMode"
       @update:word="editingWord = $event"
     />
     <exp-editor-dialog
@@ -170,6 +191,7 @@ import type { BaseDictDefinition, Word, Explanation, Sentence } from '@/types'
 import WordEditorDialog from '@/components/WordEditorDialog.vue'
 import ExpEditorDialog from '@/components/ExpEditorDialog.vue'
 import SenEditorDialog from '@/components/SenEditorDialog.vue'
+import { usePopoverMap } from '@/composables/usePopoverMap'
 
 const route = useRoute()
 const router = useRouter()
@@ -178,6 +200,7 @@ const wordsStore = useWordsStore()
 const swipeRef = ref()
 const activeTab = ref(0)
 const showDict = ref(true)
+const { popoverMap, onOpen: onPopoverOpen, closeAll: closeAllPopovers } = usePopoverMap()
 
 const wid = Number(route.params.wid)
 const bid = Number(route.params.bid)
@@ -244,14 +267,23 @@ const showSenEditor = ref(false)
 const editingWord = ref<Word | null>(null)
 const editingExp = ref<Explanation | null>(null)
 const editingSen = ref<Sentence | null>(null)
+const wordEditorMode = ref<'full' | 'phon'>('full')
 
 const toggleEditMode = () => {
   isEditMode.value = !isEditMode.value
 }
 
-const onEditWord = (w: Word) => {
-  editingWord.value = w
-  showWordEditor.value = true
+const playAudio = (word: string) => {
+  if ('speechSynthesis' in window) {
+    const msg = new SpeechSynthesisUtterance(word)
+    msg.lang = 'en-US'
+    const voices = window.speechSynthesis.getVoices()
+    const usVoice = voices.find((voice) => voice.lang === 'en-US')
+    if (usVoice) {
+      msg.voice = usVoice
+    }
+    window.speechSynthesis.speak(msg)
+  }
 }
 
 const onEditExp = (e: Explanation) => {
@@ -264,6 +296,29 @@ const onEditSen = (s: Sentence) => {
   showSenEditor.value = true
 }
 
+const onAddExp = (wordId: number) => {
+  editingExp.value = {
+    id: 0,
+    word_id: wordId,
+    pos: '',
+    exp: { en: '', zh: '' },
+    time_c: '',
+    _new: 1,
+  }
+  showExpEditor.value = true
+}
+
+const onAddSen = (expId: number) => {
+  editingSen.value = {
+    id: 0,
+    exp_id: expId,
+    sen: { en: '', zh: '' },
+    time_c: '',
+    _new: 1,
+  }
+  showSenEditor.value = true
+}
+
 const onSaveExp = async (exp: Explanation) => {
   await wordsStore.saveExplanation(exp)
 }
@@ -272,17 +327,53 @@ const onSaveSen = async (sen: Sentence) => {
   await wordsStore.saveSentence(sen, sen.exp_id)
 }
 
-const playAudio = (text: string) => {
-  if ('speechSynthesis' in window) {
-    const msg = new SpeechSynthesisUtterance(text)
-    msg.lang = 'en-US'
-    const voices = window.speechSynthesis.getVoices()
-    const usVoice = voices.find((voice) => voice.lang === 'en-US')
-    if (usVoice) {
-      msg.voice = usVoice
-    }
-    window.speechSynthesis.speak(msg)
+const wordActions = [
+  { text: '添加释义', icon: 'plus', key: 'add-exp' },
+  { text: '编辑音标', icon: 'certificate', key: 'edit-phon' },
+]
+
+const onWordAction = (action: { key: string }, w: Word) => {
+  closeAllPopovers()
+  if (action.key === 'add-exp') {
+    onAddExp(w.id)
+  } else if (action.key === 'edit-phon') {
+    editingWord.value = w
+    wordEditorMode.value = 'phon'
+    showWordEditor.value = true
   }
+}
+
+const getExpActions = (exp: Explanation, word: Word) => {
+  const actions: { text: string; icon: string; key: string }[] = [
+    { text: '添加例句', icon: 'plus', key: 'add-sen' },
+    { text: '编辑释义', icon: 'edit', key: 'edit-exp' },
+  ]
+  const exps = word.explanations || []
+  const index = exps.findIndex((e) => e.id === exp.id)
+
+  if (index > 0) actions.push({ text: '上移', icon: 'arrow-up', key: 'move-up' })
+  if (index < exps.length - 1) actions.push({ text: '下移', icon: 'arrow-down', key: 'move-down' })
+  return actions
+}
+
+const onExpAction = (action: { key: string }, exp: Explanation, word: Word) => {
+  closeAllPopovers()
+  if (action.key === 'add-sen') {
+    onAddSen(exp.id)
+  } else if (action.key === 'edit-exp') {
+    onEditExp(exp)
+  } else if (action.key === 'move-up') {
+    wordsStore.moveExplanation(word.id, exp.id, -1)
+  } else if (action.key === 'move-down') {
+    wordsStore.moveExplanation(word.id, exp.id, 1)
+  }
+}
+
+const getPopoverPlacement = (index: number, total: number) => {
+  if (total > 3 && index >= total - 1) {
+    return 'top-end'
+  }
+  return 'bottom-end'
 }
 
 const getDictZh = (defs: BaseDictDefinition[]) => {
