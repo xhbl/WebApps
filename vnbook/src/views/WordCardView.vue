@@ -5,7 +5,12 @@
         <van-icon name="arrow-left" class="nav-bar-icon" @click="goBack" />
       </template>
       <template #right>
-        <van-icon name="ellipsis" class="nav-bar-icon" @click="openMenu" />
+        <van-icon
+          name="edit"
+          class="nav-bar-icon"
+          :class="{ active: isEditMode }"
+          @click="toggleEditMode"
+        />
       </template>
     </van-nav-bar>
 
@@ -36,6 +41,9 @@
                 <van-icon name="volume-o" class="phon-icon" />
                 <span class="phon-text">/{{ w.phon }}/</span>
               </div>
+              <div v-if="isEditMode" class="edit-float-icon word-edit" @click.stop="onEditWord(w)">
+                <van-icon name="edit" />
+              </div>
             </div>
 
             <div class="card-content">
@@ -46,6 +54,13 @@
                     <span class="exp-cn">{{ e.exp?.zh }}</span>
                   </div>
                   <div class="exp-en" v-if="e.exp?.en">{{ e.exp.en }}</div>
+                  <div
+                    v-if="isEditMode"
+                    class="edit-float-icon exp-edit"
+                    @click.stop="onEditExp(e)"
+                  >
+                    <van-icon name="edit" />
+                  </div>
                   <div class="sens-block" v-if="e.sentences && e.sentences.length">
                     <div class="sen-item" v-for="s in e.sentences" :key="s.id">
                       <div class="sen-label">
@@ -55,6 +70,13 @@
                         <div class="sen-en">{{ s.sen?.en }}</div>
                         <div class="sen-ch" v-if="s.sen?.zh">{{ s.sen.zh }}</div>
                       </div>
+                      <div
+                        v-if="isEditMode"
+                        class="edit-float-icon sen-edit"
+                        @click.stop="onEditSen(s)"
+                      >
+                        <van-icon name="edit" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -63,37 +85,45 @@
                 尚未在单词本中添加释义例句内容，请点击右上方图标进入编辑模式添加。
               </div>
 
-              <div class="dict-tabs" v-if="w.baseInfo?.definitions?.length">
-                <van-tabs
-                  v-model:active="activeTab"
-                  shrink
-                  background="transparent"
-                  :border="false"
-                  line-width="0px"
-                  color="var(--van-primary-color)"
-                >
-                  <van-tab title="基本词典">
-                    <div class="dict-content-box">
-                      <div
-                        v-for="(item, idx) in getDictZh(w.baseInfo.definitions)"
-                        :key="'zh' + idx"
-                        class="dict-item"
-                      >
-                        <span class="dict-pos">{{ item.pos }}</span>
-                        <span class="dict-text-zh">{{ item.text }}</span>
+              <div class="dict-section-wrapper" v-if="w.baseInfo?.definitions?.length">
+                <div class="dict-tabs" v-if="showDict">
+                  <div class="dict-float-icon" @click.stop="showDict = false">
+                    <van-icon name="closed-eye" />
+                  </div>
+                  <van-tabs
+                    v-model:active="activeTab"
+                    shrink
+                    background="transparent"
+                    :border="false"
+                    line-width="0px"
+                    color="var(--van-primary-color)"
+                  >
+                    <van-tab title="基本词典">
+                      <div class="dict-content-box">
+                        <div
+                          v-for="(item, idx) in getDictZh(w.baseInfo.definitions)"
+                          :key="'zh' + idx"
+                          class="dict-item"
+                        >
+                          <span class="dict-pos">{{ item.pos }}</span>
+                          <span class="dict-text-zh">{{ item.text }}</span>
+                        </div>
+                        <div
+                          v-for="(item, idx) in getDictEn(w.baseInfo.definitions)"
+                          :key="'en' + idx"
+                          class="dict-item"
+                        >
+                          <span class="dict-pos">{{ item.pos }}</span>
+                          <span class="dict-text-en">{{ item.text }}</span>
+                        </div>
                       </div>
-                      <div
-                        v-for="(item, idx) in getDictEn(w.baseInfo.definitions)"
-                        :key="'en' + idx"
-                        class="dict-item"
-                      >
-                        <span class="dict-pos">{{ item.pos }}</span>
-                        <span class="dict-text-en">{{ item.text }}</span>
-                      </div>
-                    </div>
-                  </van-tab>
-                  <!-- <van-tab title="其它词典"></van-tab> -->
-                </van-tabs>
+                    </van-tab>
+                    <!-- <van-tab title="其它词典"></van-tab> -->
+                  </van-tabs>
+                </div>
+                <div v-else class="dict-collapsed" @click="showDict = true">
+                  <span class="dict-collapsed-text">显示词典信息</span>
+                </div>
               </div>
             </div>
           </div>
@@ -110,11 +140,23 @@
       />
     </div>
 
-    <van-action-sheet
-      v-model:show="showMenu"
-      :actions="menuActions"
-      cancel-text="取消"
-      @select="handleMenuSelect"
+    <word-editor-dialog
+      v-model="showWordEditor"
+      :bid="bid"
+      :word="editingWord"
+      @update:word="editingWord = $event"
+    />
+    <exp-editor-dialog
+      v-model="showExpEditor"
+      :wid="editingExp?.word_id || 0"
+      :explanation="editingExp"
+      @save="onSaveExp"
+    />
+    <sen-editor-dialog
+      v-model="showSenEditor"
+      :eid="editingSen?.exp_id || 0"
+      :sentence="editingSen"
+      @save="onSaveSen"
     />
   </div>
 </template>
@@ -124,20 +166,18 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { useWordsStore } from '@/stores/words'
-import { showDialog } from 'vant'
-import type { MenuAction, BaseDictDefinition } from '@/types'
+import type { BaseDictDefinition, Word, Explanation, Sentence } from '@/types'
+import WordEditorDialog from '@/components/WordEditorDialog.vue'
+import ExpEditorDialog from '@/components/ExpEditorDialog.vue'
+import SenEditorDialog from '@/components/SenEditorDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
 const booksStore = useBooksStore()
 const wordsStore = useWordsStore()
 const swipeRef = ref()
-const showMenu = ref(false)
-const menuActions = [
-  { name: '删除', key: 'delete' },
-  { name: '编辑', key: 'edit' },
-]
 const activeTab = ref(0)
+const showDict = ref(true)
 
 const wid = Number(route.params.wid)
 const bid = Number(route.params.bid)
@@ -197,46 +237,40 @@ const onChange = (index: number) => {
   }
 }
 
-const openMenu = () => (showMenu.value = true)
-const onSelectAction = async (action: MenuAction) => {
-  const currentWord = wordsStore.words[currentIndex.value]
-  if (!currentWord) return
+const isEditMode = ref(false)
+const showWordEditor = ref(false)
+const showExpEditor = ref(false)
+const showSenEditor = ref(false)
+const editingWord = ref<Word | null>(null)
+const editingExp = ref<Explanation | null>(null)
+const editingSen = ref<Sentence | null>(null)
 
-  if (action.key === 'delete') {
-    const isAllWords = bid === 0
-    try {
-      if (isAllWords) {
-        if ((currentWord.book_count || 0) > 0) {
-          await showDialog({
-            title: '确认删除',
-            message: `此单词已在 ${currentWord.book_count} 个单词本中收录，确认要删除吗？`,
-            confirmButtonColor: 'var(--van-danger-color)',
-          })
-        }
-        await showDialog({
-          title: '永久删除',
-          message: `删除后将无法恢复，确认删除单词"${currentWord.word}"吗？`,
-          confirmButtonColor: 'var(--van-danger-color)',
-        })
-      } else {
-        await showDialog({
-          title: '确认移除',
-          message: `确定要从当前单词本移除单词"${currentWord.word}"吗？`,
-          confirmButtonColor: 'var(--van-warning-color)',
-          confirmButtonText: '移除',
-        })
-      }
-      if (await wordsStore.deleteWords([currentWord], bid)) {
-        router.back()
-      }
-    } catch {
-      // Cancelled
-    }
-  } else if (action.key === 'edit') {
-    // 编辑功能通常在列表页或通过弹窗实现，此处暂留空或跳转
-  }
+const toggleEditMode = () => {
+  isEditMode.value = !isEditMode.value
 }
-const handleMenuSelect = (action: MenuAction) => onSelectAction(action)
+
+const onEditWord = (w: Word) => {
+  editingWord.value = w
+  showWordEditor.value = true
+}
+
+const onEditExp = (e: Explanation) => {
+  editingExp.value = e
+  showExpEditor.value = true
+}
+
+const onEditSen = (s: Sentence) => {
+  editingSen.value = s
+  showSenEditor.value = true
+}
+
+const onSaveExp = async (exp: Explanation) => {
+  await wordsStore.saveExplanation(exp)
+}
+
+const onSaveSen = async (sen: Sentence) => {
+  await wordsStore.saveSentence(sen, sen.exp_id)
+}
 
 const playAudio = (text: string) => {
   if ('speechSynthesis' in window) {
@@ -300,6 +334,16 @@ const swipeNext = () => swipeRef.value?.next()
 
 .nav-bar-icon {
   font-size: 22px;
+  padding: 4px;
+  border-radius: 4px;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.nav-bar-icon.active {
+  background-color: var(--van-nav-bar-icon-color);
+  color: #fff;
 }
 
 .swipe-wrap {
@@ -381,6 +425,7 @@ const swipeNext = () => swipeRef.value?.next()
 }
 .sen-item {
   display: flex;
+  position: relative;
   font-size: var(--van-font-size-sm);
   margin-top: 4px;
   line-height: 1.4;
@@ -419,6 +464,7 @@ const swipeNext = () => swipeRef.value?.next()
 
 .dict-tabs {
   margin-top: 16px;
+  position: relative;
   --van-tabs-line-height: 30px;
 }
 :deep(.van-tabs__nav) {
@@ -429,6 +475,7 @@ const swipeNext = () => swipeRef.value?.next()
   padding: 0 16px 0 0;
 }
 :deep(.van-tab--active) {
+  font-size: var(--van-font-size-sm);
   font-weight: bold;
 }
 .dict-content-box {
@@ -436,7 +483,7 @@ const swipeNext = () => swipeRef.value?.next()
 }
 .dict-item {
   margin-bottom: 6px;
-  font-size: var(--van-font-size-md);
+  font-size: var(--van-font-size-sm);
   line-height: 1.4;
 }
 .dict-pos {
@@ -448,5 +495,49 @@ const swipeNext = () => swipeRef.value?.next()
 }
 .dict-text-en {
   color: var(--van-text-color-2);
+}
+.dict-float-icon {
+  position: absolute;
+  right: 0;
+  top: 0;
+  padding: 8px;
+  color: var(--van-gray-5);
+  cursor: pointer;
+  z-index: 10;
+  font-size: 18px;
+}
+.dict-collapsed {
+  margin-top: 16px;
+  padding: 10px 0;
+  text-align: center;
+  color: var(--van-gray-5);
+  font-size: var(--van-font-size-sm);
+  cursor: pointer;
+}
+
+.edit-float-icon {
+  position: absolute;
+  right: 0;
+  top: 0;
+  padding: 4px;
+  color: var(--van-primary-color);
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 4px;
+  cursor: pointer;
+  z-index: 5;
+  font-size: 18px;
+}
+.word-edit {
+  top: 12px;
+  right: 16px;
+}
+.exp-edit {
+  top: 8px;
+  right: 0;
+}
+.sen-edit {
+  top: -2px;
+  right: 0;
+  font-size: 16px;
 }
 </style>
