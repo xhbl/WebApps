@@ -6812,7 +6812,7 @@
 
 1704 generate
 - /ˈdʒɛnɝˌeɪt/
-- vt.
+- vt.["产生，引起","生成","造成","产生（光、热、电等）"]
 
 1705 anymore
 - /ˌɛniˈmɔɹ/
@@ -10815,8 +10815,8 @@
 - n.["比赛","对手","相配的人（或物）","火柴"]  vt.["相同","适应","使较量","使等同于"]  v.["使相配，使相称"]
 
 2705 ie
-- //  //
-- abbr.["Ireland 爱尔兰共和国"]
+- /ˌaɪ ˈiː/
+- adv.["即","也就是说"]
 
 2706 advance
 - /ədˈvæns/
@@ -11129,7 +11129,6 @@
 2783 interpret
 - /ˌɪnˈtɝpɹət/
 - vt.["解释","理解","诠释，体现","口译"]  vi.["作解释","作口译"]
-  ![deterrent](../images/subtlest_interpert.jpg)
 
 2784 friendly
 - /ˈfɹɛndɫi/  /ˈfɹɛnɫi/
@@ -12602,8 +12601,7 @@
 3151 motivation
 - /ˌmoʊtəˈveɪʃən/
 - n.["动机","动力","诱因"]
-- ![motivation](../images/courage-motivation-defeated.jpg)
--
+
 3152 assignment
 - /əˈsaɪnmənt/
 - n.["分给，分配","任务，工作，（课外）作业","<美>任命","指定，委派"]
@@ -13431,7 +13429,6 @@
 3358 defeat
 - /dɪˈfit/
 - vt.["击败，战胜","挫败","[法]宣告无效，作废"]  n.["战胜","失败","[法]废除"]
-- ![defeat](../images/courage-motivation-defeated.jpg)
 
 3359 clue
 - /ˈkɫu/
@@ -16411,7 +16408,7 @@
 
 4103 o'clock
 - /ə-ˈkläk/
-- adv.[（几）点钟]
+- adv.["…点钟"]
 
 4104 Greek
 - /ˈɡɹik/
@@ -43160,7 +43157,7 @@
 10790 diarrhea
 - /ˌdaɪɝˈiə/
 - n.["腹泻"]  adj.["腹泻的"]
-- ![deterrent](../images/deterrent.jpg)
+
 10791 paranoia
 - /ˌpɛɹəˈnɔɪə/
 - n.["<医>妄想狂","偏执狂","（对别人的）瞎猜疑","疑神疑鬼"]
@@ -44820,7 +44817,6 @@
 11205 hideous
 - /ˈhɪdiəs/
 - adj.["令人惊骇的","极其丑陋的，可怕的","丑恶的，讨厌的","媸"]
-  ![deterrent](../images/hideous_extreme.png)
 
 11206 aspiring
 - /əˈspaɪɹɪŋ/
@@ -45925,7 +45921,7 @@
 11481 fad
 - /ˈfæd/
 - n.["一时的流行","一时的风尚","一时的怪念头"]  abbr.["[生化](=flavin adenine dinucleotide)黄素腺嘌呤二核苷酸"]
-  ![deterrent](../images/graphical_fad_mainframe.png)
+
 11482 espionage
 - /ˈɛspiənɑdʒ/
 - n.["侦察","间谍活动"]
@@ -60584,7 +60580,7 @@
 
 15146 tenacious
 - /təˈneɪʃəs/
-- adj.[顽强的； 黏着力强的； 坚决的； （记忆力）持久的]
+- adj.["顽强的","黏着力强的", "坚决的","（记忆力）持久的"]
 
 15147 tenacity
 - /təˈnæsɪti/
@@ -61461,7 +61457,7 @@
 15365 mainframe
 - /ˈmeɪnˌfɹeɪm/
 - n.["（大型电脑的）主机，中央处理机","[计] 主机","大型机","总配线架"]
-  ![deterrent](../images/graphical_fad_mainframe.png)
+
 15366 mercenary
 - /ˈmɝsəˌnɛɹi/
 - adj.["雇用的","图利的，唯利是图的"]  n.["雇佣兵","唯利是图者"]
@@ -70309,7 +70305,7 @@
 17577 graphical
 - /ˈɡɹæfɪkəɫ/
 - adj.["绘成图画似的，绘画的"]
-  ![deterrent](../images/graphical_fad_mainframe.png)
+
 17578 clapboard
 - /ˈkɫæpˌbɔɹd/
 - n.["墙板，隔板，桶板"]  vt.["遮以墙板"]
