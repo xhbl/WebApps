@@ -109,6 +109,7 @@ export interface ApiResponse<T = unknown> {
   pos?: Pos[]
   explanation?: Explanation[]
   sentence?: Sentence[]
+  login?: LoginInfo
   data?: T
 }
 

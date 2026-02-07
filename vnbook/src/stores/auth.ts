@@ -9,19 +9,29 @@ export const useAuthStore = defineStore('auth', () => {
   const userInfo = ref<LoginInfo | null>(null)
   const sessionId = ref<string>('')
 
-  // Init from localStorage
-  const storedUser = localStorage.getItem('userInfo')
-  if (storedUser) {
-    try {
-      userInfo.value = JSON.parse(storedUser)
-    } catch (e) {
-      console.error('Failed to parse stored user info', e)
+  // Init from localStorage or sessionStorage
+  const initFromStorage = () => {
+    // 优先尝试 localStorage (持久化会话)
+    let u = localStorage.getItem('userInfo')
+    let s = localStorage.getItem('sessionId')
+
+    // 如果没有，尝试 sessionStorage (临时会话)
+    if (!u || !s) {
+      u = sessionStorage.getItem('userInfo')
+      s = sessionStorage.getItem('sessionId')
+    }
+
+    if (u && s) {
+      try {
+        userInfo.value = JSON.parse(u)
+        sessionId.value = s
+      } catch (e) {
+        console.error('Failed to parse stored user info', e)
+      }
     }
   }
-  const storedSession = localStorage.getItem('sessionId')
-  if (storedSession) {
-    sessionId.value = storedSession
-  }
+
+  initFromStorage()
 
   // Getters
   const isLoggedIn = computed(() => !!userInfo.value && !!sessionId.value)
@@ -50,9 +60,16 @@ export const useAuthStore = defineStore('auth', () => {
         userInfo.value = loginData.login
         sessionId.value = loginData.login.sid
 
-        // 保存到 localStorage
-        localStorage.setItem('sessionId', loginData.login.sid)
-        localStorage.setItem('userInfo', JSON.stringify(loginData.login))
+        // 根据 remember 选项决定存储位置
+        const storage = data.remember ? localStorage : sessionStorage
+        const otherStorage = data.remember ? sessionStorage : localStorage
+
+        storage.setItem('sessionId', loginData.login.sid)
+        storage.setItem('userInfo', JSON.stringify(loginData.login))
+
+        // 清除另一个存储，防止状态混淆
+        otherStorage.removeItem('sessionId')
+        otherStorage.removeItem('userInfo')
 
         // 登录成功后会跳转，不显示 toast
         return true
@@ -72,7 +89,10 @@ export const useAuthStore = defineStore('auth', () => {
    */
   const checkLogin = async () => {
     try {
-      const sid = localStorage.getItem('sessionId')
+      // 优先使用 state 中的 sid，如果没有则尝试从任一存储中获取
+      const sid =
+        sessionId.value || localStorage.getItem('sessionId') || sessionStorage.getItem('sessionId')
+
       if (!sid) {
         return false
       }
@@ -83,7 +103,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (loginData.success === true && loginData.login) {
         userInfo.value = loginData.login
-        localStorage.setItem('userInfo', JSON.stringify(loginData.login))
+        updateStoredUserInfo(userInfo.value)
         return true
       } else {
         // 会话失效，清除本地数据
@@ -124,6 +144,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
     localStorage.removeItem('sessionId')
     localStorage.removeItem('userInfo')
+    sessionStorage.removeItem('sessionId')
+    sessionStorage.removeItem('userInfo')
   }
 
   /**
@@ -141,10 +163,10 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error(response.data.message || '更新失败')
       }
 
-      // 更新显示名
-      if (data.dispname !== undefined && userInfo.value) {
-        userInfo.value.dname = data.dispname
-        localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
+      if (response.data.login) {
+        userInfo.value = response.data.login
+        sessionId.value = response.data.login.sid
+        updateStoredUserInfo(userInfo.value)
       }
 
       toast.showSuccess('更新成功')
@@ -170,13 +192,32 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error(response.data.message || '更新配置失败')
       }
 
-      // 更新本地状态
-      userInfo.value.cfg = newCfg
-      localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
+      if (response.data.login) {
+        userInfo.value = response.data.login
+        sessionId.value = response.data.login.sid
+        updateStoredUserInfo(userInfo.value)
+      } else {
+        // Fallback: 仅更新本地 cfg
+        userInfo.value.cfg = newCfg
+        updateStoredUserInfo(userInfo.value)
+      }
       return true
     } catch (error) {
       console.error('Update config failed:', error)
       return false
+    }
+  }
+
+  // 辅助函数：更新当前使用的存储中的用户信息
+  const updateStoredUserInfo = (info: LoginInfo) => {
+    const json = JSON.stringify(info)
+    if (localStorage.getItem('sessionId')) {
+      localStorage.setItem('sessionId', info.sid) // 确保 SID 同步更新
+      localStorage.setItem('userInfo', json)
+    }
+    if (sessionStorage.getItem('sessionId')) {
+      sessionStorage.setItem('sessionId', info.sid) // 确保 SID 同步更新
+      sessionStorage.setItem('userInfo', json)
     }
   }
 

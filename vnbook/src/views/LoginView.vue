@@ -29,7 +29,7 @@
           />
           <van-field label="保持登录">
             <template #input>
-              <van-checkbox v-model="formData.remember" />
+              <van-switch v-model="formData.remember" size="20" />
             </template>
           </van-field>
         </van-cell-group>
@@ -64,16 +64,19 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
+const savedRemember = localStorage.getItem('rememberLogin')
 const formData = reactive({
   uname: '',
   pass: '',
-  remember: true,
+  remember: savedRemember === null ? true : savedRemember === 'true',
 })
 
 const loading = ref(false)
 
 const onSubmit = async () => {
   if (loading.value) return // 防止重复提交
+
+  localStorage.setItem('rememberLogin', String(formData.remember))
 
   loading.value = true
   try {
