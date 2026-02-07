@@ -193,20 +193,23 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
+import { useAuthStore } from '@/stores/auth'
 import { useWordsStore } from '@/stores/words'
 import type { BaseDictDefinition, Word, Explanation, Sentence } from '@/types'
 import WordEditorDialog from '@/components/WordEditorDialog.vue'
 import ExpEditorDialog from '@/components/ExpEditorDialog.vue'
 import SenEditorDialog from '@/components/SenEditorDialog.vue'
 import { usePopoverMap } from '@/composables/usePopoverMap'
+import { showDialog } from 'vant'
 
 const route = useRoute()
 const router = useRouter()
 const booksStore = useBooksStore()
+const authStore = useAuthStore()
 const wordsStore = useWordsStore()
 const swipeRef = ref()
 const activeTab = ref(0)
-const showDict = ref(true)
+const showDict = ref(authStore.userInfo?.cfg?.showDict !== false)
 const { popoverMap, onOpen: onPopoverOpen, closeAll: closeAllPopovers } = usePopoverMap()
 
 const wid = Number(route.params.wid)
@@ -214,6 +217,10 @@ const bid = Number(route.params.bid)
 
 const isSingleMode = computed(() => route.query.single === 'true')
 const autoEdit = computed(() => route.query.edit === 'true')
+
+watch(showDict, (val) => {
+  authStore.updateUserConfig({ showDict: val })
+})
 
 // 页面加载时确保数据已加载
 onMounted(async () => {
@@ -370,9 +377,15 @@ const onWordAction = (action: { key: string }, w: Word) => {
 }
 
 const getExpActions = (exp: Explanation, word: Word) => {
-  const actions: { text: string; icon: string; key: string }[] = [
+  const actions: { text: string; icon: string; key: string; color?: string }[] = [
     { text: '添加例句', icon: 'plus', key: 'add-sen' },
     { text: '编辑释义', icon: 'edit', key: 'edit-exp' },
+    {
+      text: '删除释义',
+      icon: 'delete-o',
+      key: 'delete',
+      color: 'var(--van-danger-color)',
+    },
   ]
   const exps = word.explanations || []
   const index = exps.findIndex((e) => e.id === exp.id)
@@ -383,8 +396,14 @@ const getExpActions = (exp: Explanation, word: Word) => {
 }
 
 const getSenActions = (sen: Sentence, exp: Explanation) => {
-  const actions: { text: string; icon: string; key: string }[] = [
+  const actions: { text: string; icon: string; key: string; color?: string }[] = [
     { text: '编辑例句', icon: 'edit', key: 'edit-sen' },
+    {
+      text: '删除例句',
+      icon: 'delete-o',
+      key: 'delete',
+      color: 'var(--van-danger-color)',
+    },
   ]
   const sens = exp.sentences || []
   const index = sens.findIndex((s) => s.id === sen.id)
@@ -402,6 +421,17 @@ const onSenAction = (action: { key: string }, sen: Sentence, exp: Explanation) =
     wordsStore.moveSentence(exp.id, sen.id, -1)
   } else if (action.key === 'move-down') {
     wordsStore.moveSentence(exp.id, sen.id, 1)
+  } else if (action.key === 'delete') {
+    showDialog({
+      title: '删除例句',
+      message: '确定要删除这条例句吗？此操作不可恢复。',
+      showCancelButton: true,
+      confirmButtonColor: 'var(--van-danger-color)',
+    })
+      .then(() => {
+        wordsStore.deleteSentence(sen, exp.id)
+      })
+      .catch(() => {})
   }
 }
 
@@ -415,6 +445,17 @@ const onExpAction = (action: { key: string }, exp: Explanation, word: Word) => {
     wordsStore.moveExplanation(word.id, exp.id, -1)
   } else if (action.key === 'move-down') {
     wordsStore.moveExplanation(word.id, exp.id, 1)
+  } else if (action.key === 'delete') {
+    showDialog({
+      title: '删除释义',
+      message: '确定要删除这条释义及其下的所有例句吗？此操作不可恢复。',
+      showCancelButton: true,
+      confirmButtonColor: 'var(--van-danger-color)',
+    })
+      .then(() => {
+        wordsStore.deleteExplanation(exp)
+      })
+      .catch(() => {})
   }
 }
 
@@ -479,6 +520,7 @@ const swipeNext = () => swipeRef.value?.next()
   transition:
     background-color 0.2s,
     color 0.2s;
+  margin: 0 -4px;
 }
 
 .nav-bar-icon.active {
