@@ -47,7 +47,7 @@
                     v-for="w in group.words"
                     :key="w.id"
                     :word="w"
-                    :mode="mode"
+                    :mode="effectiveMode"
                     :show-popover="showWordPopover[w.id] ?? false"
                     :popover-placement="getWordPopoverPlacement(w)"
                     :highlight="wordsStore.searchKeyword"
@@ -65,7 +65,7 @@
                 v-for="w in wordsStore.filteredWords"
                 :key="w.id"
                 :word="w"
-                :mode="mode"
+                :mode="effectiveMode"
                 :show-popover="showWordPopover[w.id] ?? false"
                 :popover-placement="getWordPopoverPlacement(w)"
                 :highlight="wordsStore.searchKeyword"
@@ -94,7 +94,7 @@
     </div>
 
     <div class="bottom-bar van-hairline--top">
-      <template v-if="mode === 'select'">
+      <template v-if="isSelectMode">
         <div class="bottom-bar-left select-mode-left">
           <div class="select-all-container" @click="toggleSelectAll">
             <van-checkbox
@@ -216,10 +216,11 @@ const showWordEditor = ref(false)
 const editingWord = ref<Word | null>(null)
 const refreshing = ref(false)
 const loading = ref(true)
-type ViewMode = 'none' | 'edit' | 'audio' | 'select'
+type ListMode = 'none' | 'edit' | 'audio'
 const savedMode = authStore.userInfo?.cfg?.wordsListMode
-const mode = ref<ViewMode>(savedMode === 'edit' || savedMode === 'audio' ? savedMode : 'none')
-const previousMode = ref<ViewMode>('none')
+const defaultMode = savedMode === 'edit' || savedMode === 'audio' ? savedMode : 'none'
+const mode = ref<ListMode>(defaultMode)
+const isSelectMode = ref(route.query.select === 'true')
 const checkedIds = ref<number[]>([])
 
 const scrollTop = ref(0)
@@ -246,6 +247,8 @@ const getWordPopoverPlacement = (w: Word) => {
   }
   return 'bottom-start'
 }
+
+const effectiveMode = computed(() => (isSelectMode.value ? 'select' : mode.value))
 
 const deleteActionText = computed(() => (bid.value === 0 ? '删除' : '移除'))
 
@@ -295,9 +298,8 @@ onActivated(async () => {
   if (currentBid.value !== newBid) {
     currentBid.value = newBid
 
-    if (mode.value === 'select') {
-      mode.value = previousMode.value
-    }
+    // Initialize select mode based on URL (handles refresh with query param)
+    isSelectMode.value = route.query.select === 'true'
     // 切换单词本时重置搜索状态
     isSearchActive.value = false
     checkedIds.value = []
@@ -318,8 +320,16 @@ onActivated(async () => {
     await wordsStore.loadWords(newBid)
     loading.value = false
   } else {
+    // Sync select mode with URL
+    const qSelect = route.query.select === 'true'
+    if (isSelectMode.value !== qSelect) {
+      isSelectMode.value = qSelect
+      if (qSelect) checkedIds.value = []
+    }
+
     if (scrollTop.value > 0) window.scrollTo(0, scrollTop.value)
     await wordsStore.loadWords(newBid)
+    loading.value = false
   }
 })
 
@@ -355,14 +365,18 @@ const onSearchUpdate = (val: string) => wordsStore.setSearchKeyword(val)
 
 const onSearchConfirm = () => searchRef.value?.blur()
 
-const toggleMode = (target: Exclude<ViewMode, 'none'>) => {
+const toggleMode = (target: 'edit' | 'audio' | 'select') => {
   if (target === 'select') {
-    if (mode.value === 'select') {
-      mode.value = previousMode.value
+    if (isSelectMode.value) {
+      isSelectMode.value = false
+      const query = { ...route.query }
+      delete query.select
+      router.replace({ query })
     } else {
-      previousMode.value = mode.value
-      mode.value = 'select'
+      isSelectMode.value = true
       checkedIds.value = []
+      const query = { ...route.query, select: 'true' }
+      router.replace({ query })
     }
     return
   }
@@ -380,8 +394,6 @@ const toggleMode = (target: Exclude<ViewMode, 'none'>) => {
 const isAllSelected = computed(() => {
   return wordsStore.words.length > 0 && checkedIds.value.length === wordsStore.words.length
 })
-
-const isSelectMode = computed(() => mode.value === 'select')
 
 const isIndeterminate = computed(() => {
   return checkedIds.value.length > 0 && checkedIds.value.length < wordsStore.words.length
@@ -455,7 +467,7 @@ const handleDelete = async (targets: Word[]) => {
     const success = await wordsStore.deleteWords(targets, bid.value)
     if (success) {
       // 如果是批量操作，清空选择
-      if (mode.value === 'select') {
+      if (isSelectMode.value) {
         checkedIds.value = []
       }
     }
@@ -476,7 +488,7 @@ const onBatchBookmark = () => {
 }
 
 const onWordItemClick = (w: Word) => {
-  if (mode.value === 'select') {
+  if (isSelectMode.value) {
     const idx = checkedIds.value.indexOf(w.id)
     if (idx === -1) checkedIds.value.push(w.id)
     else checkedIds.value.splice(idx, 1)
@@ -498,7 +510,7 @@ const { openMenu, AppMenu } = useAppMenu({
   showUser: false,
   showLogout: false,
   get items() {
-    if (mode.value === 'select') {
+    if (isSelectMode.value) {
       const actions = []
       if (checkedIds.value.length > 0) {
         actions.push({

@@ -307,6 +307,13 @@ const wordEditorMode = ref<'full' | 'phon'>('full')
 
 const toggleEditMode = () => {
   isEditMode.value = !isEditMode.value
+  const query = { ...route.query }
+  if (isEditMode.value) {
+    query.edit = 'true'
+  } else {
+    delete query.edit
+  }
+  router.replace({ query })
 }
 
 const playAudio = (word: string) => {
