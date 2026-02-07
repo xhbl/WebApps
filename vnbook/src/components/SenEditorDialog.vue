@@ -38,8 +38,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, nextTick } from 'vue'
 import type { Sentence } from '@/types'
+import { useDialogDraft } from '@/composables/useDialogDraft'
 
 const props = defineProps<{
   modelValue: boolean
@@ -61,22 +62,62 @@ watch(show, (v) => emit('update:modelValue', v))
 
 const isNew = computed(() => !props.sentence || props.sentence._new === 1)
 
-const edit = ref<Sentence>({
-  id: props.sentence?.id || 0,
-  exp_id: props.eid,
-  sen: props.sentence?.sen || { en: '', zh: '' },
-  smemo: props.sentence?.smemo || '',
-  hide: props.sentence?.hide || 0,
-  time_c: props.sentence?.time_c || '',
-  _new: props.sentence?._new ?? 1,
+const edit = ref<Sentence>({} as Sentence)
+
+const initForm = () => {
+  if (isRestoring.value) return
+  edit.value = {
+    id: props.sentence?.id || 0,
+    exp_id: props.eid,
+    sen: props.sentence?.sen ? { ...props.sentence.sen } : { en: '', zh: '' },
+    smemo: props.sentence?.smemo || '',
+    hide: props.sentence?.hide || 0,
+    time_c: props.sentence?.time_c || '',
+    _new: props.sentence?._new ?? 1,
+    sorder: props.sentence?.sorder || 0,
+  }
+}
+
+watch(
+  () => props.modelValue,
+  (v) => {
+    if (v) initForm()
+  },
+)
+watch(
+  () => props.sentence,
+  () => {
+    if (show.value) initForm()
+  },
+)
+
+// --- 状态持久化 ---
+const { isRestoring, clearDraft } = useDialogDraft({
+  storageKey: 'vnb_sen_editor_state',
+  show,
+  watchSource: edit,
+  getState: () => ({
+    edit: edit.value,
+    eid: props.eid,
+  }),
+  restoreState: async (state: any) => {
+    await nextTick()
+    edit.value = state.edit
+  },
 })
+
+defineExpose({ clearDraft })
 
 const onSubmit = () => {
   emit('save', edit.value)
   show.value = false
+  clearDraft()
 }
 
-const onCancel = () => (show.value = false)
+const onCancel = () => {
+  show.value = false
+  clearDraft()
+}
 </script>
 
 <style scoped>

@@ -43,9 +43,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted } from 'vue'
+import { ref, watch, computed, onMounted, nextTick } from 'vue'
 import { usePosStore } from '@/stores/pos'
 import type { Explanation } from '@/types'
+import { useDialogDraft } from '@/composables/useDialogDraft'
 
 const props = defineProps<{
   modelValue: boolean
@@ -75,25 +76,73 @@ const lexCatOptions = computed(() => {
   return lexStore.posList.map((cat) => ({ text: cat.name_ch, value: cat.abbr }))
 })
 
-const edit = ref<Explanation>({
-  id: props.explanation?.id || 0,
-  word_id: props.wid,
-  pos: props.explanation?.pos || '',
-  exp: props.explanation?.exp || { en: '', zh: '' },
-  time_c: props.explanation?.time_c || '',
-  lid: props.explanation?.lid || 0,
-  exp_ch: props.explanation?.exp_ch || '',
-  abbr: props.explanation?.abbr || '',
-  hide: props.explanation?.hide || 0,
-  _new: props.explanation?._new ?? 1,
+const edit = ref<Explanation>({} as Explanation)
+
+// 初始化表单数据
+const initForm = () => {
+  if (isRestoring.value) return
+
+  edit.value = {
+    id: props.explanation?.id || 0,
+    word_id: props.wid,
+    pos: props.explanation?.pos || '',
+    exp: props.explanation?.exp ? { ...props.explanation.exp } : { en: '', zh: '' },
+    time_c: props.explanation?.time_c || '',
+    lid: props.explanation?.lid || 0,
+    exp_ch: props.explanation?.exp_ch || '',
+    abbr: props.explanation?.abbr || '',
+    hide: props.explanation?.hide || 0,
+    _new: props.explanation?._new ?? 1,
+    sorder: props.explanation?.sorder || 0,
+  }
+
+  if (props.explanation?.abbr) {
+    selectedCat.value = props.explanation.abbr
+  } else {
+    selectedCat.value = ''
+  }
+}
+
+// 监听 props 变化以初始化表单
+watch(
+  () => props.modelValue,
+  (v) => {
+    if (v) initForm()
+  },
+)
+watch(
+  () => props.explanation,
+  () => {
+    if (show.value) initForm()
+  },
+)
+
+// --- 状态持久化 ---
+const { isRestoring, clearDraft } = useDialogDraft({
+  storageKey: 'vnb_exp_editor_state',
+  show,
+  watchSource: [edit, selectedCat],
+  getState: () => ({
+    edit: edit.value,
+    selectedCat: selectedCat.value,
+    wid: props.wid,
+  }),
+  restoreState: async (state: any) => {
+    await nextTick()
+    edit.value = state.edit
+    selectedCat.value = state.selectedCat
+  },
 })
 
 onMounted(async () => {
   await lexStore.loadPosList()
-  if (props.explanation?.abbr) {
-    selectedCat.value = props.explanation.abbr
+  // 如果不是在恢复状态，且刚挂载，尝试初始化一次（应对直接刷新页面的情况）
+  if (!isRestoring.value && show.value) {
+    initForm()
   }
 })
+
+defineExpose({ clearDraft })
 
 const onPickerConfirm = (value: string) => {
   edit.value.abbr = value
@@ -108,9 +157,13 @@ const onSubmit = () => {
   }
   emit('save', edit.value)
   show.value = false
+  clearDraft()
 }
 
-const onCancel = () => (show.value = false)
+const onCancel = () => {
+  show.value = false
+  clearDraft()
+}
 </script>
 
 <style scoped>

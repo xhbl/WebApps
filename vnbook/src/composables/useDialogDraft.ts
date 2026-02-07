@@ -1,4 +1,5 @@
 import { ref, watch, onMounted, nextTick, type Ref, type WatchSource } from 'vue'
+import { useRoute } from 'vue-router'
 
 export interface UseDialogDraftOptions<T> {
   /** 本地存储的 Key */
@@ -27,6 +28,7 @@ export function useDialogDraft<T extends Record<string, unknown>>(
     validity = 24 * 60 * 60 * 1000,
   } = options
 
+  const route = useRoute()
   const isRestoring = ref(false)
 
   const saveState = () => {
@@ -36,6 +38,7 @@ export function useDialogDraft<T extends Record<string, unknown>>(
       ...getState(),
       _timestamp: Date.now(),
       _show: true,
+      _routePath: route.fullPath,
     }
     localStorage.setItem(storageKey, JSON.stringify(state))
   }
@@ -54,11 +57,28 @@ export function useDialogDraft<T extends Record<string, unknown>>(
     watch(watchSource, saveState, { deep: true })
   }
 
+  // 监听路由变化：一旦离开当前 URL（导航、切书、切词），立即关闭并清除
+  watch(
+    () => route.fullPath,
+    (newPath, oldPath) => {
+      if (newPath !== oldPath && show.value) {
+        show.value = false
+        clearDraft()
+      }
+    },
+  )
+
   onMounted(async () => {
     const saved = localStorage.getItem(storageKey)
     if (saved) {
       try {
         const state = JSON.parse(saved)
+        // 核心校验：如果草稿记录的路径与当前路径不一致，视为上下文已变，强制清除
+        if (state._routePath !== route.fullPath) {
+          clearDraft()
+          show.value = false
+          return
+        }
         // 检查有效期
         if (state._show && Date.now() - (state._timestamp || 0) < validity) {
           isRestoring.value = true

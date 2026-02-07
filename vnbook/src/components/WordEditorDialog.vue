@@ -93,6 +93,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
   (e: 'update:word', w: Word): void
+  (e: 'update:mode', m: 'full' | 'phon'): void
 }>()
 
 const show = ref(props.modelValue)
@@ -134,6 +135,7 @@ const { isRestoring, clearDraft } = useDialogDraft({
     dictData: dictData.value,
     editingWord: props.word,
     bid: props.bid,
+    mode: props.mode,
   }),
   restoreState: async (state: {
     step: 'input' | 'detail'
@@ -141,8 +143,10 @@ const { isRestoring, clearDraft } = useDialogDraft({
     dictData?: typeof dictData.value
     editingWord?: typeof props.word
     bid?: number
+    mode?: 'full' | 'phon'
   }) => {
     if (state.editingWord) emit('update:word', state.editingWord)
+    if (state.mode) emit('update:mode', state.mode)
     // show.value 已由 useDialogDraft 恢复
 
     await nextTick()
@@ -384,6 +388,9 @@ const onCancel = () => {
   show.value = false
   clearDraft() // 取消时清除草稿
 }
+
+// 暴露 clearDraft 给父组件，以便在页面离开时主动清理
+defineExpose({ clearDraft })
 </script>
 
 <style scoped>

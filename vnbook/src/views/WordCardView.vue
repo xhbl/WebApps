@@ -169,19 +169,22 @@
     </div>
 
     <word-editor-dialog
+      ref="wordEditorRef"
       v-model="showWordEditor"
       :bid="bid"
       :word="editingWord"
-      :mode="wordEditorMode"
+      v-model:mode="wordEditorMode"
       @update:word="editingWord = $event"
     />
     <exp-editor-dialog
+      ref="expEditorRef"
       v-model="showExpEditor"
       :wid="editingExp?.word_id || 0"
       :explanation="editingExp"
       @save="onSaveExp"
     />
     <sen-editor-dialog
+      ref="senEditorRef"
       v-model="showSenEditor"
       :eid="editingSen?.exp_id || 0"
       :sentence="editingSen"
@@ -192,7 +195,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
 import { useWordsStore } from '@/stores/words'
@@ -295,6 +298,27 @@ const onChange = (index: number) => {
     })
   }
 }
+
+// 路由离开时清除编辑器草稿，防止状态跨页面残留
+// WordCardView 未被 keep-alive 缓存，组件销毁可能快于子组件的 route watcher，需手动清理
+const wordEditorRef = ref()
+const expEditorRef = ref()
+const senEditorRef = ref()
+
+onBeforeRouteLeave(() => {
+  if (showWordEditor.value) {
+    showWordEditor.value = false
+    wordEditorRef.value?.clearDraft()
+  }
+  if (showExpEditor.value) {
+    showExpEditor.value = false
+    expEditorRef.value?.clearDraft()
+  }
+  if (showSenEditor.value) {
+    showSenEditor.value = false
+    senEditorRef.value?.clearDraft()
+  }
+})
 
 const isEditMode = ref(false)
 const showWordEditor = ref(false)
