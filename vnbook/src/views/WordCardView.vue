@@ -36,6 +36,7 @@
             <div class="sticky-header van-hairline--bottom">
               <div class="word-row">
                 <span class="word-text">{{ w.word }}</span>
+                <van-icon name="bookmark-o" class="bookmark-icon" :class="{ hidden: isEditMode }" />
               </div>
               <div class="phon-row" v-if="w.phon" @click.stop="playAudio(w.word)">
                 <van-icon name="volume-o" class="phon-icon" />
@@ -201,6 +202,8 @@ import ExpEditorDialog from '@/components/ExpEditorDialog.vue'
 import SenEditorDialog from '@/components/SenEditorDialog.vue'
 import { usePopoverMap } from '@/composables/usePopoverMap'
 import { showDialog } from 'vant'
+import * as wordsApi from '@/api/words'
+import { toast } from '@/utils/toast'
 
 const route = useRoute()
 const router = useRouter()
@@ -363,9 +366,10 @@ const onSaveSen = async (sen: Sentence) => {
 const wordActions = [
   { text: '添加释义', icon: 'plus', key: 'add-exp' },
   { text: '编辑音标', icon: 'certificate', key: 'edit-phon' },
+  { text: '加入复习', icon: 'bookmark-o', key: 'review' },
 ]
 
-const onWordAction = (action: { key: string }, w: Word) => {
+const onWordAction = async (action: { key: string }, w: Word) => {
   closeAllPopovers()
   if (action.key === 'add-exp') {
     onAddExp(w.id)
@@ -373,6 +377,17 @@ const onWordAction = (action: { key: string }, w: Word) => {
     editingWord.value = w
     wordEditorMode.value = 'phon'
     showWordEditor.value = true
+  } else if (action.key === 'review') {
+    try {
+      const res = await wordsApi.saveWord({ ...w, book_id: -1, _new: 1 })
+      if (res.data.success) {
+        toast.showSuccess('已加入复习本')
+      } else {
+        toast.showFail('加入失败')
+      }
+    } catch {
+      toast.showFail('操作失败')
+    }
   }
 }
 
@@ -553,18 +568,33 @@ const swipeNext = () => swipeRef.value?.next()
   top: 0;
   z-index: 10;
   background-color: var(--van-nav-bar-background);
-  padding: 8px 10px 6px 16px;
+  padding: 8px 16px 6px 16px;
 }
 .card-content {
   padding: 4px 16px 30px 16px;
 }
 .word-row {
   margin-bottom: 2px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 .word-text {
   font-weight: bold;
   font-size: calc(var(--van-font-size-xl) + 2px);
   color: var(--van-text-color);
+  line-height: 1.2;
+}
+.bookmark-icon {
+  font-size: 22px;
+  color: var(--van-gray-5);
+  flex-shrink: 0;
+  padding: 4px;
+  margin-right: -4px;
+}
+.bookmark-icon.hidden {
+  visibility: hidden;
+  pointer-events: none;
 }
 .phon-row {
   display: flex;
