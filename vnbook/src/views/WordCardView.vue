@@ -89,13 +89,20 @@
                       <div class="sen-content">
                         <div class="sen-en">{{ s.sen?.en }}</div>
                         <div class="sen-ch" v-if="s.sen?.zh">{{ s.sen.zh }}</div>
+                        <div class="sen-memo" v-if="s.smemo">[{{ s.smemo }}]</div>
                       </div>
-                      <div
-                        v-if="isEditMode"
-                        class="edit-float-icon sen-edit"
-                        @click.stop="onEditSen(s)"
-                      >
-                        <van-icon name="edit" />
+                      <div v-if="isEditMode" class="edit-float-icon sen-edit" @click.stop>
+                        <van-popover
+                          v-model:show="popoverMap['sen-' + s.id]"
+                          :actions="getSenActions(s, e)"
+                          placement="bottom-end"
+                          @select="(action) => onSenAction(action, s, e)"
+                          @open="onPopoverOpen('sen-' + s.id)"
+                        >
+                          <template #reference>
+                            <van-icon name="edit" />
+                          </template>
+                        </van-popover>
                       </div>
                     </div>
                   </div>
@@ -375,6 +382,29 @@ const getExpActions = (exp: Explanation, word: Word) => {
   return actions
 }
 
+const getSenActions = (sen: Sentence, exp: Explanation) => {
+  const actions: { text: string; icon: string; key: string }[] = [
+    { text: '编辑例句', icon: 'edit', key: 'edit-sen' },
+  ]
+  const sens = exp.sentences || []
+  const index = sens.findIndex((s) => s.id === sen.id)
+
+  if (index > 0) actions.push({ text: '上移', icon: 'arrow-up', key: 'move-up' })
+  if (index < sens.length - 1) actions.push({ text: '下移', icon: 'arrow-down', key: 'move-down' })
+  return actions
+}
+
+const onSenAction = (action: { key: string }, sen: Sentence, exp: Explanation) => {
+  closeAllPopovers()
+  if (action.key === 'edit-sen') {
+    onEditSen(sen)
+  } else if (action.key === 'move-up') {
+    wordsStore.moveSentence(exp.id, sen.id, -1)
+  } else if (action.key === 'move-down') {
+    wordsStore.moveSentence(exp.id, sen.id, 1)
+  }
+}
+
 const onExpAction = (action: { key: string }, exp: Explanation, word: Word) => {
   closeAllPopovers()
   if (action.key === 'add-sen') {
@@ -553,6 +583,11 @@ const swipeNext = () => swipeRef.value?.next()
 }
 .sen-ch {
   color: var(--van-text-color-2);
+  margin-top: 2px;
+}
+.sen-memo {
+  color: var(--van-gray-5);
+  font-size: var(--van-font-size-xs);
   margin-top: 2px;
 }
 .nav-btn {

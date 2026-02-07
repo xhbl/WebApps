@@ -13,11 +13,18 @@
             rows="3"
           />
           <van-field
-            v-model="edit.sen_ch"
+            v-model="edit.sen.zh"
             label="中文翻译（可选）"
             placeholder="请输入中文翻译"
             type="textarea"
             rows="3"
+          />
+          <van-field
+            v-model="edit.smemo"
+            label="备注（可选）"
+            placeholder="请输入备注"
+            type="textarea"
+            rows="1"
           />
         </van-cell-group>
 
@@ -58,7 +65,7 @@ const edit = ref<Sentence>({
   id: props.sentence?.id || 0,
   exp_id: props.eid,
   sen: props.sentence?.sen || { en: '', zh: '' },
-  sen_ch: props.sentence?.sen_ch || '',
+  smemo: props.sentence?.smemo || '',
   hide: props.sentence?.hide || 0,
   time_c: props.sentence?.time_c || '',
   _new: props.sentence?._new ?? 1,

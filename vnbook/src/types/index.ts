@@ -39,6 +39,7 @@ export interface Explanation {
   exp_ch?: string
   abbr?: string
   hide?: number
+  sorder?: number
 }
 
 export interface Sentence {
@@ -53,6 +54,8 @@ export interface Sentence {
   // 扩展字段
   sen_ch?: string
   hide?: number
+  sorder?: number
+  smemo?: string
 }
 
 export interface BaseDictDefinition {

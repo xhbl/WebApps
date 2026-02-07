@@ -64,7 +64,8 @@ function createVnbInitData()
                 `pos` VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
                 `exp` JSON NOT NULL,
                 `time_c` DATETIME DEFAULT CURRENT_TIMESTAMP,
-                INDEX `idx_vnu_exp_word` (`word_id`),
+                `sorder` SMALLINT DEFAULT 0,
+                INDEX `idx_vnu_exp_word` (`word_id` ASC, `sorder` ASC, `time_c` DESC),
                 CONSTRAINT `fk_exp_pos` FOREIGN KEY (`pos`) REFERENCES `vnb_pos` (`pos`) ON UPDATE CASCADE,
                 CONSTRAINT `fk_exp_word` FOREIGN KEY (`word_id`) REFERENCES `vnu_words` (`id`) ON DELETE CASCADE
             ) ENGINE=InnoDB",
@@ -75,7 +76,9 @@ function createVnbInitData()
                 `exp_id` INT NOT NULL,
                 `sen` JSON NOT NULL,
                 `time_c` DATETIME DEFAULT CURRENT_TIMESTAMP,
-                INDEX `idx_vnu_sen_exp` (`exp_id`),
+                `smemo` VARCHAR(100) DEFAULT NULL,
+                `sorder` SMALLINT DEFAULT 0,
+                INDEX `idx_vnu_sen_exp` (`exp_id` ASC, `sorder` ASC, `time_c` DESC),
                 CONSTRAINT `fk_sen_exp` FOREIGN KEY (`exp_id`) REFERENCES `vnu_explanations` (`id`) ON DELETE CASCADE
             ) ENGINE=InnoDB",
 

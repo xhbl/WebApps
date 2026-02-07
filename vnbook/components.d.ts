@@ -18,6 +18,7 @@ declare module 'vue' {
     SenEditorDialog: typeof import('./src/components/SenEditorDialog.vue')['default']
     UserEditorDialog: typeof import('./src/components/UserEditorDialog.vue')['default']
     UserModDialog: typeof import('./src/components/UserModDialog.vue')['default']
+    VanActionSheet: typeof import('vant/es')['ActionSheet']
     VanButton: typeof import('vant/es')['Button']
     VanCell: typeof import('vant/es')['Cell']
     VanCellGroup: typeof import('vant/es')['CellGroup']

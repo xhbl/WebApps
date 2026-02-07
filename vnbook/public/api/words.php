@@ -77,7 +77,7 @@ function getExplanations($wid, $eid = null)
     $db = DB::vnb();
 
     try {
-        $sql = "SELECT e.id, e.word_id, e.pos, e.exp, e.time_c
+        $sql = "SELECT e.id, e.word_id, e.pos, e.exp, e.time_c, e.sorder
                 FROM vnu_explanations e
                 WHERE e.word_id = ?";
         $params = [$wid];
@@ -87,7 +87,7 @@ function getExplanations($wid, $eid = null)
             $params[] = $eid;
         }
 
-        $sql .= " ORDER BY e.time_c DESC";
+        $sql .= " ORDER BY e.sorder ASC, e.time_c DESC";
 
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
@@ -114,7 +114,7 @@ function getSentences($eid, $sid = null)
     $db = DB::vnb();
 
     try {
-        $sql = "SELECT id, exp_id, sen, time_c
+        $sql = "SELECT id, exp_id, sen, time_c, sorder, smemo
                 FROM vnu_sentences
                 WHERE exp_id = ?";
         $params = [$eid];
@@ -124,7 +124,7 @@ function getSentences($eid, $sid = null)
             $params[] = $sid;
         }
 
-        $sql .= " ORDER BY time_c DESC";
+        $sql .= " ORDER BY sorder ASC, time_c DESC";
 
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
@@ -313,8 +313,18 @@ function updateExplanations($items)
             } else {
                 // Update existing explanation
                 $expJson = json_encode($item->exp ?? []);
-                $stmt = $db->prepare("UPDATE vnu_explanations SET pos = ?, exp = ? WHERE id = ? AND word_id IN (SELECT id FROM vnu_words WHERE user_id = ?)");
-                $stmt->execute([$item->pos ?? 'na.', $expJson, $item->id, $uid]);
+                $sql = "UPDATE vnu_explanations SET pos = ?, exp = ?";
+                $params = [$item->pos ?? 'na.', $expJson];
+
+                if (isset($item->sorder)) {
+                    $sql .= ", sorder = ?";
+                    $params[] = $item->sorder;
+                }
+
+                $sql .= " WHERE id = ? AND word_id IN (SELECT id FROM vnu_words WHERE user_id = ?)";
+                $params[] = $item->id;
+                $params[] = $uid;
+                $db->prepare($sql)->execute($params);
             }
 
             $out[] = $item;
@@ -356,16 +366,31 @@ function updateSentences($items)
             if (!empty($item->_new)) {
                 // Create new sentence
                 $senJson = json_encode($item->sen ?? []);
-                $stmt = $db->prepare("INSERT INTO vnu_sentences (exp_id, sen) VALUES (?, ?)");
-                $stmt->execute([$item->exp_id, $senJson]);
+                $stmt = $db->prepare("INSERT INTO vnu_sentences (exp_id, sen, smemo) VALUES (?, ?, ?)");
+                $stmt->execute([$item->exp_id, $senJson, $item->smemo ?? null]);
 
                 $item->id = $db->lastInsertId();
                 $item->_new = 0;
             } else {
                 // Update existing sentence
                 $senJson = json_encode($item->sen ?? []);
-                $stmt = $db->prepare("UPDATE vnu_sentences SET sen = ? WHERE id = ? AND exp_id IN (SELECT e.id FROM vnu_explanations e JOIN vnu_words w ON e.word_id = w.id WHERE w.user_id = ?)");
-                $stmt->execute([$senJson, $item->id, $uid]);
+                $sql = "UPDATE vnu_sentences SET sen = ?";
+                $params = [$senJson];
+
+                if (isset($item->sorder)) {
+                    $sql .= ", sorder = ?";
+                    $params[] = $item->sorder;
+                }
+
+                if (property_exists($item, 'smemo')) {
+                    $sql .= ", smemo = ?";
+                    $params[] = $item->smemo;
+                }
+
+                $sql .= " WHERE id = ? AND exp_id IN (SELECT e.id FROM vnu_explanations e JOIN vnu_words w ON e.word_id = w.id WHERE w.user_id = ?)";
+                $params[] = $item->id;
+                $params[] = $uid;
+                $db->prepare($sql)->execute($params);
             }
 
             $out[] = $item;

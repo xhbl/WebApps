@@ -109,6 +109,7 @@ function defineWordsStore() {
                 exp: typeof exp.exp === 'string' ? JSON.parse(exp.exp) : exp.exp,
                 time_c: exp.time_c,
                 _new: exp._new,
+                sorder: Number(exp.sorder || 0),
                 sentences: (exp.sentences || []).map((s) => {
                   const sen = s as Sentence
                   return {
@@ -117,6 +118,8 @@ function defineWordsStore() {
                     sen: typeof sen.sen === 'string' ? JSON.parse(sen.sen) : sen.sen,
                     time_c: sen.time_c,
                     _new: sen._new,
+                    sorder: Number(sen.sorder || 0),
+                    smemo: sen.smemo || '',
                   }
                 }),
               }
@@ -328,7 +331,7 @@ function defineWordsStore() {
   /**
    * 保存释义
    */
-  const saveExplanation = async (explanation: Explanation) => {
+  const saveExplanation = async (explanation: Explanation, silent = false) => {
     try {
       const response = await wordsApi.saveExplanation(explanation)
       if (
@@ -346,7 +349,7 @@ function defineWordsStore() {
 
           if (explanation._new === 1 && savedExp) {
             currentWord.value.explanations.push(savedExp)
-            toast.showSuccess('添加成功')
+            if (!silent) toast.showSuccess('添加成功')
           } else if (savedExp) {
             const index = currentWord.value.explanations!.findIndex((e) => e.id === savedExp.id)
             if (index !== -1 && currentWord.value.explanations) {
@@ -354,7 +357,7 @@ function defineWordsStore() {
               savedExp.sentences = currentWord.value.explanations[index]?.sentences
               currentWord.value.explanations[index] = savedExp
             }
-            toast.showSuccess('更新成功')
+            if (!silent) toast.showSuccess('更新成功')
           }
 
           // 同步到 words 列表
@@ -476,7 +479,7 @@ function defineWordsStore() {
   /**
    * 移动释义（客户端）
    */
-  const moveExplanation = (wordId: number, expId: number, direction: number) => {
+  const moveExplanation = async (wordId: number, expId: number, direction: number) => {
     const word = words.value.find((w) => w.id === wordId)
     if (!word || !word.explanations) return
 
@@ -488,8 +491,71 @@ function defineWordsStore() {
 
     // Swap elements
     const currentExp = word.explanations[index]!
-    word.explanations.splice(index, 1)
-    word.explanations.splice(targetIndex, 0, currentExp)
+    const targetExp = word.explanations[targetIndex]!
+
+    word.explanations[index] = targetExp
+    word.explanations[targetIndex] = currentExp
+
+    // Update sorder and save
+    const updates: Explanation[] = []
+    word.explanations.forEach((e, idx) => {
+      if (e.sorder !== idx) {
+        e.sorder = idx
+        updates.push(e)
+      }
+    })
+
+    if (updates.length > 0) {
+      await Promise.all(updates.map((e) => saveExplanation(e, true)))
+    }
+  }
+
+  /**
+   * 移动例句
+   */
+  const moveSentence = async (expId: number, senId: number, direction: number) => {
+    // 查找释义对象 (优先从 currentWord 查找)
+    let exp: Explanation | undefined
+    if (currentWord.value && currentWord.value.explanations) {
+      exp = currentWord.value.explanations.find((e) => e.id === expId)
+    }
+    if (!exp) {
+      // 回退到全局查找
+      for (const w of words.value) {
+        if (w.explanations) {
+          exp = w.explanations.find((e) => e.id === expId)
+          if (exp) break
+        }
+      }
+    }
+
+    if (!exp || !exp.sentences) return
+
+    const index = exp.sentences.findIndex((s) => s.id === senId)
+    if (index === -1) return
+
+    const targetIndex = index + direction
+    if (targetIndex < 0 || targetIndex >= exp.sentences.length) return
+
+    // Swap elements
+    const currentSen = exp.sentences[index]!
+    const targetSen = exp.sentences[targetIndex]!
+
+    exp.sentences[index] = targetSen
+    exp.sentences[targetIndex] = currentSen
+
+    // Update sorder and save
+    const updates: Sentence[] = []
+    exp.sentences.forEach((s, idx) => {
+      if (s.sorder !== idx) {
+        s.sorder = idx
+        updates.push(s)
+      }
+    })
+
+    if (updates.length > 0) {
+      await Promise.all(updates.map((s) => saveSentence(s, expId)))
+    }
   }
 
   /**
@@ -550,6 +616,7 @@ function defineWordsStore() {
     saveSentence,
     deleteSentence,
     moveExplanation,
+    moveSentence,
     setCurrentWord,
     setSearchKeyword,
     findWordByName,
