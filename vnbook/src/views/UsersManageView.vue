@@ -55,11 +55,13 @@ import { ref, onActivated } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { showDialog } from 'vant'
 import { useUsersStore } from '@/stores/users'
+import { useAuthStore } from '@/stores/auth'
 import { useAppMenu } from '@/composables/useAppMenu'
 import UserEditorDialog from '@/components/UserEditorDialog.vue'
 import type { User } from '@/types'
 
 const usersStore = useUsersStore()
+const authStore = useAuthStore()
 
 const showEditor = ref(false)
 const editorUser = ref<User | null>(null)
@@ -74,6 +76,7 @@ onBeforeRouteLeave((to, from, next) => {
 })
 
 onActivated(async () => {
+  if (!authStore.isLoggedIn) return
   if (scrollTop.value > 0) window.scrollTo(0, scrollTop.value)
 
   if (usersStore.users.length === 0) loading.value = true

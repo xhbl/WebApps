@@ -290,6 +290,7 @@ const indexList = computed(() =>
 )
 
 onActivated(async () => {
+  if (!authStore.isLoggedIn) return
   const newBid = bid.value
   if (currentBid.value !== newBid) {
     currentBid.value = newBid

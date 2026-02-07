@@ -189,6 +189,7 @@ onBeforeRouteLeave((to, from, next) => {
 })
 
 onActivated(async () => {
+  if (!authStore.isLoggedIn) return
   if (scrollTop.value > 0) window.scrollTo(0, scrollTop.value)
 
   if (booksStore.books.length === 0) loading.value = true
