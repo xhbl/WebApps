@@ -32,129 +32,135 @@
         @change="onChange"
       >
         <van-swipe-item v-for="w in cardList" :key="w.id">
-          <div class="card">
-            <div class="sticky-header van-hairline--bottom">
-              <div class="word-row">
-                <span class="word-text">{{ w.word }}</span>
-                <van-icon name="bookmark-o" class="bookmark-icon" :class="{ hidden: isEditMode }" />
+          <van-pull-refresh v-model="refreshing" style="min-height: 100%" @refresh="onRefresh">
+            <div class="card">
+              <div class="sticky-header van-hairline--bottom">
+                <div class="word-row">
+                  <span class="word-text">{{ w.word }}</span>
+                  <van-icon
+                    name="bookmark-o"
+                    class="bookmark-icon"
+                    :class="{ hidden: isEditMode }"
+                  />
+                </div>
+                <div class="phon-row" v-if="w.phon" @click.stop="playAudio(w.word)">
+                  <van-icon name="volume-o" class="phon-icon" />
+                  <span class="phon-text">/{{ w.phon }}/</span>
+                </div>
+                <div v-if="isEditMode" class="edit-float-icon word-edit" @click.stop>
+                  <van-popover
+                    v-model:show="popoverMap['word-' + w.id]"
+                    :actions="wordActions"
+                    placement="bottom-end"
+                    @select="(action) => onWordAction(action, w)"
+                    @open="onPopoverOpen('word-' + w.id)"
+                  >
+                    <template #reference>
+                      <van-icon name="edit" />
+                    </template>
+                  </van-popover>
+                </div>
               </div>
-              <div class="phon-row" v-if="w.phon" @click.stop="playAudio(w.word)">
-                <van-icon name="volume-o" class="phon-icon" />
-                <span class="phon-text">/{{ w.phon }}/</span>
-              </div>
-              <div v-if="isEditMode" class="edit-float-icon word-edit" @click.stop>
-                <van-popover
-                  v-model:show="popoverMap['word-' + w.id]"
-                  :actions="wordActions"
-                  placement="bottom-end"
-                  @select="(action) => onWordAction(action, w)"
-                  @open="onPopoverOpen('word-' + w.id)"
-                >
-                  <template #reference>
-                    <van-icon name="edit" />
-                  </template>
-                </van-popover>
-              </div>
-            </div>
 
-            <div class="card-content">
-              <div class="exps" v-if="w.explanations && w.explanations.length">
-                <div
-                  class="exp-item van-hairline--bottom"
-                  v-for="(e, index) in w.explanations"
-                  :key="e.id"
-                >
-                  <div class="exp-header">
-                    <span class="exp-pos">{{ e.pos }}</span>
-                    <span class="exp-cn">{{ e.exp?.zh }}</span>
-                  </div>
-                  <div class="exp-en" v-if="e.exp?.en">{{ e.exp.en }}</div>
-                  <div v-if="isEditMode" class="edit-float-icon exp-edit" @click.stop>
-                    <van-popover
-                      v-model:show="popoverMap['exp-' + e.id]"
-                      :actions="getExpActions(e, w)"
-                      :placement="getPopoverPlacement(index, w.explanations.length)"
-                      @select="(action) => onExpAction(action, e, w)"
-                      @open="onPopoverOpen('exp-' + e.id)"
-                    >
-                      <template #reference>
-                        <van-icon name="edit" />
-                      </template>
-                    </van-popover>
-                  </div>
-                  <div class="sens-block" v-if="e.sentences && e.sentences.length">
-                    <div class="sen-item" v-for="s in e.sentences" :key="s.id">
-                      <div class="sen-label">
-                        <van-icon name="guide-o" />
-                      </div>
-                      <div class="sen-content">
-                        <div class="sen-en">{{ s.sen?.en }}</div>
-                        <div class="sen-ch" v-if="s.sen?.zh">{{ s.sen.zh }}</div>
-                        <div class="sen-memo" v-if="s.smemo">[{{ s.smemo }}]</div>
-                      </div>
-                      <div v-if="isEditMode" class="edit-float-icon sen-edit" @click.stop>
-                        <van-popover
-                          v-model:show="popoverMap['sen-' + s.id]"
-                          :actions="getSenActions(s, e)"
-                          placement="bottom-end"
-                          @select="(action) => onSenAction(action, s, e)"
-                          @open="onPopoverOpen('sen-' + s.id)"
-                        >
-                          <template #reference>
-                            <van-icon name="edit" />
-                          </template>
-                        </van-popover>
+              <div class="card-content">
+                <div class="exps" v-if="w.explanations && w.explanations.length">
+                  <div
+                    class="exp-item van-hairline--bottom"
+                    v-for="(e, index) in w.explanations"
+                    :key="e.id"
+                  >
+                    <div class="exp-header">
+                      <span class="exp-pos">{{ e.pos }}</span>
+                      <span class="exp-cn">{{ e.exp?.zh }}</span>
+                    </div>
+                    <div class="exp-en" v-if="e.exp?.en">{{ e.exp.en }}</div>
+                    <div v-if="isEditMode" class="edit-float-icon exp-edit" @click.stop>
+                      <van-popover
+                        v-model:show="popoverMap['exp-' + e.id]"
+                        :actions="getExpActions(e, w)"
+                        :placement="getPopoverPlacement(index, w.explanations.length)"
+                        @select="(action) => onExpAction(action, e, w)"
+                        @open="onPopoverOpen('exp-' + e.id)"
+                      >
+                        <template #reference>
+                          <van-icon name="edit" />
+                        </template>
+                      </van-popover>
+                    </div>
+                    <div class="sens-block" v-if="e.sentences && e.sentences.length">
+                      <div class="sen-item" v-for="s in e.sentences" :key="s.id">
+                        <div class="sen-label">
+                          <van-icon name="guide-o" />
+                        </div>
+                        <div class="sen-content">
+                          <div class="sen-en">{{ s.sen?.en }}</div>
+                          <div class="sen-ch" v-if="s.sen?.zh">{{ s.sen.zh }}</div>
+                          <div class="sen-memo" v-if="s.smemo">[{{ s.smemo }}]</div>
+                        </div>
+                        <div v-if="isEditMode" class="edit-float-icon sen-edit" @click.stop>
+                          <van-popover
+                            v-model:show="popoverMap['sen-' + s.id]"
+                            :actions="getSenActions(s, e)"
+                            placement="bottom-end"
+                            @select="(action) => onSenAction(action, s, e)"
+                            @open="onPopoverOpen('sen-' + s.id)"
+                          >
+                            <template #reference>
+                              <van-icon name="edit" />
+                            </template>
+                          </van-popover>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div class="empty-exps" v-else>
-                尚未在单词本中添加释义例句内容，请点击右上方图标进入编辑模式添加。
-              </div>
-
-              <div class="dict-section-wrapper" v-if="w.baseInfo?.definitions?.length">
-                <div class="dict-tabs" v-if="showDict">
-                  <div class="dict-float-icon" @click.stop="showDict = false">
-                    <van-icon name="closed-eye" />
-                  </div>
-                  <van-tabs
-                    v-model:active="activeTab"
-                    shrink
-                    background="transparent"
-                    :border="false"
-                    line-width="0px"
-                    color="var(--van-primary-color)"
-                  >
-                    <van-tab title="基本词典">
-                      <div class="dict-content-box">
-                        <div
-                          v-for="(item, idx) in getDictZh(w.baseInfo.definitions)"
-                          :key="'zh' + idx"
-                          class="dict-item"
-                        >
-                          <span class="dict-pos">{{ item.pos }}</span>
-                          <span class="dict-text-zh">{{ item.text }}</span>
-                        </div>
-                        <div
-                          v-for="(item, idx) in getDictEn(w.baseInfo.definitions)"
-                          :key="'en' + idx"
-                          class="dict-item"
-                        >
-                          <span class="dict-pos">{{ item.pos }}</span>
-                          <span class="dict-text-en">{{ item.text }}</span>
-                        </div>
-                      </div>
-                    </van-tab>
-                    <!-- <van-tab title="其它词典"></van-tab> -->
-                  </van-tabs>
+                <div class="empty-exps" v-else>
+                  尚未在单词本中添加释义例句内容，请点击右上方图标进入编辑模式添加。
                 </div>
-                <div v-else class="dict-collapsed" @click="showDict = true">
-                  <span class="dict-collapsed-text">显示词典信息</span>
+
+                <div class="dict-section-wrapper" v-if="w.baseInfo?.definitions?.length">
+                  <div class="dict-tabs" v-if="showDict">
+                    <div class="dict-float-icon" @click.stop="showDict = false">
+                      <van-icon name="closed-eye" />
+                    </div>
+                    <van-tabs
+                      v-model:active="activeTab"
+                      shrink
+                      background="transparent"
+                      :border="false"
+                      line-width="0px"
+                      color="var(--van-primary-color)"
+                    >
+                      <van-tab title="基本词典">
+                        <div class="dict-content-box">
+                          <div
+                            v-for="(item, idx) in getDictZh(w.baseInfo.definitions)"
+                            :key="'zh' + idx"
+                            class="dict-item"
+                          >
+                            <span class="dict-pos">{{ item.pos }}</span>
+                            <span class="dict-text-zh">{{ item.text }}</span>
+                          </div>
+                          <div
+                            v-for="(item, idx) in getDictEn(w.baseInfo.definitions)"
+                            :key="'en' + idx"
+                            class="dict-item"
+                          >
+                            <span class="dict-pos">{{ item.pos }}</span>
+                            <span class="dict-text-en">{{ item.text }}</span>
+                          </div>
+                        </div>
+                      </van-tab>
+                      <!-- <van-tab title="其它词典"></van-tab> -->
+                    </van-tabs>
+                  </div>
+                  <div v-else class="dict-collapsed" @click="showDict = true">
+                    <span class="dict-collapsed-text">显示词典信息</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </van-pull-refresh>
         </van-swipe-item>
       </van-swipe>
       <van-button
@@ -191,7 +197,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
@@ -213,6 +219,7 @@ const wordsStore = useWordsStore()
 const swipeRef = ref()
 const activeTab = ref(0)
 const showDict = ref(authStore.userInfo?.cfg?.showDict !== false)
+const refreshing = ref(false)
 const { popoverMap, onOpen: onPopoverOpen, closeAll: closeAllPopovers } = usePopoverMap()
 
 const wid = Number(route.params.wid)
@@ -293,6 +300,19 @@ const onChange = (index: number) => {
       path: `/books/${bid}/words/${w.id}`,
       query: route.query,
     })
+  }
+}
+
+const onRefresh = async () => {
+  const currentId = wordsStore.currentWord?.id
+  await wordsStore.loadWords(bid)
+  refreshing.value = false
+
+  if (currentId && !isSingleMode.value) {
+    const newIndex = wordsStore.words.findIndex((w) => w.id === currentId)
+    if (newIndex >= 0) {
+      nextTick(() => swipeRef.value?.swipeTo(newIndex, { immediate: true }))
+    }
   }
 }
 
@@ -553,6 +573,7 @@ const swipeNext = () => swipeRef.value?.next()
 :deep(.van-swipe-item) {
   height: 100%;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 :deep(.van-swipe__indicators) {
   bottom: 12px;
