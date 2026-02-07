@@ -578,7 +578,23 @@ try {
         if ($req == 'w') {
             $ret = updateWords($bid, $input);
             if ($ret->v) {
-                $response = ['success' => true, 'word' => $ret->o];
+                // Attach Base Dictionary Info for updated/created words
+                $rows = $ret->o;
+                $wordList = [];
+                foreach ($rows as $row) {
+                    if (isset($row->word)) {
+                        $wordList[] = $row->word;
+                    }
+                }
+                if (!empty($wordList)) {
+                    $baseData = getBaseDictData(array_values(array_unique($wordList)));
+                    foreach ($rows as $row) {
+                        if (isset($row->word) && isset($baseData[$row->word])) {
+                            $row->baseInfo = $baseData[$row->word];
+                        }
+                    }
+                }
+                $response = ['success' => true, 'word' => $rows];
             } else {
                 $response['message'] = $ret->e;
             }
