@@ -1,4 +1,4 @@
-import { ref, watch, onMounted, nextTick, type Ref, type WatchSource } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick, type Ref, type WatchSource } from 'vue'
 import { useRoute } from 'vue-router'
 
 export interface UseDialogDraftOptions<T> {
@@ -30,10 +30,11 @@ export function useDialogDraft<T extends Record<string, unknown>>(
 
   const route = useRoute()
   const isRestoring = ref(false)
+  const openPath = ref(route.fullPath)
 
   const saveState = () => {
-    // 只有在弹窗显示时才保存
-    if (!show.value) return
+    // 只有在弹窗显示且不在恢复过程中才保存
+    if (isRestoring.value || !show.value) return
     const state = {
       ...getState(),
       _timestamp: Date.now(),
@@ -47,9 +48,14 @@ export function useDialogDraft<T extends Record<string, unknown>>(
     localStorage.removeItem(storageKey)
   }
 
-  // 监听显示状态：打开时立即保存（更新时间戳），关闭时不清除（除非手动调用 clearDraft）
+  // 监听显示状态：打开时立即保存（更新时间戳），关闭时自动清除
   watch(show, (v) => {
-    if (v) saveState()
+    if (v) {
+      openPath.value = route.fullPath
+      saveState()
+    } else {
+      clearDraft()
+    }
   })
 
   // 监听数据源变化自动保存
@@ -67,6 +73,14 @@ export function useDialogDraft<T extends Record<string, unknown>>(
       }
     },
   )
+
+  // 组件销毁时检查：如果是导航离开（路由变了），则清除草稿；如果是刷新（路由没变），则保留
+  // 这解决了 WordCardView 等非 KeepAlive 组件在后退时无法触发 watch 的问题
+  onUnmounted(() => {
+    if (show.value && route.fullPath !== openPath.value) {
+      clearDraft()
+    }
+  })
 
   onMounted(async () => {
     const saved = localStorage.getItem(storageKey)

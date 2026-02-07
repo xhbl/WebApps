@@ -107,6 +107,8 @@ export interface ApiResponse<T = unknown> {
   word?: Word[]
   user?: User[]
   pos?: Pos[]
+  explanation?: Explanation[]
+  sentence?: Sentence[]
   data?: T
 }
 

@@ -4,7 +4,7 @@
       <h3>{{ isNew ? '添加释义' : '编辑释义' }}</h3>
       <van-form @submit="onSubmit">
         <van-cell-group>
-          <van-field name="Picker" label="词性">
+          <van-field name="Picker" label="词性" required label-align="top">
             <template #input>
               <van-picker
                 :columns="lexCatOptions"
@@ -17,25 +17,30 @@
             </template>
           </van-field>
           <van-field
-            v-model="edit.exp_ch"
+            v-model="formData.exp_ch"
             label="中文释义"
+            required
             placeholder="请输入中文释义"
             :rules="[{ required: true, message: '请输入中文释义' }]"
             type="textarea"
-            rows="2"
+            rows="3"
+            label-align="top"
+            autosize
           />
           <van-field
-            v-model="edit.exp.en"
+            v-model="formData.exp.en"
             label="英文释义（可选）"
             placeholder="请输入英文释义"
             type="textarea"
-            rows="2"
+            rows="3"
+            label-align="top"
+            autosize
           />
         </van-cell-group>
 
         <div class="actions">
           <van-button round type="primary" native-type="submit">保存</van-button>
-          <van-button round class="ml" @click="onCancel">取消</van-button>
+          <van-button round @click="onCancel">取消</van-button>
         </div>
       </van-form>
     </div>
@@ -46,6 +51,7 @@
 import { ref, watch, computed, onMounted, nextTick } from 'vue'
 import { usePosStore } from '@/stores/pos'
 import type { Explanation } from '@/types'
+import { useWordsStore } from '@/stores/words'
 import { useDialogDraft } from '@/composables/useDialogDraft'
 
 const props = defineProps<{
@@ -56,7 +62,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
-  (e: 'save', exp: Explanation): void
+  (e: 'update:explanation', ex: Explanation): void
 }>()
 
 const show = ref(props.modelValue)
@@ -76,13 +82,25 @@ const lexCatOptions = computed(() => {
   return lexStore.posList.map((cat) => ({ text: cat.name_ch, value: cat.abbr }))
 })
 
-const edit = ref<Explanation>({} as Explanation)
+const formData = ref<Explanation>({
+  id: 0,
+  word_id: 0,
+  pos: '',
+  exp: { en: '', zh: '' },
+  time_c: '',
+  _new: 1,
+  lid: 0,
+  exp_ch: '',
+  abbr: '',
+  hide: 0,
+  sorder: 0,
+})
 
 // 初始化表单数据
 const initForm = () => {
   if (isRestoring.value) return
 
-  edit.value = {
+  formData.value = {
     id: props.explanation?.id || 0,
     word_id: props.wid,
     pos: props.explanation?.pos || '',
@@ -121,15 +139,23 @@ watch(
 const { isRestoring, clearDraft } = useDialogDraft({
   storageKey: 'vnb_exp_editor_state',
   show,
-  watchSource: [edit, selectedCat],
+  watchSource: [formData, selectedCat],
   getState: () => ({
-    edit: edit.value,
+    formData: formData.value,
     selectedCat: selectedCat.value,
     wid: props.wid,
+    editingExplanation: props.explanation,
   }),
-  restoreState: async (state: any) => {
+  restoreState: async (state: {
+    formData: Explanation
+    selectedCat: string
+    wid: number
+    editingExplanation?: Explanation | null
+  }) => {
+    if (state.editingExplanation) emit('update:explanation', state.editingExplanation)
+
     await nextTick()
-    edit.value = state.edit
+    formData.value = state.formData
     selectedCat.value = state.selectedCat
   },
 })
@@ -145,19 +171,19 @@ onMounted(async () => {
 defineExpose({ clearDraft })
 
 const onPickerConfirm = (value: string) => {
-  edit.value.abbr = value
+  formData.value.abbr = value
   selectedCat.value = value
   pickerShow.value = false
 }
 
-const onSubmit = () => {
-  if (!edit.value.abbr) {
-    emit('save', edit.value)
-    return
+const wordsStore = useWordsStore()
+
+const onSubmit = async () => {
+  const saved = await wordsStore.saveExplanation(formData.value)
+  if (saved) {
+    show.value = false
+    clearDraft()
   }
-  emit('save', edit.value)
-  show.value = false
-  clearDraft()
 }
 
 const onCancel = () => {
@@ -169,6 +195,18 @@ const onCancel = () => {
 <style scoped>
 .editor {
   padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+h3 {
+  margin: 0 0 16px 0;
+  text-align: center;
+}
+.van-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 .picker-trigger {
   padding: 10px;
@@ -177,11 +215,18 @@ const onCancel = () => {
   cursor: pointer;
 }
 .actions {
-  padding: 12px 0;
+  margin-top: auto;
+  padding: 20px 16px;
   display: flex;
   gap: 12px;
+  justify-content: center;
 }
-.ml {
-  margin-left: 8px;
+.actions .van-button {
+  min-width: 100px;
+  max-width: 120px;
+  flex: 1;
+}
+:deep(.van-field__label) {
+  font-weight: bold;
 }
 </style>

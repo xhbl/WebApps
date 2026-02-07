@@ -336,10 +336,11 @@ function defineWordsStore() {
       const response = await wordsApi.saveExplanation(explanation)
       if (
         response.data.success === true &&
-        response.data.word &&
-        response.data.word[0]?.explanations?.[0]
+        response.data.explanation &&
+        response.data.explanation.length > 0
       ) {
-        const savedExp = response.data.word[0].explanations![0]
+        const savedExp = response.data.explanation[0]
+        if (!savedExp) return null
 
         // 更新当前单词的释义列表
         if (currentWord.value && currentWord.value.id === explanation.word_id) {
@@ -372,7 +373,6 @@ function defineWordsStore() {
       return null
     } catch (error) {
       console.error('Save explanation failed:', error)
-      return null
     }
   }
 
@@ -383,18 +383,21 @@ function defineWordsStore() {
     try {
       await wordsApi.deleteExplanation(explanation)
 
-      // 从当前单词的释义列表中移除
-      if (currentWord.value && currentWord.value.explanations) {
-        const index = currentWord.value.explanations.findIndex((e) => e.id === explanation.id)
+      const removeExp = (explanations: Explanation[]) => {
+        const index = explanations.findIndex((e) => e.id === explanation.id)
         if (index !== -1) {
-          currentWord.value.explanations.splice(index, 1)
+          explanations.splice(index, 1)
         }
+      }
 
-        // 同步到 words 列表
-        const word = words.value.find((w) => w.id === explanation.word_id)
-        if (word) {
-          word.explanations = currentWord.value.explanations
-        }
+      if (currentWord.value && currentWord.value.explanations) {
+        removeExp(currentWord.value.explanations)
+      }
+
+      // 同步到 words 列表 (如果 currentWord 为空或者与列表中的对象不是同一个引用)
+      const wordInList = words.value.find((w) => w.id === explanation.word_id)
+      if (wordInList && wordInList !== currentWord.value && wordInList.explanations) {
+        removeExp(wordInList.explanations)
       }
 
       toast.showSuccess('删除成功')
@@ -408,35 +411,54 @@ function defineWordsStore() {
   /**
    * 保存例句
    */
-  const saveSentence = async (sentence: Sentence, expId: number) => {
+  const saveSentence = async (sentence: Sentence, expId: number, silent = false) => {
     try {
       const response = await wordsApi.saveSentence(sentence)
       if (
         response.data.success === true &&
-        response.data.word &&
-        response.data.word[0]?.explanations?.[0]?.sentences?.[0]
+        response.data.sentence &&
+        response.data.sentence.length > 0
       ) {
-        const savedSen = response.data.word[0].explanations![0].sentences![0]
+        const savedSen = response.data.sentence[0]
+        if (!savedSen) return null
 
-        // 同步到 words 列表
-        const word = words.value.find((w) => w.id === currentWord.value?.id)
-        if (word && word.explanations) {
-          const wordExp = word.explanations.find((e) => e.id === expId)
-          if (wordExp) {
-            // 这里假设 exp.sentences 已经在上层同步
-            if (currentWord.value) {
-              const exp = currentWord.value.explanations?.find((e) => e.id === expId)
-              if (exp) {
-                wordExp.sentences = exp.sentences
+        // 更新逻辑：同时更新 currentWord 和 words 列表中的数据
+        const updateExpSentences = (explanations: Explanation[]) => {
+          const exp = explanations.find((e) => e.id === expId)
+          if (exp) {
+            if (!exp.sentences) exp.sentences = []
+
+            if (sentence._new === 1) {
+              exp.sentences.unshift(savedSen)
+            } else {
+              const index = exp.sentences.findIndex((s) => s.id === savedSen.id)
+              if (index !== -1) {
+                exp.sentences[index] = savedSen
               }
             }
           }
         }
+
+        if (currentWord.value && currentWord.value.explanations) {
+          updateExpSentences(currentWord.value.explanations)
+        }
+
+        // 2. 同步更新 words 列表 (如果 currentWord 与列表中的对象不是同一个引用)
+        // 尝试在 words 列表中找到包含该 expId 的单词
+        const wordInList = words.value.find((w) => w.explanations?.some((e) => e.id === expId))
+
+        if (wordInList && wordInList !== currentWord.value && wordInList.explanations) {
+          updateExpSentences(wordInList.explanations)
+        }
+
+        if (!silent) toast.showSuccess(sentence._new === 1 ? '添加成功' : '更新成功')
         return savedSen
       }
+      if (!silent) toast.showFail('保存失败')
       return null
     } catch (error) {
       console.error('Save sentence failed:', error)
+      if (!silent) toast.showFail('保存失败')
       return null
     }
   }
@@ -448,24 +470,24 @@ function defineWordsStore() {
     try {
       await wordsApi.deleteSentence(sentence)
 
-      // 从释义的例句列表中移除
-      if (currentWord.value && currentWord.value.explanations) {
-        const exp = currentWord.value.explanations.find((e) => e.id === expId)
+      const removeSenFromExp = (explanations: Explanation[]) => {
+        const exp = explanations.find((e) => e.id === expId)
         if (exp && exp.sentences) {
           const index = exp.sentences.findIndex((s) => s.id === sentence.id)
           if (index !== -1) {
             exp.sentences.splice(index, 1)
           }
-
-          // 同步 words 列表
-          const word = words.value.find((w) => w.id === currentWord.value!.id)
-          if (word && word.explanations) {
-            const wordExp = word.explanations.find((e) => e.id === expId)
-            if (wordExp) {
-              wordExp.sentences = exp.sentences
-            }
-          }
         }
+      }
+
+      if (currentWord.value && currentWord.value.explanations) {
+        removeSenFromExp(currentWord.value.explanations)
+      }
+
+      // 同步 words 列表 (如果 currentWord 为空或者与列表中的对象不是同一个引用)
+      const wordInList = words.value.find((w) => w.explanations?.some((e) => e.id === expId))
+      if (wordInList && wordInList !== currentWord.value && wordInList.explanations) {
+        removeSenFromExp(wordInList.explanations)
       }
 
       toast.showSuccess('删除成功')
@@ -554,7 +576,7 @@ function defineWordsStore() {
     })
 
     if (updates.length > 0) {
-      await Promise.all(updates.map((s) => saveSentence(s, expId)))
+      await Promise.all(updates.map((s) => saveSentence(s, expId, true)))
     }
   }
 
