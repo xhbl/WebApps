@@ -201,8 +201,6 @@ import { usePopoverMap } from '@/composables/usePopoverMap'
 import WordEditorDialog from '@/components/WordEditorDialog.vue'
 import WordListItem from '@/components/WordListItem.vue'
 import type { Word } from '@/types'
-import { toast } from '@/utils/toast'
-import * as wordsApi from '@/api/words'
 import type { SearchInstance } from 'vant'
 
 const route = useRoute()
@@ -261,16 +259,7 @@ const onWordAction = async (action: { key: string }, w: Word) => {
       query: { single: 'true', edit: 'true' },
     })
   } else if (action.key === 'review') {
-    try {
-      const res = await wordsApi.saveWord({ ...w, book_id: -1, _new: 1 })
-      if (res.data.success) {
-        toast.showSuccess('已加入复习本')
-      } else {
-        toast.showFail('加入失败')
-      }
-    } catch {
-      toast.showFail('操作失败')
-    }
+    await wordsStore.addToReview(w)
   } else if (action.key === 'delete') {
     await handleDelete([w])
   }

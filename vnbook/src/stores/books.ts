@@ -42,6 +42,9 @@ export const useBooksStore = defineStore('books', () => {
       if (response.data.success === true && response.data.book) {
         books.value = response.data.book.map((b: Book) => ({
           ...b,
+          id: Number(b.id),
+          nums: Number(b.nums),
+          hide: Number(b.hide),
           ptop: Number(b.ptop || 0),
           sorder: Number(b.sorder || 0),
         }))
@@ -72,6 +75,13 @@ export const useBooksStore = defineStore('books', () => {
       }
       if (response.data.success === true && response.data.book && response.data.book[0]) {
         const savedBook = response.data.book[0]
+
+        // 确保数值类型
+        savedBook.id = Number(savedBook.id)
+        savedBook.nums = Number(savedBook.nums)
+        savedBook.hide = Number(savedBook.hide)
+        savedBook.ptop = Number(savedBook.ptop || 0)
+        savedBook.sorder = Number(savedBook.sorder || 0)
 
         if (book._new === 1) {
           // 新增

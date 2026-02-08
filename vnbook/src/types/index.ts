@@ -123,6 +123,7 @@ export interface NonceResponse {
 // 登录相关类型
 export interface LoginInfo {
   sid: string
+  uid: number
   uname: string
   dname: string
   cfg?: Record<string, unknown>

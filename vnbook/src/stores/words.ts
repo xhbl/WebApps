@@ -300,6 +300,25 @@ function defineWordsStore() {
   }
 
   /**
+   * 加入复习本
+   */
+  const addToReview = async (word: Word) => {
+    try {
+      const response = await wordsApi.saveWord({ ...word, book_id: -1, _new: 1 })
+      if (response.data.success) {
+        toast.showSuccess('已加入复习本')
+        return true
+      }
+      toast.showFail('加入失败')
+      return false
+    } catch (error) {
+      console.error('Add to review failed:', error)
+      toast.showFail('操作失败')
+      return false
+    }
+  }
+
+  /**
    * 批量删除/移除单词
    */
   const deleteWords = async (targetWords: Word[], bookId: number) => {
@@ -705,6 +724,7 @@ function defineWordsStore() {
     loadWords,
     sortWords,
     toggleSortMode,
+    addToReview,
     saveWord,
     deleteWords,
     updatePhon,

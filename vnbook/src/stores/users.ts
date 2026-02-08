@@ -14,7 +14,11 @@ export const useUsersStore = defineStore('users', () => {
     try {
       const response = await usersApi.getUsers()
       if (response.data.success === true) {
-        users.value = Array.isArray(response.data.user) ? response.data.user : []
+        const rawUsers = Array.isArray(response.data.user) ? response.data.user : []
+        users.value = rawUsers.map((u: User) => ({
+          ...u,
+          id: Number(u.id),
+        }))
         return true
       }
       return false
@@ -33,6 +37,8 @@ export const useUsersStore = defineStore('users', () => {
       }
       if (response.data.success === true && response.data.user && response.data.user[0]) {
         const savedUser = response.data.user[0]
+        savedUser.id = Number(savedUser.id) // 确保 ID 为数字
+
         if (user._new === 1) {
           if (!users.value.some((u) => u.id === savedUser.id)) {
             users.value.push(savedUser)
