@@ -591,6 +591,18 @@ const swipeNext = () => swipeRef.value?.next()
   color: var(--van-text-color);
   line-height: 1.2;
 }
+.word-text,
+.phon-text,
+.exp-cn,
+.exp-en,
+.sen-en,
+.sen-ch,
+.sen-memo,
+.dict-text-zh,
+.dict-text-en {
+  user-select: text;
+  -webkit-user-select: text;
+}
 .bookmark-icon {
   font-size: 22px;
   color: var(--van-gray-5);
