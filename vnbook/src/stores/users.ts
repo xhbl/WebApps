@@ -34,8 +34,10 @@ export const useUsersStore = defineStore('users', () => {
       if (response.data.success === true && response.data.user && response.data.user[0]) {
         const savedUser = response.data.user[0]
         if (user._new === 1) {
-          users.value.push(savedUser)
-          toast.showSuccess('创建成功')
+          if (!users.value.some((u) => u.id === savedUser.id)) {
+            users.value.push(savedUser)
+            toast.showSuccess('创建成功')
+          }
         } else {
           const index = users.value.findIndex((u) => u.id === savedUser.id)
           if (index !== -1 && savedUser) {

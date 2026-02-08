@@ -65,7 +65,7 @@
         </div>
 
         <div class="actions">
-          <van-button round type="primary" native-type="submit">
+          <van-button round type="primary" native-type="submit" :loading="loading">
             {{ isNew && step === 'input' ? '添加' : '保存' }}
           </van-button>
           <van-button round @click="onCancel">取消</van-button>
@@ -79,7 +79,7 @@
 import { ref, watch, computed, nextTick } from 'vue'
 import { useWordsStore } from '@/stores/words'
 import type { Word, BaseDictDefinition } from '@/types'
-import { toast } from '@/utils/toast'
+import { toast, useSubmitLoading } from '@/utils/toast'
 import { useDialogDraft } from '@/composables/useDialogDraft'
 import { showDialog } from 'vant'
 
@@ -307,80 +307,83 @@ const onShowInfo = () => {
   })
 }
 
-const onSubmit = async () => {
-  // 阶段一：添加（查询）
-  if (isNew.value && step.value === 'input') {
-    const wordText = formData.value.word.trim()
-    formData.value.word = wordText
+const { loading, withLoading } = useSubmitLoading()
 
-    // 总是查询字典以获取参考数据
-    await queryDictionary(wordText)
+const onSubmit = () =>
+  withLoading(async () => {
+    // 阶段一：添加（查询）
+    if (isNew.value && step.value === 'input') {
+      const wordText = formData.value.word.trim()
+      formData.value.word = wordText
 
-    // 检查单词是否存在
-    const existingWord = await wordsStore.checkWordExistence(wordText)
+      // 总是查询字典以获取参考数据
+      await queryDictionary(wordText)
 
-    if (existingWord) {
-      const inCurrentBook = wordsStore.findWordByName(wordText)
-      if (inCurrentBook) {
-        toast.show(`单词 '${wordText}' 已存在于当前单词本`)
-        // 切换到编辑模式
-        emit('update:word', inCurrentBook)
-        return
-      } else if ((existingWord.book_count || 0) > 0) {
-        toast.show(`单词 '${wordText}' 已存在于其它单词本`)
+      // 检查单词是否存在
+      const existingWord = await wordsStore.checkWordExistence(wordText)
+
+      if (existingWord) {
+        const inCurrentBook = wordsStore.findWordByName(wordText)
+        if (inCurrentBook) {
+          toast.show(`单词 '${wordText}' 已存在于当前单词本`)
+          // 切换到编辑模式
+          emit('update:word', inCurrentBook)
+          return
+        } else if ((existingWord.book_count || 0) > 0) {
+          toast.show(`单词 '${wordText}' 已存在于其它单词本`)
+        } else {
+          toast.show(`单词 '${wordText}' 已存在 (未入本)`)
+        }
+        formData.value.phon = existingWord.phon || ''
       } else {
-        toast.show(`单词 '${wordText}' 已存在 (未入本)`)
+        // 新词，使用字典数据填充
+        if (dictData.value.found) {
+          formData.value.phon = dictData.value.phon
+        }
       }
-      formData.value.phon = existingWord.phon || ''
-    } else {
-      // 新词，使用字典数据填充
-      if (dictData.value.found) {
-        formData.value.phon = dictData.value.phon
-      }
+      step.value = 'detail'
+      return
     }
-    step.value = 'detail'
-    return
-  }
 
-  // 阶段二：保存
-  const w: Word = {
-    id: props.word?.id || 0,
-    word: formData.value.word,
-    phon: formData.value.phon,
-    time_c: props.word?.time_c || '',
-    _new: isNew.value ? 1 : 0,
-    // 注意：这里暂不处理 definition 的保存，因为 Word 结构需要 Explanation 对象
-    // 如果需要保存释义，需构造 Explanation 数组。目前仅保存单词和音标。
-  }
-
-  const saved = await wordsStore.saveWord(w, props.bid)
-
-  // 处理单词已存在的情况 (_new === 2)
-  if (saved && saved._new === 2) {
-    try {
-      const message =
-        (saved.book_count || 0) > 0
-          ? `单词"${saved.word}"已存在于其他单词本中，要加入此单词本吗？`
-          : `单词"${saved.word}"是一个未入本单词，要加入此单词本吗？`
-      await showDialog({
-        title: '单词已存在',
-        message,
-      })
-      // 用户确认后，再次调用 saveWord（此时传入的对象 _new 为 2，后端会执行关联操作）
-      const retrySaved = await wordsStore.saveWord(saved, props.bid)
-      if (retrySaved) {
-        show.value = false
-      }
-    } catch {
-      // 用户取消，不做操作
+    // 阶段二：保存
+    const w: Word = {
+      id: props.word?.id || 0,
+      word: formData.value.word,
+      phon: formData.value.phon,
+      time_c: props.word?.time_c || '',
+      _new: isNew.value ? 1 : 0,
+      // 注意：这里暂不处理 definition 的保存，因为 Word 结构需要 Explanation 对象
+      // 如果需要保存释义，需构造 Explanation 数组。目前仅保存单词和音标。
     }
-    return
-  }
 
-  if (saved) {
-    show.value = false
-  }
-}
+    const saved = await wordsStore.saveWord(w, props.bid)
+
+    // 处理单词已存在的情况 (_new === 2)
+    if (saved && saved._new === 2) {
+      try {
+        const message =
+          (saved.book_count || 0) > 0
+            ? `单词"${saved.word}"已存在于其他单词本中，要加入此单词本吗？`
+            : `单词"${saved.word}"是一个未入本单词，要加入此单词本吗？`
+        await showDialog({
+          title: '单词已存在',
+          message,
+        })
+        // 用户确认后，再次调用 saveWord（此时传入的对象 _new 为 2，后端会执行关联操作）
+        const retrySaved = await wordsStore.saveWord(saved, props.bid)
+        if (retrySaved) {
+          show.value = false
+        }
+      } catch {
+        // 用户取消，不做操作
+      }
+      return
+    }
+
+    if (saved) {
+      show.value = false
+    }
+  })
 
 const onCancel = () => {
   show.value = false

@@ -74,7 +74,7 @@
         </div>
 
         <div class="actions">
-          <van-button round type="primary" native-type="submit">保存</van-button>
+          <van-button round type="primary" native-type="submit" :loading="loading">保存</van-button>
           <van-button round @click="onCancel">取消</van-button>
         </div>
       </van-form>
@@ -87,6 +87,7 @@ import { ref, watch, computed, nextTick } from 'vue'
 import type { Sentence } from '@/types'
 import { useWordsStore } from '@/stores/words'
 import { useDialogDraft } from '@/composables/useDialogDraft'
+import { useSubmitLoading } from '@/utils/toast'
 
 const props = defineProps<{
   modelValue: boolean
@@ -172,12 +173,15 @@ defineExpose({ clearDraft })
 
 const wordsStore = useWordsStore()
 
-const onSubmit = async () => {
-  const saved = await wordsStore.saveSentence(formData.value, props.eid)
-  if (saved) {
-    show.value = false
-  }
-}
+const { loading, withLoading } = useSubmitLoading()
+
+const onSubmit = () =>
+  withLoading(async () => {
+    const saved = await wordsStore.saveSentence(formData.value, props.eid)
+    if (saved) {
+      show.value = false
+    }
+  })
 
 const onCancel = () => {
   show.value = false

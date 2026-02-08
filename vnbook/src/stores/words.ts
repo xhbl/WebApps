@@ -115,7 +115,10 @@ function defineWordsStore() {
                   return {
                     id: Number(sen.id),
                     exp_id: Number(sen.exp_id),
-                    sen: typeof sen.sen === 'string' ? JSON.parse(sen.sen) : sen.sen,
+                    sen:
+                      typeof (sen.sen as unknown) === 'string'
+                        ? JSON.parse(sen.sen as unknown as string)
+                        : sen.sen,
                     time_c: sen.time_c,
                     _new: sen._new,
                     sorder: Number(sen.sorder || 0),
@@ -222,6 +225,33 @@ function defineWordsStore() {
       }
       if (response.data.success === true && response.data.word && response.data.word[0]) {
         const savedWord = response.data.word[0]
+
+        // 确保 ID 为数字类型，防止前端比对失败或 Prop 类型警告
+        if (savedWord) {
+          savedWord.id = Number(savedWord.id)
+          savedWord.book_count = Number(savedWord.book_count || 0)
+
+          // 递归转换 explanations 及其 sentences 的 ID
+          if (savedWord.explanations) {
+            savedWord.explanations = savedWord.explanations.map((e: Explanation) => ({
+              ...e,
+              id: Number(e.id),
+              word_id: Number(e.word_id),
+              sorder: Number(e.sorder || 0),
+              sentences: (e.sentences || []).map((s: Sentence) => ({
+                ...s,
+                id: Number(s.id),
+                exp_id: Number(s.exp_id),
+                sorder: Number(s.sorder || 0),
+                // 确保 sen 字段是对象 (API 可能返回 JSON 对象，也可能需要解析)
+                sen:
+                  typeof (s.sen as unknown) === 'string'
+                    ? JSON.parse(s.sen as unknown as string)
+                    : s.sen,
+              })),
+            }))
+          }
+        }
 
         // 如果后端返回 _new=2，说明单词已存在，需要前端确认
         // 直接返回该对象，由 UI 层处理确认逻辑
@@ -342,6 +372,31 @@ function defineWordsStore() {
         const savedExp = response.data.explanation[0]
         if (!savedExp) return null
 
+        // 确保 ID 为数字类型
+        savedExp.id = Number(savedExp.id)
+        savedExp.word_id = Number(savedExp.word_id)
+        savedExp.sorder = Number(savedExp.sorder || 0)
+
+        // 确保 exp 字段是对象 (API 可能返回 JSON 字符串)
+        if (typeof (savedExp.exp as unknown) === 'string') {
+          savedExp.exp = JSON.parse(savedExp.exp as unknown as string)
+        }
+
+        // 递归转换 sentences 的 ID
+        if (savedExp.sentences) {
+          savedExp.sentences = savedExp.sentences.map((s: Sentence) => ({
+            ...s,
+            id: Number(s.id),
+            exp_id: Number(s.exp_id),
+            sorder: Number(s.sorder || 0),
+            sen:
+              typeof (s.sen as unknown) === 'string'
+                ? JSON.parse(s.sen as unknown as string)
+                : s.sen,
+            smemo: s.smemo || '',
+          }))
+        }
+
         // 定义通用更新逻辑
         const updateWordExplanations = (word: Word) => {
           if (!word.explanations) {
@@ -349,7 +404,10 @@ function defineWordsStore() {
           }
 
           if (explanation._new === 1) {
-            word.explanations.unshift(savedExp)
+            // 防止重复添加 (处理双重提交或后端返回相同ID的情况)
+            if (!word.explanations.some((e) => e.id === savedExp.id)) {
+              word.explanations.unshift(savedExp)
+            }
           } else {
             const index = word.explanations.findIndex((e) => e.id === savedExp.id)
             if (index !== -1) {
@@ -426,6 +484,17 @@ function defineWordsStore() {
         const savedSen = response.data.sentence[0]
         if (!savedSen) return null
 
+        // 确保 ID 为数字类型
+        savedSen.id = Number(savedSen.id)
+        savedSen.exp_id = Number(savedSen.exp_id)
+        savedSen.sorder = Number(savedSen.sorder || 0)
+        savedSen.smemo = savedSen.smemo || ''
+
+        // 确保 sen 字段是对象 (API 可能返回 JSON 字符串)
+        if (typeof (savedSen.sen as unknown) === 'string') {
+          savedSen.sen = JSON.parse(savedSen.sen as unknown as string)
+        }
+
         // 更新逻辑：同时更新 currentWord 和 words 列表中的数据
         const updateExpSentences = (explanations: Explanation[]) => {
           const exp = explanations.find((e) => e.id === expId)
@@ -433,7 +502,9 @@ function defineWordsStore() {
             if (!exp.sentences) exp.sentences = []
 
             if (sentence._new === 1) {
-              exp.sentences.unshift(savedSen)
+              if (!exp.sentences.some((s) => s.id === savedSen.id)) {
+                exp.sentences.unshift(savedSen)
+              }
             } else {
               const index = exp.sentences.findIndex((s) => s.id === savedSen.id)
               if (index !== -1) {

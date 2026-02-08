@@ -13,7 +13,7 @@
         </van-cell-group>
 
         <div class="actions">
-          <van-button round type="primary" native-type="submit">保存</van-button>
+          <van-button round type="primary" native-type="submit" :loading="loading">保存</van-button>
           <van-button round @click="onCancel">取消</van-button>
           <van-button v-if="!isNew" round type="danger" @click="onDelete">删除</van-button>
         </div>
@@ -26,6 +26,7 @@
 import { ref, watch, computed } from 'vue'
 // ...existing code...
 import { useBooksStore } from '@/stores/books'
+import { useSubmitLoading } from '@/utils/toast'
 import type { Book } from '@/types'
 
 const props = defineProps<{
@@ -95,13 +96,16 @@ watch(
 
 const booksStore = useBooksStore()
 
-const onSubmit = async () => {
-  const b: Book = { ...edit.value }
-  const saved = await booksStore.saveBook(b)
-  if (saved) {
-    show.value = false
-  }
-}
+const { loading, withLoading } = useSubmitLoading()
+
+const onSubmit = () =>
+  withLoading(async () => {
+    const b: Book = { ...edit.value }
+    const saved = await booksStore.saveBook(b)
+    if (saved) {
+      show.value = false
+    }
+  })
 
 const onCancel = () => (show.value = false)
 

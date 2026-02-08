@@ -75,9 +75,11 @@ export const useBooksStore = defineStore('books', () => {
 
         if (book._new === 1) {
           // 新增
-          books.value.unshift(savedBook)
-          sortBooksLocal()
-          if (!silent) toast.showSuccess('创建成功')
+          if (!books.value.some((b) => b.id === savedBook.id)) {
+            books.value.unshift(savedBook)
+            sortBooksLocal()
+            if (!silent) toast.showSuccess('创建成功')
+          }
         } else {
           // 更新
           const index = books.value.findIndex((b) => b.id === savedBook.id)

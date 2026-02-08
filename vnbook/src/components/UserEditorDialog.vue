@@ -33,7 +33,7 @@
         </van-cell-group>
 
         <div class="actions">
-          <van-button round type="primary" native-type="submit">保存</van-button>
+          <van-button round type="primary" native-type="submit" :loading="loading">保存</van-button>
           <van-button round @click="onCancel">取消</van-button>
           <van-button v-if="!isNew" round type="danger" @click="onDelete">删除</van-button>
         </div>
@@ -46,6 +46,7 @@
 import { ref, watch, computed } from 'vue'
 import { showToast } from 'vant'
 import { useUsersStore } from '@/stores/users'
+import { useSubmitLoading } from '@/utils/toast'
 import type { User } from '@/types'
 
 const props = defineProps<{
@@ -97,6 +98,8 @@ watch(show, (v) => emit('update:modelValue', v))
 
 const usersStore = useUsersStore()
 
+const { loading, withLoading } = useSubmitLoading()
+
 const onSubmit = async () => {
   // 检查密码是否一致：如果其中一个有值，两个都必须有值且相同
   if (password.value || passwordConfirm.value) {
@@ -106,18 +109,20 @@ const onSubmit = async () => {
     }
   }
 
-  const u: User = { ...edit.value }
-  if (u.dispname) {
-    u.dispname = u.dispname.trim()
-  }
-  if (password.value) {
-    u.pass = password.value
-  }
+  await withLoading(async () => {
+    const u: User = { ...edit.value }
+    if (u.dispname) {
+      u.dispname = u.dispname.trim()
+    }
+    if (password.value) {
+      u.pass = password.value
+    }
 
-  const success = await usersStore.saveUser(u)
-  if (success) {
-    show.value = false
-  }
+    const success = await usersStore.saveUser(u)
+    if (success) {
+      show.value = false
+    }
+  })
 }
 
 const onCancel = () => (show.value = false)
