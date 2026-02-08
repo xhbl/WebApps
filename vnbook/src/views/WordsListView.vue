@@ -38,7 +38,7 @@
             <van-index-bar
               v-if="wordsStore.sortMode === 'alpha'"
               :index-list="indexList"
-              :sticky-offset-top="46"
+              :sticky-offset-top="stickyOffsetTop"
             >
               <van-checkbox-group v-model="checkedIds">
                 <div v-for="group in wordsStore.groupedWords" :key="group.key">
@@ -190,7 +190,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { computed, ref, onActivated, nextTick } from 'vue'
+import { computed, ref, onActivated, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { showDialog } from 'vant'
 import { useBooksStore } from '@/stores/books'
@@ -226,6 +226,16 @@ const currentBid = ref<number | null>(null)
 const searchText = ref('')
 const isSearchActive = ref(false)
 const searchRef = ref<SearchInstance | null>(null)
+
+const stickyOffsetTop = ref(56)
+
+onMounted(() => {
+  // 动态读取 CSS 变量并计算数值，既保持了配置的统一性，又满足了组件的类型要求
+  const rootStyle = getComputedStyle(document.documentElement)
+  const navHeight = parseInt(rootStyle.getPropertyValue('--van-nav-bar-height'), 10) || 46
+  const padTop = parseInt(rootStyle.getPropertyValue('--vnb-pad-top'), 10) || 0
+  stickyOffsetTop.value = navHeight + padTop
+})
 
 onBeforeRouteLeave((to, from, next) => {
   scrollTop.value = window.scrollY
@@ -566,13 +576,13 @@ const { openMenu, AppMenu } = useAppMenu({
 <style scoped>
 .words-manage-view {
   min-height: 100vh;
-  padding-top: var(--van-nav-bar-height);
+  padding-top: calc(var(--van-nav-bar-height) + var(--vnb-pad-top));
   background-color: var(--van-background);
 }
 
 .content {
   padding-top: 0px;
-  padding-bottom: var(--van-nav-bar-height);
+  padding-bottom: calc(var(--van-nav-bar-height) + var(--vnb-pad-bottom));
 }
 
 .loading {
@@ -588,6 +598,8 @@ const { openMenu, AppMenu } = useAppMenu({
   left: 0;
   right: 0;
   z-index: 100;
+  padding-top: var(--vnb-pad-top);
+  box-sizing: content-box;
 }
 
 /* 图标点击样式 */
@@ -598,6 +610,12 @@ const { openMenu, AppMenu } = useAppMenu({
 
 .nav-bar-icon {
   font-size: 22px;
+}
+
+/* 顶部导航栏增加空白 */
+:deep(.van-nav-bar--fixed) {
+  padding-top: var(--vnb-pad-top);
+  box-sizing: content-box;
 }
 
 /* 调整标题字号 */
@@ -645,6 +663,8 @@ const { openMenu, AppMenu } = useAppMenu({
   align-items: center;
   z-index: 100;
   padding: 0 16px;
+  padding-bottom: var(--vnb-pad-bottom);
+  box-sizing: content-box;
 }
 
 .bottom-bar-left {

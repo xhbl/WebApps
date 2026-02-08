@@ -528,6 +528,12 @@ const swipeNext = () => swipeRef.value?.next()
   font-size: var(--van-font-size-lg);
 }
 
+/* 顶部导航栏增加空白 */
+:deep(.van-nav-bar) {
+  padding-top: var(--vnb-pad-top);
+  box-sizing: content-box;
+}
+
 .van-icon {
   font-weight: 700;
   cursor: pointer;
@@ -683,7 +689,7 @@ const swipeNext = () => swipeRef.value?.next()
 .nav-btn {
   position: absolute;
   top: auto;
-  bottom: 20px;
+  bottom: calc(20px + var(--vnb-pad-bottom));
   transform: scale(0.75);
   z-index: 10;
   display: inline-flex;

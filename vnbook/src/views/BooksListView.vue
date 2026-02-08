@@ -343,7 +343,7 @@ const onConfirmDeleteBook = async () => {
 <style scoped>
 .books-manage-view {
   min-height: 100vh;
-  padding-top: var(--van-nav-bar-height);
+  padding-top: calc(var(--van-nav-bar-height) + var(--vnb-pad-top));
   background-color: var(--van-background);
 }
 
@@ -365,6 +365,12 @@ const onConfirmDeleteBook = async () => {
 
 .nav-bar-icon {
   font-size: 22px;
+}
+
+/* 顶部导航栏增加空白 */
+:deep(.van-nav-bar--fixed) {
+  padding-top: var(--vnb-pad-top);
+  box-sizing: content-box;
 }
 
 /* 优化 ActionSheet 内部图标间距 */
@@ -429,7 +435,7 @@ const onConfirmDeleteBook = async () => {
 
 .sticky-header {
   position: sticky;
-  top: var(--van-nav-bar-height);
+  top: calc(var(--van-nav-bar-height) + var(--vnb-pad-top));
   z-index: 10;
 }
 

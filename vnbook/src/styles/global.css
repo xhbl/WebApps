@@ -15,6 +15,10 @@
   --van-font-size-md: 17px !important;
   --van-font-size-lg: 19px !important;
   --van-font-size-xl: 21px !important;
+
+  /* 自定义间距变量：用于导航栏和工具条的内缩空白 */
+  --vnb-pad-top: 2px;
+  --vnb-pad-bottom: 6px;
 }
 
 * {
