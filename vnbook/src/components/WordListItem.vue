@@ -86,7 +86,7 @@ const definition = computed(() => {
   if (props.word.baseInfo?.definitions?.length) {
     const parts = props.word.baseInfo.definitions
       .map((d) => {
-        const meanings = d.meanings?.zh?.join('；') || ''
+        const meanings = d.meanings?.zh?.join('; ') || ''
         return meanings ? `${d.pos} ${meanings}`.trim() : null
       })
       .filter(Boolean)

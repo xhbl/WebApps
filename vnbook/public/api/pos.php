@@ -16,12 +16,19 @@ function getPos()
     $stmt = $db->query("SELECT pos, name FROM vnb_pos ORDER BY pos");
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Format output: parse JSON name field for client-side compatibility
-    foreach ($rows as &$row) {
-        $row['name'] = json_decode($row['name'], true); // Convert JSON string to array
+    $out = [];
+    $i = 1;
+    foreach ($rows as $row) {
+        $nameObj = json_decode($row['name'], true);
+        $out[] = [
+            'id' => $i++,
+            'abbr' => $row['pos'],
+            'name' => $nameObj['en'] ?? '',
+            'name_ch' => $nameObj['zh'] ?? ''
+        ];
     }
 
-    return $rows;
+    return $out;
 }
 
 // Check login

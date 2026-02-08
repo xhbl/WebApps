@@ -159,7 +159,7 @@ const { isRestoring, clearDraft } = useDialogDraft({
 const formatDefinitions = (definitions: BaseDictDefinition[]) => {
   const zhLines = definitions
     .map((d) => {
-      const meanings = d.meanings?.zh?.join('；')
+      const meanings = d.meanings?.zh?.join('; ')
       return meanings ? `${d.pos} ${meanings}` : null
     })
     .filter((line): line is string => line !== null)
@@ -370,7 +370,6 @@ const onSubmit = async () => {
       const retrySaved = await wordsStore.saveWord(saved, props.bid)
       if (retrySaved) {
         show.value = false
-        clearDraft()
       }
     } catch {
       // 用户取消，不做操作
@@ -380,13 +379,11 @@ const onSubmit = async () => {
 
   if (saved) {
     show.value = false
-    clearDraft() // 保存成功后清除草稿
   }
 }
 
 const onCancel = () => {
   show.value = false
-  clearDraft() // 取消时清除草稿
 }
 
 // 暴露 clearDraft 给父组件，以便在页面离开时主动清理

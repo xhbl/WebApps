@@ -208,8 +208,6 @@ import ExpEditorDialog from '@/components/ExpEditorDialog.vue'
 import SenEditorDialog from '@/components/SenEditorDialog.vue'
 import { usePopoverMap } from '@/composables/usePopoverMap'
 import { showDialog } from 'vant'
-import * as wordsApi from '@/api/words'
-import { toast } from '@/utils/toast'
 
 const route = useRoute()
 const router = useRouter()
@@ -385,10 +383,9 @@ const onAddSen = (expId: number) => {
 const wordActions = [
   { text: '添加释义', icon: 'plus', key: 'add-exp' },
   { text: '编辑音标', icon: 'certificate', key: 'edit-phon' },
-  { text: '加入复习', icon: 'bookmark-o', key: 'review' },
 ]
 
-const onWordAction = async (action: { key: string }, w: Word) => {
+const onWordAction = (action: { key: string }, w: Word) => {
   closeAllPopovers()
   if (action.key === 'add-exp') {
     onAddExp(w.id)
@@ -396,17 +393,6 @@ const onWordAction = async (action: { key: string }, w: Word) => {
     editingWord.value = w
     wordEditorMode.value = 'phon'
     showWordEditor.value = true
-  } else if (action.key === 'review') {
-    try {
-      const res = await wordsApi.saveWord({ ...w, book_id: -1, _new: 1 })
-      if (res.data.success) {
-        toast.showSuccess('已加入复习本')
-      } else {
-        toast.showFail('加入失败')
-      }
-    } catch {
-      toast.showFail('操作失败')
-    }
   }
 }
 
@@ -503,7 +489,7 @@ const getPopoverPlacement = (index: number, total: number) => {
 const getDictZh = (defs: BaseDictDefinition[]) => {
   return defs
     .map((d) => {
-      const text = d.meanings?.zh?.join('；')
+      const text = d.meanings?.zh?.join('; ')
       return text ? { pos: d.pos, text } : null
     })
     .filter((item): item is { pos: string; text: string } => item !== null)

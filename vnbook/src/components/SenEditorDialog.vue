@@ -2,35 +2,76 @@
   <van-popup v-model:show="show" round position="bottom" :style="{ height: '70%' }">
     <div class="editor">
       <h3>{{ isNew ? '添加例句' : '编辑例句' }}</h3>
-      <van-form @submit="onSubmit">
-        <van-cell-group>
-          <van-field
-            v-model="formData.sen.en"
-            label="英文例句"
-            required
-            placeholder="请输入英文例句"
-            :rules="[{ required: true, message: '请输入英文例句' }]"
-            type="textarea"
-            rows="3"
-            label-align="top"
-            autosize
-          />
-          <van-field
-            v-model="formData.sen.zh"
-            label="中文译文"
-            placeholder="请输入例句的中文译文"
-            type="textarea"
-            rows="3"
-            label-align="top"
-            autosize
-          />
-          <van-field
-            v-model="formData.smemo"
-            label="备注"
-            placeholder="如例句来源，使用场景等"
-            label-align="top"
-          />
-        </van-cell-group>
+      <van-form @submit="onSubmit" class="full-height-form">
+        <div class="form-scroll-area">
+          <van-cell-group :border="false">
+            <van-field
+              v-model="formData.sen.en"
+              required
+              placeholder="请输入英文例句"
+              :rules="[{ required: true, message: '请输入英文例句' }]"
+              type="textarea"
+              rows="3"
+              label-align="top"
+              autosize
+            >
+              <template #label>
+                <div class="label-row">
+                  <span>英文例句</span>
+                  <div class="label-right">
+                    <van-icon
+                      v-if="formData.sen.en"
+                      name="clear"
+                      class="clear-icon"
+                      @click.stop="formData.sen.en = ''"
+                    />
+                  </div>
+                </div>
+              </template>
+            </van-field>
+            <van-field
+              v-model="formData.sen.zh"
+              placeholder="请输入例句的中文译文"
+              type="textarea"
+              rows="3"
+              label-align="top"
+              autosize
+            >
+              <template #label>
+                <div class="label-row">
+                  <span>中文译文</span>
+                  <div class="label-right">
+                    <van-icon
+                      v-if="formData.sen.zh"
+                      name="clear"
+                      class="clear-icon"
+                      @click.stop="formData.sen.zh = ''"
+                    />
+                  </div>
+                </div>
+              </template>
+            </van-field>
+            <van-field
+              v-model="formData.smemo"
+              placeholder="如例句来源，使用场景等"
+              label-align="top"
+            >
+              <template #label>
+                <div class="label-row">
+                  <span>备注</span>
+                  <div class="label-right">
+                    <van-icon
+                      v-if="formData.smemo"
+                      name="clear"
+                      class="clear-icon"
+                      @click.stop="formData.smemo = ''"
+                    />
+                  </div>
+                </div>
+              </template>
+            </van-field>
+          </van-cell-group>
+        </div>
 
         <div class="actions">
           <van-button round type="primary" native-type="submit">保存</van-button>
@@ -135,38 +176,49 @@ const onSubmit = async () => {
   const saved = await wordsStore.saveSentence(formData.value, props.eid)
   if (saved) {
     show.value = false
-    clearDraft()
   }
 }
 
 const onCancel = () => {
   show.value = false
-  clearDraft()
 }
 </script>
 
 <style scoped>
 .editor {
-  padding: 16px;
   height: 100%;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 h3 {
-  margin: 0 0 16px 0;
+  margin: 16px 0;
   text-align: center;
+  flex-shrink: 0;
 }
-.van-form {
+.full-height-form {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.form-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 16px;
+  min-height: 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .actions {
   margin-top: auto;
-  padding: 20px 16px;
+  padding: 16px;
   display: flex;
   gap: 12px;
   justify-content: center;
+  flex-shrink: 0;
 }
 .actions .van-button {
   min-width: 100px;
@@ -175,5 +227,22 @@ h3 {
 }
 :deep(.van-field__label) {
   font-weight: bold;
+  width: 100%;
+}
+.label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+.label-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.clear-icon {
+  color: var(--van-gray-5);
+  font-size: 16px;
+  cursor: pointer;
 }
 </style>

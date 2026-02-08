@@ -342,32 +342,36 @@ function defineWordsStore() {
         const savedExp = response.data.explanation[0]
         if (!savedExp) return null
 
-        // 更新当前单词的释义列表
-        if (currentWord.value && currentWord.value.id === explanation.word_id) {
-          if (!currentWord.value.explanations) {
-            currentWord.value.explanations = []
+        // 定义通用更新逻辑
+        const updateWordExplanations = (word: Word) => {
+          if (!word.explanations) {
+            word.explanations = []
           }
 
-          if (explanation._new === 1 && savedExp) {
-            currentWord.value.explanations.push(savedExp)
-            if (!silent) toast.showSuccess('添加成功')
-          } else if (savedExp) {
-            const index = currentWord.value.explanations!.findIndex((e) => e.id === savedExp.id)
-            if (index !== -1 && currentWord.value.explanations) {
+          if (explanation._new === 1) {
+            word.explanations.unshift(savedExp)
+          } else {
+            const index = word.explanations.findIndex((e) => e.id === savedExp.id)
+            if (index !== -1) {
               // 保留 sentences
-              savedExp.sentences = currentWord.value.explanations[index]?.sentences
-              currentWord.value.explanations[index] = savedExp
+              savedExp.sentences = word.explanations[index]?.sentences
+              word.explanations[index] = savedExp
             }
-            if (!silent) toast.showSuccess('更新成功')
-          }
-
-          // 同步到 words 列表
-          const word = words.value.find((w) => w.id === explanation.word_id)
-          if (word) {
-            word.explanations = currentWord.value.explanations
           }
         }
 
+        // 1. 更新 currentWord
+        if (currentWord.value && currentWord.value.id === explanation.word_id) {
+          updateWordExplanations(currentWord.value)
+        }
+
+        // 2. 更新 words 列表 (如果 currentWord 为空或者与列表中的对象不是同一个引用)
+        const wordInList = words.value.find((w) => w.id === explanation.word_id)
+        if (wordInList && wordInList !== currentWord.value) {
+          updateWordExplanations(wordInList)
+        }
+
+        if (!silent) toast.showSuccess(explanation._new === 1 ? '添加成功' : '更新成功')
         return savedExp
       }
       return null
