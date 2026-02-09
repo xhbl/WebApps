@@ -51,6 +51,9 @@ const props = defineProps<{
   popoverPlacement: PopoverPlacement
   highlight?: string
   deleteText?: string
+  allowMove?: boolean
+  moveText?: string
+  moveIcon?: string
 }>()
 
 const emit = defineEmits<{
@@ -65,6 +68,13 @@ const actions = computed(() => {
     { text: '编辑', icon: 'edit', key: 'edit' },
     { text: '加入复习', icon: 'bookmark-o', key: 'review' },
   ]
+  if (props.allowMove) {
+    list.push({
+      text: props.moveText || '移动到...',
+      icon: props.moveIcon || 'exchange',
+      key: 'move',
+    })
+  }
   if (props.deleteText) {
     list.push({
       text: props.deleteText,

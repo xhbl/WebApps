@@ -321,7 +321,7 @@ function defineWordsStore() {
   /**
    * 批量删除/移除单词
    */
-  const deleteWords = async (targetWords: Word[], bookId: number) => {
+  const deleteWords = async (targetWords: Word[], bookId: number, silent = false) => {
     try {
       // 使用封装的 API 调用，自动处理 baseURL 和 headers
       const response = await wordsApi.deleteWords(bookId, targetWords)
@@ -344,12 +344,12 @@ function defineWordsStore() {
       }
 
       const isAllWords = bookId === 0
-      toast.showSuccess(isAllWords ? '删除成功' : '移除成功')
+      if (!silent) toast.showSuccess(isAllWords ? '删除成功' : '移除成功')
       return true
     } catch (error) {
       console.error('Delete words failed:', error)
       const isAllWords = bookId === 0
-      toast.showFail(isAllWords ? '删除失败' : '移除失败')
+      if (!silent) toast.showFail(isAllWords ? '删除失败' : '移除失败')
       return false
     }
   }
@@ -713,6 +713,58 @@ function defineWordsStore() {
     return null
   }
 
+  /**
+   * 移动单词
+   */
+  const moveWords = async (
+    targetWords: Word[],
+    targetBookId: number,
+    sourceBookId: number,
+    successMessage?: string,
+  ) => {
+    try {
+      // 1. 添加到目标单词本
+      const res = await wordsApi.addWordsToBook(targetBookId, targetWords)
+      if (!res.data.success) throw new Error(res.data.message || '移动失败')
+
+      // 更新本地数据的 book_count (这对未入本单词视图尤为重要)
+      if (res.data.word && Array.isArray(res.data.word)) {
+        res.data.word.forEach((updatedWord) => {
+          const index = words.value.findIndex((w) => w.id === Number(updatedWord.id))
+          const existingWord = words.value[index]
+          if (index !== -1 && existingWord) {
+            // 强制替换对象以触发计算属性更新 (解决未入本视图不刷新的问题)
+            words.value[index] = {
+              ...existingWord,
+              book_count: Number(updatedWord.book_count || 0),
+            }
+          }
+        })
+      }
+
+      // 2. 从源单词本移除 (如果是全部单词视图 bid=0，则不移除，仅视为添加到新本)
+      if (sourceBookId !== 0) {
+        await deleteWords(targetWords, sourceBookId, true)
+      }
+
+      // 3. 重新加载单词本列表以更新计数 (特别是目标单词本的计数)
+      const booksStore = useBooksStore()
+      await booksStore.loadBooks()
+      // 重新关联 currentBook 以确保 UI 显示最新的 nums
+      if (booksStore.currentBook) {
+        const refreshedBook = booksStore.books.find((b) => b.id === booksStore.currentBook?.id)
+        if (refreshedBook) booksStore.setCurrentBook(refreshedBook)
+      }
+
+      toast.showSuccess(successMessage || '移动成功')
+      return true
+    } catch (error) {
+      console.error('Move words failed:', error)
+      toast.showFail(successMessage ? successMessage.replace('成功', '失败') : '移动失败')
+      return false
+    }
+  }
+
   return {
     words,
     currentWord,
@@ -727,6 +779,7 @@ function defineWordsStore() {
     addToReview,
     saveWord,
     deleteWords,
+    moveWords,
     updatePhon,
     saveExplanation,
     deleteExplanation,

@@ -24,6 +24,17 @@ export const saveWord = (word: Word & { book_id?: number }) => {
 }
 
 /**
+ * 批量添加单词到单词本 (用于移动/复制)
+ * 强制设置 _new=2 以便后端处理映射关系
+ */
+export const addWordsToBook = (bookId: number, words: Word[]) => {
+  const payload = words.map((w) => ({ ...w, _new: 2 }))
+  return request.put<ApiResponse>('/words.php', payload, {
+    params: { req: 'w', bid: bookId },
+  })
+}
+
+/**
  * 删除单词
  */
 export const deleteWord = (word: Word) => {

@@ -52,6 +52,9 @@
                     :popover-placement="getWordPopoverPlacement(w)"
                     :highlight="wordsStore.searchKeyword"
                     :delete-text="deleteActionText"
+                    :allow-move="allowMove"
+                    :move-text="moveActionConfig.text"
+                    :move-icon="moveActionConfig.icon"
                     @update:show-popover="(val) => (showWordPopover[w.id] = val)"
                     @open-popover="onPopoverOpen(w.id)"
                     @action="onWordAction"
@@ -70,6 +73,9 @@
                 :popover-placement="getWordPopoverPlacement(w)"
                 :highlight="wordsStore.searchKeyword"
                 :delete-text="deleteActionText"
+                :allow-move="allowMove"
+                :move-text="moveActionConfig.text"
+                :move-icon="moveActionConfig.icon"
                 @update:show-popover="(val) => (showWordPopover[w.id] = val)"
                 @open-popover="onPopoverOpen(w.id)"
                 @action="onWordAction"
@@ -109,6 +115,13 @@
             class="bottom-bar-icon"
             :class="{ disabled: checkedIds.length === 0 }"
             @click="onBatchBookmark"
+          />
+          <van-icon
+            v-if="allowMove"
+            :name="moveActionConfig.icon"
+            class="bottom-bar-icon"
+            :class="{ disabled: checkedIds.length === 0 }"
+            @click="onBatchMove"
           />
           <van-icon
             :name="bid === 0 ? 'delete-o' : 'failure'"
@@ -151,7 +164,7 @@
             v-else-if="bid === 0"
             class="orphan-toggle-btn"
             :class="{ active: wordsStore.orphanFilter }"
-            @click="wordsStore.toggleOrphanFilter"
+            @click="toggleOrphanFilter"
           >
             <van-icon name="failure" />
           </div>
@@ -179,6 +192,14 @@
       :bid="bid"
       :word="editingWord"
       @update:word="editingWord = $event"
+    />
+
+    <van-action-sheet
+      v-model:show="showMoveSheet"
+      :actions="moveTargetOptions"
+      description="请选择目标单词本"
+      cancel-text="取消"
+      @select="onMoveConfirm"
     />
   </div>
 </template>
@@ -260,6 +281,16 @@ const effectiveMode = computed(() => (isSelectMode.value ? 'select' : mode.value
 
 const deleteActionText = computed(() => (bid.value === 0 ? '删除' : '移除'))
 
+// 允许移动的条件：不是“全部单词”视图 (bid != 0)，或者是“未入本单词”视图 (orphanFilter = true)
+const allowMove = computed(() => bid.value !== 0 || wordsStore.orphanFilter)
+
+const moveActionConfig = computed(() => {
+  if (bid.value === 0) {
+    return { text: '添加到...', icon: 'label-o' }
+  }
+  return { text: '移动到...', icon: 'exchange' }
+})
+
 const onWordAction = async (action: { key: string }, w: Word) => {
   showWordPopover.value[w.id] = false
   if (action.key === 'edit') {
@@ -270,6 +301,8 @@ const onWordAction = async (action: { key: string }, w: Word) => {
     })
   } else if (action.key === 'review') {
     await wordsStore.addToReview(w)
+  } else if (action.key === 'move') {
+    handleMove([w])
   } else if (action.key === 'delete') {
     await handleDelete([w])
   }
@@ -294,6 +327,7 @@ const indexList = computed(() =>
 onActivated(async () => {
   if (!authStore.isLoggedIn) return
   const newBid = bid.value
+
   if (currentBid.value !== newBid) {
     currentBid.value = newBid
 
@@ -307,6 +341,13 @@ onActivated(async () => {
     wordsStore.clearWords()
     window.scrollTo(0, 0)
 
+    // Sync orphan filter from URL (must be after clearWords)
+    if (newBid === 0) {
+      wordsStore.orphanFilter = route.query.orphan === 'true'
+    } else {
+      wordsStore.orphanFilter = false
+    }
+
     if (booksStore.books.length === 0) {
       await booksStore.loadBooks()
     }
@@ -319,6 +360,13 @@ onActivated(async () => {
     await wordsStore.loadWords(newBid)
     loading.value = false
   } else {
+    // Sync orphan filter from URL
+    if (newBid === 0) {
+      wordsStore.orphanFilter = route.query.orphan === 'true'
+    } else {
+      wordsStore.orphanFilter = false
+    }
+
     // Sync select mode with URL
     const qSelect = route.query.select === 'true'
     if (isSelectMode.value !== qSelect) {
@@ -360,6 +408,22 @@ const exitSearchMode = () => {
   wordsStore.setSearchKeyword('')
 }
 
+const toggleOrphanFilter = () => {
+  const newValue = !wordsStore.orphanFilter
+  wordsStore.orphanFilter = newValue
+
+  // 使用 nextTick 推迟 URL 更新，优先保证列表渲染性能，避免路由操作阻塞 UI 响应
+  nextTick(() => {
+    const query = { ...route.query }
+    if (newValue) {
+      query.orphan = 'true'
+    } else {
+      delete query.orphan
+    }
+    router.replace({ query })
+  })
+}
+
 const onSearchUpdate = (val: string) => wordsStore.setSearchKeyword(val)
 
 const onSearchConfirm = () => searchRef.value?.blur()
@@ -391,19 +455,78 @@ const toggleMode = (target: 'edit' | 'audio' | 'select') => {
 }
 
 const isAllSelected = computed(() => {
-  return wordsStore.words.length > 0 && checkedIds.value.length === wordsStore.words.length
+  const visibleWords = wordsStore.filteredWords
+  return visibleWords.length > 0 && visibleWords.every((w) => checkedIds.value.includes(w.id))
 })
 
 const isIndeterminate = computed(() => {
-  return checkedIds.value.length > 0 && checkedIds.value.length < wordsStore.words.length
+  const visibleWords = wordsStore.filteredWords
+  if (visibleWords.length === 0) return false
+  const checkedCount = visibleWords.filter((w) => checkedIds.value.includes(w.id)).length
+  return checkedCount > 0 && checkedCount < visibleWords.length
 })
 
 const toggleSelectAll = () => {
   if (isAllSelected.value) {
     checkedIds.value = []
   } else {
-    checkedIds.value = wordsStore.words.map((w) => w.id)
+    checkedIds.value = wordsStore.filteredWords.map((w) => w.id)
   }
+}
+
+// --- 移动功能逻辑 ---
+const showMoveSheet = ref(false)
+const pendingMoveWords = ref<Word[]>([])
+
+const moveTargetOptions = computed(() => {
+  // 过滤掉当前单词本
+  return booksStore.books
+    .filter((b) => b.id !== bid.value)
+    .map((b) => ({
+      name: `${b.title} (${b.nums}词)`,
+      value: b.id,
+    }))
+})
+
+const handleMove = (targets: Word[]) => {
+  if (targets.length === 0) return
+  if (moveTargetOptions.value.length === 0) {
+    // 如果没有其他单词本
+    import('@/utils/toast').then(({ toast }) => {
+      toast.show('没有可以移动的目标单词本')
+    })
+    return
+  }
+  pendingMoveWords.value = targets
+  showMoveSheet.value = true
+}
+
+const onBatchMove = () => {
+  if (checkedIds.value.length === 0) return
+  const targets = wordsStore.words.filter((w) => checkedIds.value.includes(w.id))
+  handleMove(targets)
+}
+
+const onMoveConfirm = async (action: { name: string; value: number }) => {
+  showMoveSheet.value = false
+  const targetBookId = action.value
+  const targets = pendingMoveWords.value
+  const isBatch = targets.length > 1
+  const isAdd = bid.value === 0
+  const actionText = isAdd ? '添加' : '移动'
+
+  try {
+    await showDialog({
+      title: `确认${actionText}`,
+      message: `确定将 ${isBatch ? `所选 ${targets.length} 个单词` : `单词"${targets[0]?.word}"`} ${actionText}到 "${action.name}" 吗？`,
+      confirmButtonText: actionText,
+      confirmButtonColor: 'var(--van-primary-color)',
+      showCancelButton: true,
+    })
+
+    await wordsStore.moveWords(targets, targetBookId, bid.value, `${actionText}成功`)
+    if (isSelectMode.value) checkedIds.value = []
+  } catch {}
 }
 
 const handleDelete = async (targets: Word[]) => {
@@ -523,6 +646,13 @@ const { openMenu, AppMenu } = useAppMenu({
           icon: 'bookmark-o',
           handler: onBatchBookmark,
         })
+        if (allowMove.value) {
+          actions.push({
+            name: moveActionConfig.value.text,
+            icon: moveActionConfig.value.icon,
+            handler: onBatchMove,
+          })
+        }
       }
       actions.push({ name: '退出批量管理', icon: 'close', handler: () => toggleMode('select') })
       return actions
@@ -536,7 +666,7 @@ const { openMenu, AppMenu } = useAppMenu({
         name: wordsStore.orphanFilter ? '显示全部单词' : '显示未入本单词',
         icon: wordsStore.orphanFilter ? 'bars' : 'failure',
         color: wordsStore.orphanFilter ? undefined : 'var(--van-warning-color)',
-        handler: () => wordsStore.toggleOrphanFilter(),
+        handler: () => toggleOrphanFilter(),
       })
     }
     items.push(
