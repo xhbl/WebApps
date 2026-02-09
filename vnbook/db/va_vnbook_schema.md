@@ -254,6 +254,51 @@ CREATE TABLE `vnu_mapbw` (
 
 ---
 
+### 8. 单词复习记录表 (`vnu_review`)
+
+记录用户对单词的复习统计与时间信息。
+
+#### 字段说明
+
+| 字段名      | 数据类型         | 属性                       | 说明             |
+| ----------- | ---------------- | -------------------------- | ---------------- |
+| `id`        | INT              | AUTO_INCREMENT PRIMARY KEY | 记录 ID          |
+| `user_id`   | INT              | NOT NULL, FOREIGN KEY      | 关联用户         |
+| `word_id`   | INT              | NOT NULL, FOREIGN KEY      | 关联单词         |
+| `n_known`   | TINYINT UNSIGNED | DEFAULT 0                  | 累计认识次数     |
+| `n_unknown` | TINYINT UNSIGNED | DEFAULT 0                  | 累计不认识次数   |
+| `n_streak`  | TINYINT UNSIGNED | DEFAULT 0                  | 当前连续认识次数 |
+| `time_c`    | DATETIME         | DEFAULT CURRENT_TIMESTAMP  | 加入复习时间     |
+| `time_r`    | DATETIME         | DEFAULT CURRENT_TIMESTAMP  | 最近复习时间     |
+
+#### 约束与索引
+
+| 名称     | 类型 | 字段             | 说明               |
+| -------- | ---- | ---------------- | ------------------ |
+| idx_u_w  | 唯一 | user_id, word_id | 单词复习记录唯一性 |
+| fk_vnr_u | 外键 | user_id          | 关联用户           |
+| fk_vnr_w | 外键 | word_id          | 关联单词           |
+
+#### SQL 定义
+
+```sql
+CREATE TABLE `vnu_review` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT NOT NULL,
+    `word_id` INT NOT NULL,
+    `n_known` TINYINT UNSIGNED DEFAULT 0 COMMENT '累计认识次数',
+    `n_unknown` TINYINT UNSIGNED DEFAULT 0 COMMENT '累计不认识次数',
+    `n_streak` TINYINT UNSIGNED DEFAULT 0 COMMENT '当前连续认识次数',
+    `time_c` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '加入复习时间',
+    `time_r` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最近复习时间',
+    UNIQUE INDEX `idx_u_w` (`user_id`, `word_id`),
+    CONSTRAINT `fk_vnr_u` FOREIGN KEY (`user_id`) REFERENCES `vnb_users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_vnr_w` FOREIGN KEY (`word_id`) REFERENCES `vnu_words` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;
+```
+
+---
+
 ## 触发器
 
 用于自动维护 `vnu_books.nums` 单词数量。
@@ -325,6 +370,8 @@ vnb_users (id) ──→ vnu_books (user_id)
      └────────→ vnu_mapbw (user_id)
                       ├─→ vnu_books (book_id)
                       └─→ vnu_words (word_id)
+    └────────→ vnu_review (user_id)
+                  └─→ vnu_words (word_id)
 ```
 
 ---
@@ -354,6 +401,7 @@ COLLATE utf8mb4_unicode_ci;
 
 | 日期       | 版本 | 描述                                                       |
 | ---------- | ---- | ---------------------------------------------------------- |
+| 2026-02-09 | 1.2  | 新增单词复习记录表 `vnu_review`                            |
 | 2026-02-06 | 1.1  | 新增 `sorder` 排序字段和 `smemo` 备注字段 到释义表和例句表 |
 | 2026-02-04 | 1.0  | 初始版本，基于 impdb.php                                   |
 

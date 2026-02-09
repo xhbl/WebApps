@@ -96,7 +96,22 @@ function createVnbInitData()
                 CONSTRAINT `fk_map_word` FOREIGN KEY (`word_id`) REFERENCES `vnu_words` (`id`) ON DELETE CASCADE
             ) ENGINE=InnoDB",
 
-            // 8. Triggers for automatic word counting
+            // 8. Review records
+            "CREATE TABLE IF NOT EXISTS `vnu_review` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `user_id` INT NOT NULL,
+                `word_id` INT NOT NULL,
+                `n_known` TINYINT UNSIGNED DEFAULT 0,
+                `n_unknown` TINYINT UNSIGNED DEFAULT 0,
+                `n_streak` TINYINT UNSIGNED DEFAULT 0,
+                `time_c` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                `time_r` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE INDEX `idx_u_w` (`user_id`, `word_id`),
+                CONSTRAINT `fk_vnr_u` FOREIGN KEY (`user_id`) REFERENCES `vnb_users` (`id`) ON DELETE CASCADE,
+                CONSTRAINT `fk_vnr_w` FOREIGN KEY (`word_id`) REFERENCES `vnu_words` (`id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB",
+
+            // 9. Triggers for automatic word counting
             // Case 1: Insert mapping - Auto increment book word count
             "CREATE TRIGGER tr_mapbw_insert AFTER INSERT ON vnu_mapbw 
              FOR EACH ROW UPDATE vnu_books SET nums = nums + 1 WHERE id = NEW.book_id",
@@ -177,6 +192,7 @@ function initSystemPosData()
  * Thanks to database foreign key constraints (ON DELETE CASCADE), a single
  * DELETE on vnb_users automatically cascades to clean up all related records:
  *   - vnu_mapbw (word-book mappings)
+ *   - vnu_review (review records)
  *   - vnu_sentences (example sentences)
  *   - vnu_explanations (word explanations)
  *   - vnu_words (user's words)
@@ -224,6 +240,9 @@ function resetVnbInitData()
     try {
         $db = DB::vnb();
         $db->beginTransaction();
+
+        // Clear review records for full reset
+        $db->exec("DELETE FROM vnu_review");
 
         // Delete all non-admin users (CASCADE will clean up all related data)
         $db->exec("DELETE FROM vnb_users WHERE name NOT IN ('admin')");
