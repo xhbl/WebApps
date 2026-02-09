@@ -39,6 +39,7 @@
 import { ref, watch } from 'vue'
 import { showToast } from 'vant'
 import { useAuthStore } from '@/stores/auth'
+import { usePopupHistory } from '@/composables/usePopupHistory'
 
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void }>()
@@ -59,6 +60,7 @@ watch(
   },
 )
 watch(show, (v) => emit('update:modelValue', v))
+usePopupHistory(show)
 
 const authStore = useAuthStore()
 

@@ -23,11 +23,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
-// ...existing code...
+import { ref, watch, computed, nextTick } from 'vue'
 import { useBooksStore } from '@/stores/books'
 import { useSubmitLoading } from '@/utils/toast'
 import type { Book } from '@/types'
+import { usePopupHistory } from '@/composables/usePopupHistory'
+import { useDialogDraft } from '@/composables/useDialogDraft'
 
 const props = defineProps<{
   modelValue: boolean
@@ -37,6 +38,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
   (e: 'delete', book: Book): void
+  (e: 'update:book', book: Book): void
 }>()
 
 const show = ref(props.modelValue)
@@ -44,6 +46,7 @@ watch(
   () => props.modelValue,
   (v) => (show.value = v),
 )
+usePopupHistory(show)
 
 const isNew = computed(() => !props.book || props.book._new === 1)
 const edit = ref<Book>({
@@ -67,6 +70,24 @@ const resetForm = () => {
   }
 }
 
+// --- 状态持久化逻辑 ---
+const { isRestoring, clearDraft } = useDialogDraft({
+  storageKey: 'vnb_book_editor_state',
+  show,
+  watchSource: edit,
+  getState: () => ({
+    edit: edit.value,
+    editingBook: props.book,
+  }),
+  restoreState: async (state: { edit: Book; editingBook?: Book | null }) => {
+    // 恢复父组件的 book 状态，确保 isNew 计算正确
+    if (state.editingBook) emit('update:book', state.editingBook)
+
+    await nextTick()
+    edit.value = state.edit
+  },
+})
+
 watch(show, (v) => {
   emit('update:modelValue', v)
   if (!v) {
@@ -78,7 +99,7 @@ watch(show, (v) => {
 watch(
   () => props.book,
   (book) => {
-    if (book) {
+    if (book && !isRestoring.value) {
       edit.value = {
         id: book.id,
         title: book.title,
@@ -87,12 +108,14 @@ watch(
         hide: book.hide,
         _new: book._new ?? 1,
       }
-    } else {
+    } else if (!isRestoring.value) {
       resetForm()
     }
   },
   { immediate: true },
 )
+
+defineExpose({ clearDraft })
 
 const booksStore = useBooksStore()
 

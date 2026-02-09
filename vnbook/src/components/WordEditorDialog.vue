@@ -100,6 +100,7 @@ import type { Word, BaseDictDefinition } from '@/types'
 import { toast, useSubmitLoading } from '@/utils/toast'
 import { useDialogDraft } from '@/composables/useDialogDraft'
 import { showDialog } from 'vant'
+import { usePopupHistory } from '@/composables/usePopupHistory'
 
 const props = defineProps<{
   modelValue: boolean
@@ -119,6 +120,7 @@ watch(
   () => props.modelValue,
   (v) => (show.value = v),
 )
+usePopupHistory(show)
 
 const isNew = computed(() => !props.word || props.word._new === 1)
 const mode = computed(() => props.mode || 'full')

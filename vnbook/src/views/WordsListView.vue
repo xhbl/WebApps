@@ -200,6 +200,7 @@
       description="请选择目标单词本"
       cancel-text="取消"
       @select="onMoveConfirm"
+      :close-on-popstate="false"
     />
   </div>
 </template>
@@ -223,6 +224,7 @@ import WordEditorDialog from '@/components/WordEditorDialog.vue'
 import WordListItem from '@/components/WordListItem.vue'
 import type { Word } from '@/types'
 import type { SearchInstance } from 'vant'
+import { usePopupHistory } from '@/composables/usePopupHistory'
 
 const route = useRoute()
 const router = useRouter()
@@ -477,6 +479,7 @@ const toggleSelectAll = () => {
 // --- 移动功能逻辑 ---
 const showMoveSheet = ref(false)
 const pendingMoveWords = ref<Word[]>([])
+usePopupHistory(showMoveSheet)
 
 const moveTargetOptions = computed(() => {
   // 过滤掉当前单词本

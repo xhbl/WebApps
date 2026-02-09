@@ -110,7 +110,12 @@
 
     <AppMenu />
     <UserDialog />
-    <book-editor-dialog v-model="showEditor" :book="editorBook" @delete="deleteBook" />
+    <book-editor-dialog
+      v-model="showEditor"
+      :book="editorBook"
+      @update:book="editorBook = $event"
+      @delete="deleteBook"
+    />
     <van-dialog
       v-model:show="showDeleteDialog"
       :title="deleteDialogTitle"
@@ -119,6 +124,7 @@
       confirm-button-color="var(--van-danger-color)"
       cancel-button-text="取消"
       @confirm="onConfirmDeleteBook"
+      :close-on-popstate="false"
     >
       <div class="custom-dialog-container">
         <div class="delete-message">
@@ -150,6 +156,7 @@ import { useAppMenu } from '@/composables/useAppMenu'
 import { usePopoverMap } from '@/composables/usePopoverMap'
 import BookEditorDialog from '@/components/BookEditorDialog.vue'
 import type { Book } from '@/types'
+import { usePopupHistory } from '@/composables/usePopupHistory'
 
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
@@ -320,6 +327,7 @@ const showDeleteDialog = ref(false)
 const deleteDialogTitle = ref('')
 const deleteDialogMessage = ref('')
 const deleteWordsChecked = ref(false)
+usePopupHistory(showDeleteDialog)
 let pendingDeleteBook: Book | null = null
 
 const deleteBook = (book: Book) => {

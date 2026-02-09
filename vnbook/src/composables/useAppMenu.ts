@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import UserModDialog from '@/components/UserModDialog.vue'
 import { toast } from '@/utils/toast'
 import type { MenuAction } from '@/types'
+import { usePopupHistory } from '@/composables/usePopupHistory'
 
 export interface AppMenuItem {
   name: string
@@ -27,6 +28,7 @@ export function useAppMenu(options: UseAppMenuOptions = {}) {
   const authStore = useAuthStore()
   const showActionSheet = ref(false)
   const openMenu = () => (showActionSheet.value = true)
+  usePopupHistory(showActionSheet)
   const showUserMod = ref(false)
 
   const actions = computed<MenuAction[]>(() => {
@@ -70,41 +72,45 @@ export function useAppMenu(options: UseAppMenuOptions = {}) {
   const onMenuSelect = (action: MenuAction & { handler?: () => void }) => {
     showActionSheet.value = false
 
-    // 优先处理自定义 handler
-    if (action.handler) {
-      action.handler()
-      return
-    }
+    // 延迟执行后续操作，等待 ActionSheet 关闭触发的 history.back() 完成
+    // 防止 history 操作冲突（Pop State 尚未完成就尝试 Push State 或导航）
+    setTimeout(() => {
+      // 优先处理自定义 handler
+      if (action.handler) {
+        action.handler()
+        return
+      }
 
-    switch (action.key) {
-      case 'mod':
-        showUserMod.value = true
-        break
-      case 'logout':
-        const userName = authStore.userDisplayName || '请确认'
-        showDialog({
-          title: userName,
-          message: '确定要退出登录吗？',
-          confirmButtonText: '退出',
-          cancelButtonText: '取消',
-          showCancelButton: true,
-        })
-          .then(async () => {
-            toast.showLoading('') // 仅显示转圈动画，视觉上更轻量
-            try {
-              await authStore.logout()
-              toast.showSuccess('已退出登录')
-            } catch (e) {
-              console.error(e)
-              toast.hideLoading()
-            } finally {
-              // 退出后跳转登录页。不带 redirect 参数，以便切换用户后默认进入主页
-              router.replace({ name: 'Login' })
-            }
+      switch (action.key) {
+        case 'mod':
+          showUserMod.value = true
+          break
+        case 'logout':
+          const userName = authStore.userDisplayName || '请确认'
+          showDialog({
+            title: userName,
+            message: '确定要退出登录吗？',
+            confirmButtonText: '退出',
+            cancelButtonText: '取消',
+            showCancelButton: true,
           })
-          .catch(() => {})
-        break
-    }
+            .then(async () => {
+              toast.showLoading('') // 仅显示转圈动画，视觉上更轻量
+              try {
+                await authStore.logout()
+                toast.showSuccess('已退出登录')
+              } catch (e) {
+                console.error(e)
+                toast.hideLoading()
+              } finally {
+                // 退出后跳转登录页。不带 redirect 参数，以便切换用户后默认进入主页
+                router.replace({ name: 'Login' })
+              }
+            })
+            .catch(() => {})
+          break
+      }
+    }, 100)
   }
 
   // 定义一个包装组件，将内部状态 showUserMod 绑定到 UserModDialog
@@ -128,6 +134,7 @@ export function useAppMenu(options: UseAppMenuOptions = {}) {
           actions: actions.value,
           cancelText: '取消',
           onSelect: onMenuSelect,
+          closeOnPopstate: false, // 禁用 Vant 自带的历史记录处理，避免与 usePopupHistory 冲突
         })
     },
   })

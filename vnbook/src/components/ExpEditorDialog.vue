@@ -157,6 +157,7 @@ import { useWordsStore } from '@/stores/words'
 import { useDialogDraft } from '@/composables/useDialogDraft'
 import { useSubmitLoading } from '@/utils/toast'
 import { usePopoverMap } from '@/composables/usePopoverMap'
+import { usePopupHistory } from '@/composables/usePopupHistory'
 
 const props = defineProps<{
   modelValue: boolean
@@ -174,6 +175,7 @@ watch(
   () => props.modelValue,
   (v) => (show.value = v),
 )
+usePopupHistory(show)
 
 const lexStore = usePosStore()
 const wordsStore = useWordsStore()

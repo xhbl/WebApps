@@ -48,6 +48,7 @@ import { showToast } from 'vant'
 import { useUsersStore } from '@/stores/users'
 import { useSubmitLoading } from '@/utils/toast'
 import type { User } from '@/types'
+import { usePopupHistory } from '@/composables/usePopupHistory'
 
 const props = defineProps<{
   modelValue: boolean
@@ -82,6 +83,7 @@ watch(
     }
   },
 )
+usePopupHistory(show)
 
 const isNew = computed(() => !props.user || props.user._new === 1)
 const password = ref('')
