@@ -616,6 +616,7 @@ const { openMenu, AppMenu } = useAppMenu({
 :deep(.van-nav-bar--fixed) {
   padding-top: var(--vnb-pad-top);
   box-sizing: content-box;
+  background-color: var(--vnb-nav-background);
 }
 
 /* 调整标题字号 */
@@ -658,7 +659,7 @@ const { openMenu, AppMenu } = useAppMenu({
   left: 0;
   right: 0;
   height: var(--van-nav-bar-height);
-  background: var(--van-nav-bar-background);
+  background: var(--vnb-nav-background);
   display: flex;
   align-items: center;
   z-index: 100;

@@ -19,6 +19,9 @@
   /* 自定义间距变量：用于导航栏和工具条的内缩空白 */
   --vnb-pad-top: 2px;
   --vnb-pad-bottom: 6px;
+
+  /* 自定义导航栏和工具条背景 */
+  --vnb-nav-background: var(--van-background);
 }
 
 * {

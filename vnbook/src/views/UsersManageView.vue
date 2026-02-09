@@ -160,6 +160,7 @@ const deleteUser = async (u: User) => {
 :deep(.van-nav-bar--fixed) {
   padding-top: var(--vnb-pad-top);
   box-sizing: content-box;
+  background-color: var(--vnb-nav-background);
 }
 
 /* 优化 ActionSheet 内部图标间距 */

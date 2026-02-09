@@ -371,6 +371,7 @@ const onConfirmDeleteBook = async () => {
 :deep(.van-nav-bar--fixed) {
   padding-top: var(--vnb-pad-top);
   box-sizing: content-box;
+  background-color: var(--vnb-nav-background);
 }
 
 /* 优化 ActionSheet 内部图标间距 */
@@ -440,12 +441,12 @@ const onConfirmDeleteBook = async () => {
 }
 
 .all-words-cell {
-  background-color: var(--van-gray-2); /* 灰色背景 */
+  background-color: var(--van-gray-1); /* 灰色背景 */
   align-items: center;
 }
 
 .pinned-book {
-  background-color: var(--van-gray-1); /* 置顶项灰色背景 */
+  background-color: var(--van-gray-2); /* 置顶项灰色背景 */
 }
 
 .icon-wrapper {

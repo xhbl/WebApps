@@ -63,8 +63,8 @@ export default defineConfig(() => {
           name: '单词本',
           short_name: '单词本',
           description: '单词记录本(VNBook) 网页应用程序',
-          theme_color: '#ffffff',
-          background_color: '#ffffff',
+          theme_color: '#f7f8fa',
+          background_color: '#f7f8fa',
           display: 'standalone',
           icons: [
             {

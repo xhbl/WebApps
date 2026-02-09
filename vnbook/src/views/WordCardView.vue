@@ -532,6 +532,7 @@ const swipeNext = () => swipeRef.value?.next()
 :deep(.van-nav-bar) {
   padding-top: var(--vnb-pad-top);
   box-sizing: content-box;
+  background-color: var(--vnb-nav-background);
 }
 
 .van-icon {
@@ -579,7 +580,7 @@ const swipeNext = () => swipeRef.value?.next()
   position: sticky;
   top: 0;
   z-index: 10;
-  background-color: var(--van-nav-bar-background);
+  background-color: var(--van-cell-background);
   padding: 8px 16px 6px 16px;
 }
 .card-content {
