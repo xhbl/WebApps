@@ -9,17 +9,34 @@
       <h3>{{ title }}</h3>
       <van-form @submit="onSubmit">
         <van-cell-group>
-          <van-field
-            v-model="formData.word"
-            label="单词"
-            placeholder="请输入单词"
-            :rules="[
-              { required: true, message: '请输入单词' },
-              { pattern: /^[\x20-\x7E]+$/, message: '请输入英文' },
-            ]"
-            :readonly="step === 'detail'"
-            :class="{ 'readonly-field': step === 'detail' }"
-          />
+          <div class="input-wrapper" ref="inputWrapperRef">
+            <van-field
+              v-model="formData.word"
+              label="单词"
+              placeholder="请输入单词"
+              :rules="[
+                { required: true, message: '请输入单词' },
+                { pattern: /^[\x20-\x7E]+$/, message: '请输入英文' },
+              ]"
+              :readonly="step === 'detail'"
+              :class="{ 'readonly-field': step === 'detail' }"
+              autocomplete="off"
+              @update:model-value="onWordInput"
+              @focus="onWordFocus"
+              @blur="onWordBlur"
+            />
+            <div v-if="showSuggestions && suggestions.length > 0" class="suggestion-list">
+              <div
+                v-for="item in suggestions"
+                :key="item.word"
+                class="suggestion-item"
+                @mousedown.prevent="selectSuggestion(item)"
+              >
+                <span class="suggestion-word">{{ item.word }}</span>
+                <span class="suggestion-def" v-if="item.def">{{ item.def }}</span>
+              </div>
+            </div>
+          </div>
           <template v-if="step === 'detail'">
             <van-field v-model="formData.phon" label="音标" placeholder="请输入音标">
               <template #label>
@@ -78,6 +95,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from 'vue'
 import { useWordsStore } from '@/stores/words'
+import { suggestWords } from '@/api/words'
 import type { Word, BaseDictDefinition } from '@/types'
 import { toast, useSubmitLoading } from '@/utils/toast'
 import { useDialogDraft } from '@/composables/useDialogDraft'
@@ -123,6 +141,82 @@ const dictData = ref({
   found: false,
 })
 const dictContentRef = ref<HTMLElement | null>(null)
+const inputWrapperRef = ref<HTMLElement | null>(null)
+
+// --- 单词建议逻辑 ---
+interface SuggestionItem {
+  word: string
+  def: string
+}
+
+const suggestions = ref<SuggestionItem[]>([])
+const showSuggestions = ref(false)
+const suggestionCache = new Map<string, SuggestionItem[]>()
+let debounceTimer: number | null = null
+
+watch(showSuggestions, (val) => {
+  if (val) {
+    nextTick(() => {
+      inputWrapperRef.value?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    })
+  }
+})
+
+const onWordInput = (val: string) => {
+  if (step.value !== 'input') return
+
+  const keyword = val.trim()
+  if (!keyword) {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    suggestions.value = []
+    showSuggestions.value = false
+    return
+  }
+
+  // 节流/防抖查询
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = window.setTimeout(async () => {
+    if (suggestionCache.has(keyword)) {
+      suggestions.value = suggestionCache.get(keyword)!
+      showSuggestions.value = true
+      return
+    }
+
+    try {
+      const res = await suggestWords(keyword)
+      // 再次检查输入框是否有值，防止请求返回时用户已清空输入框
+      if (!formData.value.word.trim()) return
+      if (res.data.success && res.data.data) {
+        suggestions.value = res.data.data
+        suggestionCache.set(keyword, res.data.data)
+        showSuggestions.value = true
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }, 300) // 300ms 防抖
+}
+
+const onWordFocus = () => {
+  if (step.value === 'input' && formData.value.word && suggestions.value.length > 0) {
+    showSuggestions.value = true
+  }
+}
+
+const onWordBlur = () => {
+  // 延迟隐藏，以便点击事件能触发
+  setTimeout(() => {
+    showSuggestions.value = false
+  }, 200)
+}
+
+const selectSuggestion = (item: SuggestionItem) => {
+  formData.value.word = item.word
+  suggestions.value = []
+  showSuggestions.value = false
+  // 选中后立即查询详情
+  queryDictionary(item.word)
+}
 
 // --- 状态持久化逻辑 (使用 Composable) ---
 const { isRestoring, clearDraft } = useDialogDraft({
@@ -224,6 +318,8 @@ const initForm = () => {
     step.value = 'input'
     formData.value = { word: '', phon: '', definition: '' }
     dictData.value = { phon: '', definition: '', found: false }
+    suggestions.value = []
+    showSuggestions.value = false
   }
 }
 
@@ -486,5 +582,52 @@ h3 {
 
 .dict-line {
   margin-bottom: 4px;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.suggestion-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.suggestion-item {
+  padding: 10px 16px;
+  font-size: 16px;
+  color: #323233;
+  border-bottom: 1px solid #f5f6f7;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.suggestion-item:active {
+  background-color: #f2f3f5;
+}
+
+.suggestion-word {
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.suggestion-def {
+  font-size: 13px;
+  color: #969799;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  text-align: right;
 }
 </style>

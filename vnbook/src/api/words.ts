@@ -124,3 +124,13 @@ export const lookupBaseDict = (word: string) => {
     params: { req: 'dict', word },
   })
 }
+
+/**
+ * 获取单词建议 (模糊搜索)
+ */
+export const suggestWords = (prefix: string) => {
+  return request.get<ApiResponse<{ word: string; def: string }[]>>('/words.php', {
+    params: { req: 'suggest', word: prefix },
+    headers: { 'X-No-Loading': 'true' },
+  })
+}

@@ -143,6 +143,53 @@ function getSentences($eid, $sid = null)
 }
 
 /**
+ * Get word suggestions from Base Dictionary
+ */
+function getWordSuggestions($prefix)
+{
+    if (empty($prefix)) return [];
+    $db = DB::base();
+    if (!$db) return [];
+
+    try {
+        $stmt = $db->prepare("SELECT id, word FROM words WHERE word_search LIKE ? ORDER BY word_search LIMIT 10");
+        $stmt->execute([strtolower($prefix) . '%']);
+        $words = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($words)) return [];
+
+        $ids = array_column($words, 'id');
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+
+        $stmt = $db->prepare("SELECT word_id, pos, meanings FROM definitions WHERE word_id IN ($placeholders)");
+        $stmt->execute($ids);
+        $defs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $defMap = [];
+        foreach ($defs as $d) {
+            $wid = $d['word_id'];
+            if (isset($defMap[$wid])) continue; // 仅取第一个释义以保持简洁
+            $meanings = json_decode($d['meanings'], true);
+            $zh = $meanings['zh'] ?? [];
+            if (!empty($zh)) {
+                $defMap[$wid] = $d['pos'] . ' ' . implode('; ', array_slice($zh, 0, 2));
+            }
+        }
+
+        $out = [];
+        foreach ($words as $w) {
+            $out[] = [
+                'word' => $w['word'],
+                'def' => $defMap[$w['id']] ?? ''
+            ];
+        }
+        return $out;
+    } catch (Exception $e) {
+        return [];
+    }
+}
+
+/**
  * Helper: Fetch data from Base Dictionary (va_basedict)
  * @param array $wordList Array of word strings
  * @return array Map of word -> baseInfo object
@@ -527,6 +574,13 @@ try {
         $dictData = getBaseDictData([$word]);
         $data = $dictData[$word] ?? null;
         echo json_encode(['success' => true, 'data' => $data]);
+        exit;
+    }
+
+    // Handle word suggestions (req=suggest)
+    if ($req == 'suggest' && $word) {
+        $suggestions = getWordSuggestions($word);
+        echo json_encode(['success' => true, 'data' => $suggestions]);
         exit;
     }
 
