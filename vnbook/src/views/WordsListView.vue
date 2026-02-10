@@ -645,7 +645,7 @@ const { openMenu, AppMenu } = useAppMenu({
           color: 'var(--van-danger-color)',
         })
         actions.push({
-          name: '加入复习本',
+          name: '加入复习',
           icon: 'bookmark-o',
           handler: onBatchBookmark,
         })

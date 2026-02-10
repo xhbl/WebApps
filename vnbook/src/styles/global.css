@@ -138,3 +138,15 @@ body {
 .van-loading__spinner .van-loading__dot {
   background-color: #ffffff !important;
 }
+
+/* 修复 Popover Action 菜单项文字过长导致换行的问题 */
+.van-popover__action {
+  width: auto !important;
+}
+
+.van-popover__action-text {
+  white-space: nowrap;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

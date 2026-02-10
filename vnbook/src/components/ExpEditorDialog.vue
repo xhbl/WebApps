@@ -426,8 +426,9 @@ h3 {
   cursor: pointer;
 }
 .popover-content {
-  width: 240px;
-  max-height: 200px;
+  min-width: 120px;
+  max-width: 260px;
+  max-height: 240px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
