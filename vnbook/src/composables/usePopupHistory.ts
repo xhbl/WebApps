@@ -24,15 +24,10 @@ export function usePopupHistory(show: Ref<boolean>) {
         if (!historyPushed.value) {
           popupPath.value = route.fullPath
 
-          // 检查当前历史记录是否已经是弹窗打开状态 (例如页面刷新后恢复)
-          if (history.state?.popupOpen) {
-            // 如果已经是打开状态，不再推入新记录，直接接管当前状态
-            // 这样点击返回键时会触发 popstate，或者手动关闭时我们会回退这一步
-          } else {
-            // 否则，推入一条新的历史记录
-            const state = { ...history.state, popupOpen: true }
-            history.pushState(state, '')
-          }
+          // 总是推入新的历史记录，以支持嵌套弹窗（如：编辑弹窗 -> 删除确认框）
+          // 如果不推入，关闭上层弹窗时会错误地回退到底层弹窗的历史记录
+          const state = { ...history.state, popupOpen: true }
+          history.pushState(state, '', location.href)
 
           historyPushed.value = true
           window.addEventListener('popstate', handlePopState)

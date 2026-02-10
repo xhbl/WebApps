@@ -54,6 +54,7 @@
                     placement="bottom-end"
                     @select="(action) => onWordAction(action, w)"
                     @open="onPopoverOpen('word-' + w.id)"
+                    :close-on-popstate="false"
                   >
                     <template #reference>
                       <van-icon name="edit" />
@@ -81,6 +82,7 @@
                         :placement="getPopoverPlacement(index, w.explanations.length)"
                         @select="(action) => onExpAction(action, e, w)"
                         @open="onPopoverOpen('exp-' + e.id)"
+                        :close-on-popstate="false"
                       >
                         <template #reference>
                           <van-icon name="edit" />
@@ -104,6 +106,7 @@
                             placement="bottom-end"
                             @select="(action) => onSenAction(action, s, e)"
                             @open="onPopoverOpen('sen-' + s.id)"
+                            :close-on-popstate="false"
                           >
                             <template #reference>
                               <van-icon name="edit" />
@@ -222,7 +225,6 @@ const { popoverMap, onOpen: onPopoverOpen, closeAll: closeAllPopovers } = usePop
 
 const wid = Number(route.params.wid)
 const bid = Number(route.params.bid)
-const isReviewMode = computed(() => bid === -1)
 
 const isSingleMode = computed(() => route.query.single === 'true')
 const autoEdit = computed(() => route.query.edit === 'true')
@@ -333,14 +335,6 @@ const toggleEditMode = () => {
     delete query.edit
   }
   router.replace({ query })
-}
-
-const showReviewInfo = () => {
-  showDialog({
-    title: '复习本说明',
-    message:
-      '这里显示所有已加入复习的单词。\n\n列表显示了每个单词的复习统计：\n红色：不认识次数\n绿色：认识次数\n蓝色：当前连续认识次数',
-  })
 }
 
 const playAudio = (word: string) => {

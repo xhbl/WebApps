@@ -374,8 +374,6 @@ function defineWordsStore() {
       const response = await wordsApi.addWordsToBook(-1, targetWords)
       if (response.data.success) {
         toast.showSuccess('已加入复习本')
-        // 更新本地状态
-        const addedCount = 0
         targetWords.forEach((w) => {
           if (w.n_streak === undefined) {
             w.n_streak = 0

@@ -15,6 +15,7 @@
           @update:show="$emit('update:showPopover', $event)"
           @select="onSelect"
           @open="$emit('open-popover')"
+          :close-on-popstate="false"
         >
           <template #reference>
             <van-icon name="edit" class="list-leading-icon" />
@@ -81,7 +82,7 @@ const actions = computed(() => {
       { text: '编辑', icon: 'edit', key: 'edit' },
       {
         text: '取消复习',
-        icon: 'minus-circle',
+        icon: 'bookmark-o',
         key: 'remove-review',
         color: 'var(--van-warning-color)',
       },

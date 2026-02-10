@@ -114,7 +114,7 @@
           </div>
           <template v-if="isReviewMode">
             <van-icon
-              name="minus-circle"
+              name="bookmark-o"
               class="bottom-bar-icon warning-icon"
               :class="{ disabled: checkedIds.length === 0 }"
               @click="onBatchCancelReview"
@@ -195,16 +195,21 @@
             :class="{ active: isSelectMode }"
             @click="toggleMode('select')"
           />
-          <van-popover
-            v-model:show="showSortPopover"
-            :actions="sortActions"
-            placement="top-end"
-            @select="onSortSelect"
-          >
-            <template #reference>
-              <van-icon name="sort" class="bottom-bar-icon" />
-            </template>
-          </van-popover>
+          <div @click.stop>
+            <!-- 关键：阻止事件冒泡 -->
+            <van-popover
+              v-model:show="showWordPopover['sort']"
+              :actions="sortActions"
+              placement="top-end"
+              @select="onSortSelect"
+              @open="onPopoverOpen('sort')"
+              :close-on-popstate="false"
+            >
+              <template #reference>
+                <van-icon name="sort" class="bottom-bar-icon" />
+              </template>
+            </van-popover>
+          </div>
         </div>
       </template>
     </div>
@@ -245,7 +250,7 @@ import { useAppMenu } from '@/composables/useAppMenu'
 import { usePopoverMap } from '@/composables/usePopoverMap'
 import WordEditorDialog from '@/components/WordEditorDialog.vue'
 import WordListItem from '@/components/WordListItem.vue'
-import type { Word } from '@/types'
+import type { Word, SortMode } from '@/types'
 import type { SearchInstance, PopoverAction } from 'vant'
 import { usePopupHistory } from '@/composables/usePopupHistory'
 
@@ -318,7 +323,6 @@ const moveActionConfig = computed(() => {
 })
 
 // --- 排序逻辑 ---
-const showSortPopover = ref(false)
 const sortActions = computed(() => {
   const actions: PopoverAction[] = []
   if (isReviewMode.value) {
@@ -338,7 +342,7 @@ const sortActions = computed(() => {
 
 const onSortSelect = (action: PopoverAction) => {
   if (action.value) {
-    wordsStore.setSortMode(action.value as any)
+    wordsStore.setSortMode(action.value as SortMode)
   }
 }
 
@@ -351,7 +355,7 @@ const onWordAction = async (action: { key: string }, w: Word) => {
       query: { single: 'true', edit: 'true' },
     })
   } else if (action.key === 'review') {
-    await wordsStore.addToReview(w)
+    await handleAddToReview([w])
   } else if (action.key === 'remove-review') {
     await handleRemoveFromReview([w])
   } else if (action.key === 'move') {
@@ -591,6 +595,22 @@ const onMoveConfirm = async (action: { name: string; value: number }) => {
   } catch {}
 }
 
+const handleRemoveFromReview = async (targets: Word[]) => {
+  if (targets.length === 0) return
+  try {
+    await showDialog({
+      title: '取消复习',
+      message: `确定将 ${targets.length > 1 ? `所选 ${targets.length} 个单词` : `单词"${targets[0]?.word}"`} 移出复习本吗？`,
+      confirmButtonText: '移出',
+      confirmButtonColor: 'var(--van-warning-color)',
+      showCancelButton: true,
+    })
+    // 复习本 ID 为 -1
+    await wordsStore.deleteWords(targets, -1)
+    if (isSelectMode.value) checkedIds.value = []
+  } catch {}
+}
+
 const handleDelete = async (targets: Word[]) => {
   if (targets.length === 0) return
 
@@ -672,13 +692,30 @@ const onBatchCancelReview = async () => {
   await handleRemoveFromReview(targets)
 }
 
+const handleAddToReview = async (targets: Word[]) => {
+  if (targets.length === 0) return
+  try {
+    await showDialog({
+      title: '加入复习',
+      message: `确定将 ${targets.length > 1 ? `所选 ${targets.length} 个单词` : `单词"${targets[0]?.word}"`} 加入复习本吗？`,
+      confirmButtonText: '加入',
+      confirmButtonColor: 'var(--van-primary-color)',
+      showCancelButton: true,
+    })
+
+    const success =
+      targets.length === 1
+        ? await wordsStore.addToReview(targets[0]!)
+        : await wordsStore.batchAddToReview(targets)
+
+    if (success && isSelectMode.value) checkedIds.value = []
+  } catch {}
+}
+
 const onBatchBookmark = async () => {
   if (checkedIds.value.length === 0) return
   const targets = wordsStore.words.filter((w) => checkedIds.value.includes(w.id))
-  const success = await wordsStore.batchAddToReview(targets)
-  if (success) {
-    if (isSelectMode.value) checkedIds.value = []
-  }
+  await handleAddToReview(targets)
 }
 
 const onWordItemClick = (w: Word) => {
@@ -710,7 +747,7 @@ const { openMenu, AppMenu } = useAppMenu({
         if (isReviewMode.value) {
           actions.push({
             name: '取消复习',
-            icon: 'minus-circle',
+            icon: 'bookmark-o',
             handler: onBatchCancelReview,
             color: 'var(--van-warning-color)',
           })
@@ -721,18 +758,18 @@ const { openMenu, AppMenu } = useAppMenu({
             handler: onBatchDelete,
             color: 'var(--van-danger-color)',
           })
-        }
-        actions.push({
-          name: '加入复习',
-          icon: 'bookmark-o',
-          handler: onBatchBookmark,
-        })
-        if (allowMove.value) {
           actions.push({
-            name: moveActionConfig.value.text,
-            icon: moveActionConfig.value.icon,
-            handler: onBatchMove,
+            name: '加入复习',
+            icon: 'bookmark-o',
+            handler: onBatchBookmark,
           })
+          if (allowMove.value) {
+            actions.push({
+              name: moveActionConfig.value.text,
+              icon: moveActionConfig.value.icon,
+              handler: onBatchMove,
+            })
+          }
         }
       }
       actions.push({ name: '退出批量管理', icon: 'close', handler: () => toggleMode('select') })

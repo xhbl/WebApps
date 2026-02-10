@@ -61,6 +61,7 @@
                         v-model:show="popoverMap['zh']"
                         placement="top-end"
                         @open="onOpen('zh')"
+                        :close-on-popstate="false"
                       >
                         <div class="popover-content">
                           <van-cell
@@ -111,6 +112,7 @@
                         v-model:show="popoverMap['en']"
                         placement="top-end"
                         @open="onOpen('en')"
+                        :close-on-popstate="false"
                       >
                         <div class="popover-content">
                           <van-cell
