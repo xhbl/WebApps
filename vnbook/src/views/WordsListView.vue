@@ -195,15 +195,13 @@
             :class="{ active: isSelectMode }"
             @click="toggleMode('select')"
           />
-          <div @click.stop>
-            <!-- 关键：阻止事件冒泡 -->
+          <div class="sort-wrapper" @click.stop>
             <van-popover
               v-model:show="showWordPopover['sort']"
               :actions="sortActions"
               placement="top-end"
               @select="onSortSelect"
               @open="onPopoverOpen('sort')"
-              :close-on-popstate="false"
             >
               <template #reference>
                 <van-icon name="sort" class="bottom-bar-icon" />
@@ -1013,5 +1011,10 @@ const { openMenu, AppMenu } = useAppMenu({
 .orphan-toggle-btn.active {
   background-color: var(--van-warning-color);
   color: white;
+}
+
+.sort-wrapper {
+  display: flex;
+  align-items: center;
 }
 </style>

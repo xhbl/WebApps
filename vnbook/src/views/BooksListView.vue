@@ -27,7 +27,6 @@
                 placement="bottom-start"
                 @select="onReviewBookAction"
                 @open="onPopoverOpen('review')"
-                :close-on-popstate="false"
               >
                 <template #reference>
                   <van-icon name="bookmark" class="list-leading-icon" />
@@ -63,7 +62,6 @@
                   :placement="getBookPopoverPlacement(index)"
                   @select="(action) => onBookAction(action, b)"
                   @open="onPopoverOpen(b.id)"
-                  :close-on-popstate="false"
                 >
                   <template #reference>
                     <van-icon name="label-o" class="list-leading-icon" />
@@ -91,7 +89,6 @@
                   :placement="booksStore.books.length > 5 ? 'top-start' : 'bottom-start'"
                   @select="onAllWordsAction"
                   @open="onPopoverOpen('all')"
-                  :close-on-popstate="false"
                 >
                   <template #reference>
                     <van-icon name="label" class="list-leading-icon" />

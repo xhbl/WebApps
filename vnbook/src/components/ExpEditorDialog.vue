@@ -34,6 +34,7 @@
               @select="onPosSelect"
               cancel-text="取消"
               close-on-click-action
+              :close-on-popstate="false"
             />
             <van-field
               v-model="formData.exp.zh"
@@ -61,7 +62,6 @@
                         v-model:show="popoverMap['zh']"
                         placement="top-end"
                         @open="onOpen('zh')"
-                        :close-on-popstate="false"
                       >
                         <div class="popover-content">
                           <van-cell
@@ -112,7 +112,6 @@
                         v-model:show="popoverMap['en']"
                         placement="top-end"
                         @open="onOpen('en')"
-                        :close-on-popstate="false"
                       >
                         <div class="popover-content">
                           <van-cell
@@ -182,6 +181,7 @@ usePopupHistory(show)
 const lexStore = usePosStore()
 const wordsStore = useWordsStore()
 const showPosActionSheet = ref(false)
+usePopupHistory(showPosActionSheet)
 const { popoverMap, onOpen, closeAll } = usePopoverMap()
 
 watch(show, (v) => {

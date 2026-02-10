@@ -54,7 +54,6 @@
                     placement="bottom-end"
                     @select="(action) => onWordAction(action, w)"
                     @open="onPopoverOpen('word-' + w.id)"
-                    :close-on-popstate="false"
                   >
                     <template #reference>
                       <van-icon name="edit" />
@@ -82,7 +81,6 @@
                         :placement="getPopoverPlacement(index, w.explanations.length)"
                         @select="(action) => onExpAction(action, e, w)"
                         @open="onPopoverOpen('exp-' + e.id)"
-                        :close-on-popstate="false"
                       >
                         <template #reference>
                           <van-icon name="edit" />
@@ -106,7 +104,6 @@
                             placement="bottom-end"
                             @select="(action) => onSenAction(action, s, e)"
                             @open="onPopoverOpen('sen-' + s.id)"
-                            :close-on-popstate="false"
                           >
                             <template #reference>
                               <van-icon name="edit" />

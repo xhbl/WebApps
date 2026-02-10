@@ -15,7 +15,6 @@
           @update:show="$emit('update:showPopover', $event)"
           @select="onSelect"
           @open="$emit('open-popover')"
-          :close-on-popstate="false"
         >
           <template #reference>
             <van-icon name="edit" class="list-leading-icon" />

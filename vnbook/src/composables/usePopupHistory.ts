@@ -1,6 +1,9 @@
 import { watch, onUnmounted, onDeactivated, ref, type Ref } from 'vue'
 import { useRoute } from 'vue-router'
 
+// 全局栈：用于追踪当前活跃的弹窗 ID，解决嵌套弹窗的回退顺序问题
+const popupStack: string[] = []
+
 /**
  * 弹窗历史记录管理 Hook
  * 在弹窗打开时推送一条历史记录，确保点击浏览器返回键时只关闭弹窗而不回退页面
@@ -9,9 +12,19 @@ export function usePopupHistory(show: Ref<boolean>) {
   const route = useRoute()
   const historyPushed = ref(false)
   const popupPath = ref('')
+  const popupId = ref('')
 
   const handlePopState = () => {
-    if (show.value) {
+    if (!show.value || !historyPushed.value) return
+
+    const currentId = history.state?.popupId
+    const myIndex = popupStack.indexOf(popupId.value)
+    const currentIndex = popupStack.indexOf(currentId)
+
+    // 智能判断：
+    // 如果当前历史状态对应的弹窗在栈中位于我之下（currentIndex < myIndex），说明发生了回退，我应该关闭。
+    // 如果当前历史状态是我自己或在我之上（嵌套弹窗），说明是前进或同级操作，我应该保持打开。
+    if (currentIndex < myIndex) {
       show.value = false
       historyPushed.value = false
     }
@@ -23,19 +36,25 @@ export function usePopupHistory(show: Ref<boolean>) {
       if (val) {
         if (!historyPushed.value) {
           popupPath.value = route.fullPath
+          // 生成唯一 ID 并入栈
+          popupId.value = Date.now().toString(36) + Math.random().toString(36).substr(2)
+          popupStack.push(popupId.value)
 
-          // 总是推入新的历史记录，以支持嵌套弹窗（如：编辑弹窗 -> 删除确认框）
-          // 如果不推入，关闭上层弹窗时会错误地回退到底层弹窗的历史记录
-          const state = { ...history.state, popupOpen: true }
+          const state = { ...history.state, popupId: popupId.value, popupOpen: true }
           history.pushState(state, '', location.href)
-
           historyPushed.value = true
           window.addEventListener('popstate', handlePopState)
         }
       } else {
         window.removeEventListener('popstate', handlePopState)
         if (historyPushed.value) {
-          history.back()
+          // 手动关闭时：从栈中移除，并回退历史
+          const idx = popupStack.indexOf(popupId.value)
+          if (idx !== -1) popupStack.splice(idx, 1)
+
+          if (route.fullPath === popupPath.value) {
+            history.back()
+          }
           historyPushed.value = false
         }
       }
@@ -46,8 +65,9 @@ export function usePopupHistory(show: Ref<boolean>) {
   const cleanup = () => {
     window.removeEventListener('popstate', handlePopState)
     if (historyPushed.value) {
-      // 只有当当前路由路径与打开弹窗时一致时，才执行回退
-      // 如果路由变了（例如用户点击了退出登录跳转到 /login），則不回退，以免抵消路由跳转
+      const idx = popupStack.indexOf(popupId.value)
+      if (idx !== -1) popupStack.splice(idx, 1)
+
       if (route.fullPath === popupPath.value) {
         history.back()
       }
