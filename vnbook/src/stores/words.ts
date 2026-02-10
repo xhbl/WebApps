@@ -19,6 +19,7 @@ function defineWordsStore() {
   const searchKeyword = ref('')
   const orphanFilter = ref(false)
   const savedSortMode = authStore.userInfo?.cfg?.wordsListSortMode
+  const currentBookId = ref<number | null>(null)
   const sortMode = ref<SortMode>(savedSortMode === 'alpha' ? 'alpha' : 'date')
 
   // Getters
@@ -89,6 +90,16 @@ function defineWordsStore() {
    */
   const loadWords = async (bookId: number) => {
     try {
+      currentBookId.value = bookId
+      // Initialize sort mode based on book type
+      if (bookId === -1) {
+        const saved = authStore.userInfo?.cfg?.reviewListSortMode as SortMode | undefined
+        sortMode.value = saved || 'streak'
+      } else {
+        const saved = authStore.userInfo?.cfg?.wordsListSortMode as SortMode | undefined
+        sortMode.value = saved || 'date'
+      }
+
       const response = await wordsApi.getWords(bookId)
       if (response.data.success === true && response.data.word) {
         words.value = response.data.word.map((w: unknown) => {
@@ -100,6 +111,10 @@ function defineWordsStore() {
             time_c: word.time_c,
             book_count: Number(word.book_count || 0),
             _new: word._new,
+            n_known: word.n_known ? Number(word.n_known) : undefined,
+            n_unknown: word.n_unknown ? Number(word.n_unknown) : undefined,
+            n_streak: word.n_streak ? Number(word.n_streak) : undefined,
+            time_r: word.time_r,
             explanations: (word.explanations || []).map((e) => {
               const exp = e as Explanation & { sentences?: unknown[] }
               return {
@@ -186,6 +201,9 @@ function defineWordsStore() {
     if (sortMode.value === 'date') {
       // 按时间倒序
       words.value.sort((a, b) => b.time_c.localeCompare(a.time_c))
+    } else if (sortMode.value === 'streak') {
+      // 按复习进度(连胜)升序
+      words.value.sort((a, b) => (a.n_streak || 0) - (b.n_streak || 0))
     } else {
       // 按字母顺序
       words.value.sort((a, b) => a.word.localeCompare(b.word))
@@ -211,7 +229,24 @@ function defineWordsStore() {
    */
   const toggleSortMode = () => {
     sortMode.value = sortMode.value === 'date' ? 'alpha' : 'date'
-    authStore.updateUserConfig({ wordsListSortMode: sortMode.value })
+    if (currentBookId.value === -1) {
+      authStore.updateUserConfig({ reviewListSortMode: sortMode.value })
+    } else {
+      authStore.updateUserConfig({ wordsListSortMode: sortMode.value })
+    }
+    sortWords()
+  }
+
+  /**
+   * 设置排序模式
+   */
+  const setSortMode = (mode: SortMode) => {
+    sortMode.value = mode
+    if (currentBookId.value === -1) {
+      authStore.updateUserConfig({ reviewListSortMode: mode })
+    } else {
+      authStore.updateUserConfig({ wordsListSortMode: mode })
+    }
     sortWords()
   }
   const saveWord = async (word: Word, bookId?: number) => {
@@ -307,12 +342,59 @@ function defineWordsStore() {
       const response = await wordsApi.saveWord({ ...word, book_id: -1, _new: 1 })
       if (response.data.success) {
         toast.showSuccess('已加入复习本')
+        // 更新本地状态，显示复习标记
+        if (word.n_streak === undefined) {
+          word.n_streak = 0
+          word.n_known = 0
+          word.n_unknown = 0
+        }
+
+        // 更新复习本计数
+        const booksStore = useBooksStore()
+        // 简单自增，保持 UI 同步
+        booksStore.reviewCount++
+
         return true
       }
       toast.showFail('加入失败')
       return false
     } catch (error) {
       console.error('Add to review failed:', error)
+      toast.showFail('操作失败')
+      return false
+    }
+  }
+
+  /**
+   * 批量加入复习本
+   */
+  const batchAddToReview = async (targetWords: Word[]) => {
+    try {
+      // 复用 addWordsToBook 接口，传入 bid=-1
+      const response = await wordsApi.addWordsToBook(-1, targetWords)
+      if (response.data.success) {
+        toast.showSuccess('已加入复习本')
+        // 更新本地状态
+        const addedCount = 0
+        targetWords.forEach((w) => {
+          if (w.n_streak === undefined) {
+            w.n_streak = 0
+            w.n_known = 0
+            w.n_unknown = 0
+          }
+        })
+        // 批量添加时，简单假设所有选中的都成功添加（或者后端返回实际添加数更好，这里做近似处理）
+        // 由于 addWordsToBook 使用 INSERT IGNORE，重复的不会增加，但前端难以精确知道。
+        // 这里暂不更新计数，或者重新加载 books。为了体验，重新加载 books 比较稳妥。
+        const booksStore = useBooksStore()
+        await booksStore.loadBooks()
+
+        return true
+      }
+      toast.showFail('加入失败')
+      return false
+    } catch (error) {
+      console.error('Batch add to review failed:', error)
       toast.showFail('操作失败')
       return false
     }
@@ -327,9 +409,27 @@ function defineWordsStore() {
       const response = await wordsApi.deleteWords(bookId, targetWords)
       if (!response.data.success) throw new Error(response.data.message)
 
-      // 从列表中移除
       const targetIds = new Set(targetWords.map((w) => w.id))
-      words.value = words.value.filter((w) => !targetIds.has(w.id))
+
+      // 仅当当前视图与删除操作的 bookId 匹配时，才从列表中移除
+      // 1. 普通单词本视图 (bid > 0) 且操作该本
+      // 2. 复习本视图 (bid = -1) 且操作复习本
+      // 3. 全部单词视图 (bid = 0) 且操作物理删除 (bookId = 0)
+      if (currentBookId.value === bookId) {
+        words.value = words.value.filter((w) => !targetIds.has(w.id))
+      } else {
+        // 如果是在其他视图（如全部单词）移出复习本，则更新单词状态
+        if (bookId === -1) {
+          targetWords.forEach((w) => {
+            const wordInList = words.value.find((wl) => wl.id === w.id)
+            if (wordInList) {
+              wordInList.n_streak = undefined
+              wordInList.n_known = undefined
+              wordInList.n_unknown = undefined
+            }
+          })
+        }
+      }
 
       // 如果当前查看的单词被删除了，重置 currentWord
       if (currentWord.value && targetIds.has(currentWord.value.id)) {
@@ -341,6 +441,11 @@ function defineWordsStore() {
       if (booksStore.currentBook) {
         const newCount = Math.max(0, booksStore.currentBook.nums - targetWords.length)
         booksStore.updateBookNums(booksStore.currentBook.id, newCount)
+      }
+
+      // 更新复习本计数
+      if (bookId === -1) {
+        booksStore.reviewCount = Math.max(0, booksStore.reviewCount - targetWords.length)
       }
 
       const isAllWords = bookId === 0
@@ -776,7 +881,9 @@ function defineWordsStore() {
     loadWords,
     sortWords,
     toggleSortMode,
+    setSortMode,
     addToReview,
+    batchAddToReview,
     saveWord,
     deleteWords,
     moveWords,

@@ -55,6 +55,7 @@
                     :allow-move="allowMove"
                     :move-text="moveActionConfig.text"
                     :move-icon="moveActionConfig.icon"
+                    :is-review-mode="isReviewMode"
                     @update:show-popover="(val) => (showWordPopover[w.id] = val)"
                     @open-popover="onPopoverOpen(w.id)"
                     @action="onWordAction"
@@ -76,6 +77,7 @@
                 :allow-move="allowMove"
                 :move-text="moveActionConfig.text"
                 :move-icon="moveActionConfig.icon"
+                :is-review-mode="isReviewMode"
                 @update:show-popover="(val) => (showWordPopover[w.id] = val)"
                 @open-popover="onPopoverOpen(w.id)"
                 @action="onWordAction"
@@ -110,22 +112,33 @@
             />
             <span class="select-all-text">全选</span>
           </div>
-          <van-icon
-            name="bookmark-o"
-            class="bottom-bar-icon"
-            :class="{ disabled: checkedIds.length === 0 }"
-            @click="onBatchBookmark"
-          />
-          <van-icon
-            v-if="allowMove"
-            :name="moveActionConfig.icon"
-            class="bottom-bar-icon"
-            :class="{ disabled: checkedIds.length === 0 }"
-            @click="onBatchMove"
-          />
+          <template v-if="isReviewMode">
+            <van-icon
+              name="minus-circle"
+              class="bottom-bar-icon warning-icon"
+              :class="{ disabled: checkedIds.length === 0 }"
+              @click="onBatchCancelReview"
+            />
+          </template>
+          <template v-else>
+            <van-icon
+              name="bookmark-o"
+              class="bottom-bar-icon"
+              :class="{ disabled: checkedIds.length === 0 }"
+              @click="onBatchBookmark"
+            />
+            <van-icon
+              v-if="allowMove"
+              :name="moveActionConfig.icon"
+              class="bottom-bar-icon"
+              :class="{ disabled: checkedIds.length === 0 }"
+              @click="onBatchMove"
+            />
+          </template>
           <van-icon
             :name="bid === 0 ? 'delete-o' : 'failure'"
             class="bottom-bar-icon"
+            v-if="!isReviewMode"
             :class="{
               disabled: checkedIds.length === 0,
               'danger-icon': checkedIds.length > 0 && bid === 0,
@@ -155,7 +168,13 @@
         </div>
         <div class="bottom-bar-center">
           <van-icon
-            v-if="bid > 0"
+            v-if="isReviewMode"
+            name="info-o"
+            class="bottom-bar-icon large-icon"
+            @click="showReviewInfo"
+          />
+          <van-icon
+            v-else-if="bid > 0"
             name="plus"
             class="bottom-bar-icon large-icon"
             @click="openAddWord"
@@ -176,12 +195,16 @@
             :class="{ active: isSelectMode }"
             @click="toggleMode('select')"
           />
-          <van-icon
-            name="sort"
-            class="bottom-bar-icon"
-            :class="{ active: wordsStore.sortMode === 'alpha' }"
-            @click="wordsStore.toggleSortMode"
-          />
+          <van-popover
+            v-model:show="showSortPopover"
+            :actions="sortActions"
+            placement="top-end"
+            @select="onSortSelect"
+          >
+            <template #reference>
+              <van-icon name="sort" class="bottom-bar-icon" />
+            </template>
+          </van-popover>
         </div>
       </template>
     </div>
@@ -223,7 +246,7 @@ import { usePopoverMap } from '@/composables/usePopoverMap'
 import WordEditorDialog from '@/components/WordEditorDialog.vue'
 import WordListItem from '@/components/WordListItem.vue'
 import type { Word } from '@/types'
-import type { SearchInstance } from 'vant'
+import type { SearchInstance, PopoverAction } from 'vant'
 import { usePopupHistory } from '@/composables/usePopupHistory'
 
 const route = useRoute()
@@ -233,6 +256,7 @@ const authStore = useAuthStore()
 const wordsStore: WordsStore = useWordsStore()
 
 const bid = computed(() => Number(route.params.bid))
+const isReviewMode = computed(() => bid.value === -1)
 const showWordEditor = ref(false)
 const editingWord = ref<Word | null>(null)
 const refreshing = ref(false)
@@ -293,6 +317,31 @@ const moveActionConfig = computed(() => {
   return { text: '移动到...', icon: 'exchange' }
 })
 
+// --- 排序逻辑 ---
+const showSortPopover = ref(false)
+const sortActions = computed(() => {
+  const actions: PopoverAction[] = []
+  if (isReviewMode.value) {
+    actions.push({ text: '复习进度 (连胜升序)', value: 'streak' })
+    actions.push({ text: '最新加入 (时间倒序)', value: 'date' })
+    actions.push({ text: '字母顺序', value: 'alpha' })
+  } else {
+    actions.push({ text: '最新加入 (时间倒序)', value: 'date' })
+    actions.push({ text: '字母顺序', value: 'alpha' })
+  }
+  // 标记当前选中项
+  return actions.map((a) => ({
+    ...a,
+    color: wordsStore.sortMode === a.value ? 'var(--van-primary-color)' : undefined,
+  }))
+})
+
+const onSortSelect = (action: PopoverAction) => {
+  if (action.value) {
+    wordsStore.setSortMode(action.value as any)
+  }
+}
+
 const onWordAction = async (action: { key: string }, w: Word) => {
   showWordPopover.value[w.id] = false
   if (action.key === 'edit') {
@@ -303,6 +352,8 @@ const onWordAction = async (action: { key: string }, w: Word) => {
     })
   } else if (action.key === 'review') {
     await wordsStore.addToReview(w)
+  } else if (action.key === 'remove-review') {
+    await handleRemoveFromReview([w])
   } else if (action.key === 'move') {
     handleMove([w])
   } else if (action.key === 'delete') {
@@ -395,6 +446,14 @@ const onClickLeft = () => {
 const openAddWord = () => {
   editingWord.value = null
   showWordEditor.value = true
+}
+
+const showReviewInfo = () => {
+  showDialog({
+    title: '复习本说明',
+    message:
+      '这里显示所有已加入复习的单词。\n\n列表显示了每个单词的复习统计：\n红色：不认识次数\n绿色：认识次数\n蓝色：当前连续认识次数',
+  })
 }
 
 const enterSearchMode = () => {
@@ -607,9 +666,19 @@ const onBatchDelete = async () => {
   await handleDelete(targets)
 }
 
-const onBatchBookmark = () => {
+const onBatchCancelReview = async () => {
   if (checkedIds.value.length === 0) return
-  // TODO: Implement add to review book
+  const targets = wordsStore.words.filter((w) => checkedIds.value.includes(w.id))
+  await handleRemoveFromReview(targets)
+}
+
+const onBatchBookmark = async () => {
+  if (checkedIds.value.length === 0) return
+  const targets = wordsStore.words.filter((w) => checkedIds.value.includes(w.id))
+  const success = await wordsStore.batchAddToReview(targets)
+  if (success) {
+    if (isSelectMode.value) checkedIds.value = []
+  }
 }
 
 const onWordItemClick = (w: Word) => {
@@ -638,12 +707,21 @@ const { openMenu, AppMenu } = useAppMenu({
     if (isSelectMode.value) {
       const actions = []
       if (checkedIds.value.length > 0) {
-        actions.push({
-          name: '删除',
-          icon: 'delete-o',
-          handler: onBatchDelete,
-          color: 'var(--van-danger-color)',
-        })
+        if (isReviewMode.value) {
+          actions.push({
+            name: '取消复习',
+            icon: 'minus-circle',
+            handler: onBatchCancelReview,
+            color: 'var(--van-warning-color)',
+          })
+        } else {
+          actions.push({
+            name: '删除',
+            icon: 'delete-o',
+            handler: onBatchDelete,
+            color: 'var(--van-danger-color)',
+          })
+        }
         actions.push({
           name: '加入复习',
           icon: 'bookmark-o',
@@ -661,8 +739,11 @@ const { openMenu, AppMenu } = useAppMenu({
       return actions
     }
     const items = []
-    if (bid.value > 0) {
+    if (bid.value > 0 && !isReviewMode.value) {
       items.push({ name: '添加单词', icon: 'plus', handler: openAddWord })
+    }
+    if (isReviewMode.value) {
+      items.push({ name: '复习指导', icon: 'info-o', handler: showReviewInfo })
     }
     if (bid.value === 0) {
       items.push({
@@ -694,11 +775,6 @@ const { openMenu, AppMenu } = useAppMenu({
         name: '批量管理',
         icon: 'passed',
         handler: () => toggleMode('select'),
-      },
-      {
-        name: wordsStore.sortMode === 'alpha' ? '关闭字母排序' : '按字母排序',
-        icon: 'sort',
-        handler: () => wordsStore.toggleSortMode(),
       },
     )
     return items

@@ -32,6 +32,16 @@ function getWords($bid, $wid = null, $word = null)
                     FROM vnu_words w
                     WHERE w.user_id = ?";
             $params = [$uid];
+        } else if ($bid == -1) {
+            // Review Book: Fetch words from vnu_review
+            // Use r.time_c (added to review time) as the main time_c for sorting consistency
+            $sql = "SELECT w.id, w.user_id, w.word, w.phon, r.time_c,
+                    r.n_known, r.n_unknown, r.n_streak, r.time_r,
+                    (SELECT COUNT(*) FROM vnu_mapbw m WHERE m.word_id = w.id) as book_count
+                    FROM vnu_words w
+                    JOIN vnu_review r ON w.id = r.word_id
+                    WHERE w.user_id = ?";
+            $params = [$uid];
         } else {
             // Get words for this book (only those mapped to this book)
             $sql = "SELECT w.id, w.user_id, w.word, w.phon, w.time_c, m.book_id, m.id as map_id
@@ -51,7 +61,11 @@ function getWords($bid, $wid = null, $word = null)
             $params[] = $word;
         }
 
-        $sql .= " ORDER BY w.time_c DESC";
+        if ($bid == -1) {
+            $sql .= " ORDER BY r.time_c DESC";
+        } else {
+            $sql .= " ORDER BY w.time_c DESC";
+        }
 
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
@@ -263,7 +277,13 @@ function updateWords($bid, $items)
 
                 if ($existingWord) {
                     // Word exists
-                    if ($item->_new == 1) {
+                    if ($bid == -1) {
+                        // Review Book: Add to review (INSERT IGNORE handles duplicates)
+                        $stmt = $db->prepare("INSERT IGNORE INTO vnu_review (user_id, word_id) VALUES (?, ?)");
+                        $stmt->execute([$uid, $existingWord['id']]);
+                        $item->id = $existingWord['id'];
+                        $item->_new = 0;
+                    } else if ($item->_new == 1) {
                         // First attempt: check if already in book
                         $stmt = $db->prepare("SELECT id FROM vnu_mapbw WHERE word_id = ? AND book_id = ?");
                         $stmt->execute([$existingWord['id'], $bid]);
@@ -293,8 +313,13 @@ function updateWords($bid, $items)
                     $item->id = $wid;
 
                     // Add to book
-                    $stmt = $db->prepare("INSERT INTO vnu_mapbw (user_id, book_id, word_id) VALUES (?, ?, ?)");
-                    $stmt->execute([$uid, $bid, $wid]);
+                    if ($bid == -1) {
+                        $stmt = $db->prepare("INSERT IGNORE INTO vnu_review (user_id, word_id) VALUES (?, ?)");
+                        $stmt->execute([$uid, $wid]);
+                    } else {
+                        $stmt = $db->prepare("INSERT INTO vnu_mapbw (user_id, book_id, word_id) VALUES (?, ?, ?)");
+                        $stmt->execute([$uid, $bid, $wid]);
+                    }
 
                     $item->_new = 0;
                 }
@@ -470,6 +495,10 @@ function deleteWords($bid, $items)
                 // In "All Words" mode, delete the word directly.
                 // ON DELETE CASCADE will remove mappings, explanations, sentences.
                 $stmt = $db->prepare("DELETE FROM vnu_words WHERE id = ? AND user_id = ?");
+                $stmt->execute([$item->id, $uid]);
+            } else if ($bid == -1) {
+                // Review Book: Remove from review
+                $stmt = $db->prepare("DELETE FROM vnu_review WHERE word_id = ? AND user_id = ?");
                 $stmt->execute([$item->id, $uid]);
             } else {
                 // Specific book mode

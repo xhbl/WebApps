@@ -8,6 +8,7 @@ export const useBooksStore = defineStore('books', () => {
   // State
   const books = ref<Book[]>([])
   const currentBook = ref<Book | null>(null)
+  const reviewCount = ref(0)
 
   // 本地排序逻辑：ptop DESC, sorder ASC, time_c DESC
   const sortBooksLocal = () => {
@@ -49,6 +50,9 @@ export const useBooksStore = defineStore('books', () => {
           sorder: Number(b.sorder || 0),
         }))
         sortBooksLocal()
+        if (typeof response.data.reviewCount === 'number') {
+          reviewCount.value = response.data.reviewCount
+        }
         return true
       }
       return false
@@ -217,6 +221,7 @@ export const useBooksStore = defineStore('books', () => {
   return {
     books,
     currentBook,
+    reviewCount,
     loadBooks,
     saveBook,
     deleteBook,

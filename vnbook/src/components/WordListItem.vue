@@ -1,5 +1,5 @@
 <template>
-  <van-cell :label="definition" is-link @click="$emit('click', word)">
+  <van-cell is-link @click="$emit('click', word)">
     <template #icon>
       <!-- Audio Mode -->
       <div v-if="mode === 'audio'" class="icon-wrapper" @click.stop="playAudio">
@@ -36,6 +36,17 @@
       </span>
       <span v-if="word.phon" class="word-phon">/{{ word.phon }}/</span>
     </template>
+
+    <template #label>
+      <div v-if="isReviewMode" class="review-stats">
+        <span class="stat-item unknown">不认识 {{ word.n_unknown || 0 }}次</span>
+        <span class="stat-item known">认识 {{ word.n_known || 0 }}次</span>
+        <span class="stat-item streak">连续 {{ word.n_streak || 0 }}次</span>
+      </div>
+      <div v-else>
+        {{ definition }}
+      </div>
+    </template>
   </van-cell>
 </template>
 
@@ -54,6 +65,7 @@ const props = defineProps<{
   allowMove?: boolean
   moveText?: string
   moveIcon?: string
+  isReviewMode?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -64,6 +76,17 @@ const emit = defineEmits<{
 }>()
 
 const actions = computed(() => {
+  if (props.isReviewMode) {
+    return [
+      { text: '编辑', icon: 'edit', key: 'edit' },
+      {
+        text: '取消复习',
+        icon: 'minus-circle',
+        key: 'remove-review',
+        color: 'var(--van-warning-color)',
+      },
+    ]
+  }
   const list: { text: string; icon: string; key: string; className?: string }[] = [
     { text: '编辑', icon: 'edit', key: 'edit' },
     { text: '加入复习', icon: 'bookmark-o', key: 'review' },
@@ -177,6 +200,24 @@ const onSelect = (action: { key: string }) => {
 }
 
 .highlight {
+  color: var(--van-primary-color);
+}
+
+.review-stats {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.stat-item.unknown {
+  color: var(--van-danger-color);
+}
+
+.stat-item.known {
+  color: var(--van-success-color);
+}
+
+.stat-item.streak {
   color: var(--van-primary-color);
 }
 </style>

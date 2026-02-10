@@ -14,7 +14,7 @@
       <div v-if="showReviewBook" class="van-hairline--bottom">
         <van-cell
           title="复习本"
-          label="单词数:0"
+          :label="`单词数:${booksStore.reviewCount}`"
           is-link
           @click="enterReviewBook"
           class="all-words-cell"

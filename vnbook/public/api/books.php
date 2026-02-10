@@ -185,6 +185,17 @@ try {
 
         if ($rows !== false) {
             $response = ['success' => true, 'book' => $rows];
+
+            // Get review book count
+            try {
+                $db = DB::vnb();
+                $uid = $_SESSION['user_id'];
+                $stmt = $db->prepare("SELECT COUNT(*) FROM vnu_review WHERE user_id = ?");
+                $stmt->execute([$uid]);
+                $response['reviewCount'] = (int)$stmt->fetchColumn();
+            } catch (Exception $e) {
+                $response['reviewCount'] = 0;
+            }
         } else {
             $response['message'] = "Error fetching books";
         }

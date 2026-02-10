@@ -21,6 +21,11 @@ export interface Word {
   book_count?: number
   _new?: number
   baseInfo?: BaseDictInfo
+  // Review stats
+  n_known?: number
+  n_unknown?: number
+  n_streak?: number
+  time_r?: string
 }
 
 export interface Explanation {
@@ -111,6 +116,7 @@ export interface ApiResponse<T = unknown> {
   sentence?: Sentence[]
   login?: LoginInfo
   data?: T
+  reviewCount?: number
 }
 
 // Nonce 响应类型
@@ -142,7 +148,7 @@ export interface LoginResponse {
 }
 
 // 排序模式
-export type SortMode = 'date' | 'alpha'
+export type SortMode = 'date' | 'alpha' | 'streak'
 
 // 分组数据
 export interface GroupedWords {
