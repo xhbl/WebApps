@@ -275,7 +275,6 @@ import ReviewGuideDialog from '@/components/ReviewGuideDialog.vue'
 import type { Word, SortMode, Book } from '@/types'
 import type { SearchInstance, PopoverAction } from 'vant'
 import { usePopupHistory } from '@/composables/usePopupHistory'
-import { showGlobalDialog } from '@/composables/useGlobalDialog'
 import { useWordOperations } from '@/composables/useWordOperations'
 
 const route = useRoute()
@@ -283,14 +282,22 @@ const router = useRouter()
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
 const wordsStore: WordsStore = useWordsStore()
-const { handleAddToReview: addToReviewOp, handleRemoveFromReview: removeFromReviewOp } =
-  useWordOperations()
+const {
+  handleAddToReview: addToReviewOp,
+  handleRemoveFromReview: removeFromReviewOp,
+  handleDelete,
+  handleMove,
+  showMoveSheet,
+  moveTargetOptions,
+  onMoveConfirm,
+  showWordEditor,
+  editingWord,
+  openAddWord,
+} = useWordOperations()
 
 const bid = computed(() => Number(route.params.bid))
 const isReviewMode = computed(() => bid.value === -1)
-const showWordEditor = ref(false)
 const showReviewGuide = ref(false)
-const editingWord = ref<Word | null>(null)
 const refreshing = ref(false)
 const loading = ref(true)
 type ListMode = 'none' | 'edit' | 'audio'
@@ -400,9 +407,9 @@ const onWordAction = async (action: { key: string }, w: Word) => {
   } else if (action.key === 'remove-review') {
     await removeFromReviewOp([w])
   } else if (action.key === 'move') {
-    handleMove([w])
+    handleMove([w], bid.value)
   } else if (action.key === 'delete') {
-    await handleDelete([w])
+    await handleDelete([w], bid.value)
   }
 }
 
@@ -488,11 +495,6 @@ const onClickLeft = () => {
   router.back()
 }
 
-const openAddWord = () => {
-  editingWord.value = null
-  showWordEditor.value = true
-}
-
 const showReviewInfo = () => {
   showReviewGuide.value = true
 }
@@ -576,135 +578,19 @@ const toggleSelectAll = () => {
   }
 }
 
-// --- 移动功能逻辑 ---
-const showMoveSheet = ref(false)
-const pendingMoveWords = ref<Word[]>([])
-const { close: closeMoveSheet } = usePopupHistory(showMoveSheet)
-
-const moveTargetOptions = computed(() => {
-  // 过滤掉当前单词本
-  return booksStore.books
-    .filter((b) => b.id !== bid.value)
-    .map((b) => ({
-      name: `${b.title} (${b.nums}词)`,
-      value: b.id,
-    }))
-})
-
-const handleMove = (targets: Word[]) => {
-  if (targets.length === 0) return
-  if (moveTargetOptions.value.length === 0) {
-    showGlobalDialog({ message: '没有可以移动的目标单词本', showCancelButton: false })
-    return
-  }
-  pendingMoveWords.value = targets
-  showMoveSheet.value = true
-}
-
 const onBatchMove = () => {
   if (checkedIds.value.length === 0) return
   const targets = wordsStore.words.filter((w) => checkedIds.value.includes(w.id))
-  handleMove(targets)
-}
-
-const onMoveConfirm = async (action: { name: string; value: number }) => {
-  // 安全关闭并等待
-  await closeMoveSheet()
-
-  const targetBookId = action.value
-  const targets = pendingMoveWords.value
-  const isBatch = targets.length > 1
-  const isAdd = bid.value === 0
-  const actionText = isAdd ? '添加' : '移动'
-
-  try {
-    await showGlobalDialog({
-      title: `确认${actionText}`,
-      message: `确定将 ${isBatch ? `所选 ${targets.length} 个单词` : `单词"${targets[0]?.word}"`} ${actionText}到 "${action.name}" 吗？`,
-      confirmButtonText: actionText,
-      confirmButtonColor: 'var(--van-primary-color)',
-      showCancelButton: true,
-    })
-
-    await wordsStore.moveWords(targets, targetBookId, bid.value, `${actionText}成功`)
+  handleMove(targets, bid.value, () => {
     if (isSelectMode.value) checkedIds.value = []
-  } catch {}
-}
-
-const handleDelete = async (targets: Word[]) => {
-  if (targets.length === 0) return
-
-  const isAllWords = bid.value === 0
-  const isBatch = targets.length > 1
-  const actionText = '删除'
-  const confirmButtonColor = 'var(--van-danger-color)'
-
-  try {
-    if (isAllWords) {
-      // 全部单词模式：物理删除
-      // 检查是否有单词被其他单词本收录
-      const linkedWordsCount = targets.filter((w) => (w.book_count || 0) > 0).length
-
-      if (linkedWordsCount > 0) {
-        // 第一步确认：提示关联信息
-        const msg = isBatch
-          ? `所选单词中有 ${linkedWordsCount} 个已被单词本收录，确认要删除吗？`
-          : `此单词已在 ${targets[0]?.book_count} 个单词本中收录，确认要删除吗？`
-
-        await showGlobalDialog({
-          title: '确认删除',
-          message: msg,
-          confirmButtonText: '下一步',
-          confirmButtonColor: 'var(--van-danger-color)',
-          showCancelButton: true,
-        })
-      }
-
-      // 第二步（或直接）确认：永久删除提示
-      const msg = isBatch
-        ? `删除后将无法恢复，确认删除所选 ${targets.length} 个单词吗？`
-        : `删除后将无法恢复，确认删除单词"${targets[0]?.word}"吗？`
-
-      await showGlobalDialog({
-        title: '永久删除',
-        message: msg,
-        confirmButtonText: '删除',
-        confirmButtonColor: 'var(--van-danger-color)',
-        showCancelButton: true,
-      })
-
-      // 执行删除
-      const success = await wordsStore.deleteWords(targets, bid.value)
-      if (success && isSelectMode.value) checkedIds.value = []
-    } else {
-      // 单词本模式：带选项的删除
-      const msg = isBatch
-        ? `确定从当前单词本中删除所选 ${targets.length} 个单词吗？`
-        : `确定从当前单词本中删除单词"${targets[0]?.word}"吗？`
-
-      const result = await showGlobalDialog({
-        title: '删除单词',
-        message: msg,
-        confirmButtonText: '删除',
-        confirmButtonColor: 'var(--van-danger-color)',
-        showCancelButton: true,
-        showCheckbox: true,
-        checkboxLabel: '同时删除单词本身（若被其他单词本收录则保留）',
-      })
-
-      const deleteOrphans = typeof result === 'object' ? result.checked : false
-      const success = await wordsStore.deleteWords(targets, bid.value, false, deleteOrphans)
-      if (success && isSelectMode.value) checkedIds.value = []
-    }
-  } catch {
-    // Cancelled
-  }
+  })
 }
 
 const onBatchDelete = async () => {
   if (checkedIds.value.length === 0) return
   const targets = wordsStore.words.filter((w) => checkedIds.value.includes(w.id))
-  await handleDelete(targets)
+  const success = await handleDelete(targets, bid.value)
+  if (success && isSelectMode.value) checkedIds.value = []
 }
 
 const onBatchCancelReview = async () => {

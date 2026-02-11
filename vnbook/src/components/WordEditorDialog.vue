@@ -108,6 +108,8 @@ import { useDialogDraft } from '@/composables/useDialogDraft'
 import { showGlobalDialog } from '@/composables/useGlobalDialog'
 import { usePopupHistory } from '@/composables/usePopupHistory'
 
+import { useWordOperations } from '@/composables/useWordOperations'
+
 const props = defineProps<{
   modelValue: boolean
   bid: number
@@ -466,57 +468,10 @@ const onSubmit = () =>
       // 如果需要保存释义，需构造 Explanation 数组。目前仅保存单词和音标。
     }
 
-    const saved = await wordsStore.saveWord(w, props.bid, addToReview.value)
+    const { handleSaveWord } = useWordOperations()
+    const success = await handleSaveWord(w, props.bid, addToReview.value, isNew.value)
 
-    if (!saved && addToReview.value) {
-      toast.showFail('保存失败')
-      return
-    }
-
-    // 处理单词已存在的情况 (_new === 2)
-    if (saved && saved._new === 2) {
-      try {
-        const message =
-          (saved.book_count || 0) > 0
-            ? `单词"${saved.word}"已存在于其他单词本中，要加入此单词本吗？`
-            : `单词"${saved.word}"是一个未入本单词，要加入此单词本吗？`
-        await showGlobalDialog({
-          title: '单词已存在',
-          message,
-          showCancelButton: true,
-        })
-        // 用户确认后，再次调用 saveWord（此时传入的对象 _new 为 2，后端会执行关联操作）
-        const retrySaved = await wordsStore.saveWord(saved, props.bid, addToReview.value)
-        if (retrySaved) {
-          if (addToReview.value) {
-            const reviewSuccess = await wordsStore.addToReview(retrySaved, true)
-            if (reviewSuccess) {
-              toast.showSuccess('添加成功并加入复习本')
-            } else {
-              toast.showSuccess('添加成功，但加入复习本失败')
-            }
-          } else {
-            // 如果没有勾选加入复习本，且 saveWord 是 silent=false (默认)，store 已显示 toast
-            // 如果 saveWord 是 silent=true (这里是 addToReview.value 为 false)，则 store 显示 toast
-          }
-          show.value = false
-        }
-      } catch {
-        // 用户取消，不做操作
-      }
-      return
-    }
-
-    if (saved) {
-      if (addToReview.value) {
-        const reviewSuccess = await wordsStore.addToReview(saved, true)
-        const actionText = isNew.value ? '添加' : '更新'
-        if (reviewSuccess) {
-          toast.showSuccess(`${actionText}成功并加入复习本`)
-        } else {
-          toast.showSuccess(`${actionText}成功，但加入复习本失败`)
-        }
-      }
+    if (success) {
       show.value = false
     }
   })

@@ -207,7 +207,6 @@ import WordEditorDialog from '@/components/WordEditorDialog.vue'
 import ExpEditorDialog from '@/components/ExpEditorDialog.vue'
 import SenEditorDialog from '@/components/SenEditorDialog.vue'
 import { usePopoverMap } from '@/composables/usePopoverMap'
-import { showGlobalDialog } from '@/composables/useGlobalDialog'
 import { useWordOperations } from '@/composables/useWordOperations'
 
 const route = useRoute()
@@ -215,7 +214,21 @@ const router = useRouter()
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
 const wordsStore = useWordsStore()
-const { handleAddToReview } = useWordOperations()
+const {
+  handleAddToReview,
+  showExpEditor,
+  editingExp,
+  openAddExp: onAddExp,
+  openEditExp: onEditExp,
+  handleDeleteExp,
+  handleMoveExp,
+  showSenEditor,
+  editingSen,
+  openAddSen: onAddSen,
+  openEditSen: onEditSen,
+  handleDeleteSen,
+  handleMoveSen,
+} = useWordOperations()
 const swipeRef = ref()
 const activeTab = ref(0)
 const showDict = ref(authStore.userInfo?.cfg?.showDict !== false)
@@ -318,11 +331,7 @@ const onRefresh = async () => {
 
 const isEditMode = ref(false)
 const showWordEditor = ref(false)
-const showExpEditor = ref(false)
-const showSenEditor = ref(false)
 const editingWord = ref<Word | null>(null)
-const editingExp = ref<Explanation | null>(null)
-const editingSen = ref<Sentence | null>(null)
 const wordEditorMode = ref<'full' | 'phon'>('full')
 
 const toggleEditMode = () => {
@@ -347,39 +356,6 @@ const playAudio = (word: string) => {
     }
     window.speechSynthesis.speak(msg)
   }
-}
-
-const onEditExp = (e: Explanation) => {
-  editingExp.value = e
-  showExpEditor.value = true
-}
-
-const onEditSen = (s: Sentence) => {
-  editingSen.value = s
-  showSenEditor.value = true
-}
-
-const onAddExp = (wordId: number) => {
-  editingExp.value = {
-    id: 0,
-    word_id: wordId,
-    pos: '',
-    exp: { en: '', zh: '' },
-    time_c: '',
-    _new: 1,
-  }
-  showExpEditor.value = true
-}
-
-const onAddSen = (expId: number) => {
-  editingSen.value = {
-    id: 0,
-    exp_id: expId,
-    sen: { en: '', zh: '' },
-    time_c: '',
-    _new: 1,
-  }
-  showSenEditor.value = true
 }
 
 const wordActions = [
@@ -450,20 +426,11 @@ const onSenAction = (action: { key: string }, sen: Sentence, exp: Explanation) =
   if (action.key === 'edit-sen') {
     onEditSen(sen)
   } else if (action.key === 'move-up') {
-    wordsStore.moveSentence(exp.id, sen.id, -1)
+    handleMoveSen(exp.id, sen.id, -1)
   } else if (action.key === 'move-down') {
-    wordsStore.moveSentence(exp.id, sen.id, 1)
+    handleMoveSen(exp.id, sen.id, 1)
   } else if (action.key === 'delete') {
-    showGlobalDialog({
-      title: '删除例句',
-      message: '确定要删除这条例句吗？此操作不可恢复。',
-      showCancelButton: true,
-      confirmButtonColor: 'var(--van-danger-color)',
-    })
-      .then(() => {
-        wordsStore.deleteSentence(sen, exp.id)
-      })
-      .catch(() => {})
+    handleDeleteSen(sen, exp.id)
   }
 }
 
@@ -474,20 +441,11 @@ const onExpAction = (action: { key: string }, exp: Explanation, word: Word) => {
   } else if (action.key === 'edit-exp') {
     onEditExp(exp)
   } else if (action.key === 'move-up') {
-    wordsStore.moveExplanation(word.id, exp.id, -1)
+    handleMoveExp(word.id, exp.id, -1)
   } else if (action.key === 'move-down') {
-    wordsStore.moveExplanation(word.id, exp.id, 1)
+    handleMoveExp(word.id, exp.id, 1)
   } else if (action.key === 'delete') {
-    showGlobalDialog({
-      title: '删除释义',
-      message: '确定要删除这条释义及其下的所有例句吗？此操作不可恢复。',
-      showCancelButton: true,
-      confirmButtonColor: 'var(--van-danger-color)',
-    })
-      .then(() => {
-        wordsStore.deleteExplanation(exp)
-      })
-      .catch(() => {})
+    handleDeleteExp(exp)
   }
 }
 

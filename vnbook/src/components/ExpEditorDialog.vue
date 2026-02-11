@@ -159,6 +159,7 @@ import { useDialogDraft } from '@/composables/useDialogDraft'
 import { useSubmitLoading } from '@/utils/toast'
 import { usePopoverMap } from '@/composables/usePopoverMap'
 import { usePopupHistory } from '@/composables/usePopupHistory'
+import { useWordOperations } from '@/composables/useWordOperations'
 
 const props = defineProps<{
   modelValue: boolean
@@ -341,10 +342,11 @@ const appendEn = (text: string) => {
 }
 
 const { loading, withLoading } = useSubmitLoading()
+const { handleSaveExp } = useWordOperations()
 
 const onSubmit = () =>
   withLoading(async () => {
-    const saved = await wordsStore.saveExplanation(formData.value)
+    const saved = await handleSaveExp(formData.value)
     if (saved) {
       show.value = false
     }

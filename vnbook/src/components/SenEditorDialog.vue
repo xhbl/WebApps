@@ -85,10 +85,10 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from 'vue'
 import type { Sentence } from '@/types'
-import { useWordsStore } from '@/stores/words'
 import { useDialogDraft } from '@/composables/useDialogDraft'
 import { useSubmitLoading } from '@/utils/toast'
 import { usePopupHistory } from '@/composables/usePopupHistory'
+import { useWordOperations } from '@/composables/useWordOperations'
 
 const props = defineProps<{
   modelValue: boolean
@@ -173,13 +173,12 @@ const { isRestoring, clearDraft } = useDialogDraft({
 
 defineExpose({ clearDraft })
 
-const wordsStore = useWordsStore()
-
 const { loading, withLoading } = useSubmitLoading()
+const { handleSaveSen } = useWordOperations()
 
 const onSubmit = () =>
   withLoading(async () => {
-    const saved = await wordsStore.saveSentence(formData.value, props.eid)
+    const saved = await handleSaveSen(formData.value, props.eid)
     if (saved) {
       show.value = false
     }
