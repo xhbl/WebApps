@@ -114,9 +114,9 @@ const actions = computed(() => {
   if (props.deleteText) {
     list.push({
       text: props.deleteText,
-      icon: props.deleteText === '移除' ? 'failure' : 'delete-o',
+      icon: 'delete-o',
       key: 'delete',
-      className: props.deleteText === '移除' ? 'popover-action-remove' : 'popover-action-delete',
+      className: 'popover-action-delete',
     })
   }
   return list

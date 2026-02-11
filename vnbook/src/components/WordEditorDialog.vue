@@ -81,7 +81,7 @@
           </div>
         </div>
 
-        <div class="options-section" v-if="step === 'detail'">
+        <div class="options-section" v-if="step === 'detail' && mode !== 'phon'">
           <van-checkbox v-model="addToReview" shape="round" icon-size="18px"
             >加入复习本</van-checkbox
           >

@@ -480,32 +480,58 @@ function updateSentences($items)
 }
 
 /**
- * Delete words (with cascade checks)
+ * Delete words (Optimized for batch operation)
  */
 function deleteWords($bid, $items)
 {
     $db = DB::vnb();
     $uid = $_SESSION['user_id'];
 
+    // Extract IDs
+    $ids = array_map(function ($item) {
+        return (int)$item->id;
+    }, $items);
+    if (empty($ids)) return true;
+
+    // Check if deleteOrphans is requested (assume consistent for batch)
+    $deleteOrphans = !empty($items[0]->deleteOrphans);
+
     try {
         $db->beginTransaction();
 
-        foreach ($items as $item) {
-            if ($bid == 0) {
-                // In "All Words" mode, delete the word directly.
-                // ON DELETE CASCADE will remove mappings, explanations, sentences.
-                $stmt = $db->prepare("DELETE FROM vnu_words WHERE id = ? AND user_id = ?");
-                $stmt->execute([$item->id, $uid]);
-            } else if ($bid == -1) {
-                // Review Book: Remove from review
-                $stmt = $db->prepare("DELETE FROM vnu_review WHERE word_id = ? AND user_id = ?");
-                $stmt->execute([$item->id, $uid]);
-            } else {
-                // Specific book mode
-                // Only delete the mapping for this book.
-                // Never delete the word itself from a book view, even if it becomes orphaned.
-                $stmt = $db->prepare("DELETE FROM vnu_mapbw WHERE word_id = ? AND book_id = ? AND user_id = ?");
-                $stmt->execute([$item->id, $bid, $uid]);
+        // Create placeholders string (?,?,?)
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+
+        if ($bid == 0) {
+            // Mode: All Words - Physical Delete
+            // Params: [...ids, uid]
+            $sql = "DELETE FROM vnu_words WHERE id IN ($placeholders) AND user_id = ?";
+            $params = array_merge($ids, [$uid]);
+            $db->prepare($sql)->execute($params);
+        } else if ($bid == -1) {
+            // Mode: Review Book - Remove from review
+            // Params: [...ids, uid]
+            $sql = "DELETE FROM vnu_review WHERE word_id IN ($placeholders) AND user_id = ?";
+            $params = array_merge($ids, [$uid]);
+            $db->prepare($sql)->execute($params);
+        } else {
+            // Mode: Specific Book - Remove mapping
+            // 1. Delete mappings for this book
+            // Params: [...ids, bid, uid]
+            $sql = "DELETE FROM vnu_mapbw WHERE word_id IN ($placeholders) AND book_id = ? AND user_id = ?";
+            $params = array_merge($ids, [$bid, $uid]);
+            $db->prepare($sql)->execute($params);
+
+            // 2. (Optional) Clean up orphans
+            if ($deleteOrphans) {
+                // Delete words that are in the target list AND no longer have any mappings
+                // Params: [...ids, uid]
+                $sql = "DELETE FROM vnu_words 
+                        WHERE id IN ($placeholders) 
+                        AND user_id = ?
+                        AND id NOT IN (SELECT word_id FROM vnu_mapbw)";
+                $params = array_merge($ids, [$uid]);
+                $db->prepare($sql)->execute($params);
             }
         }
 

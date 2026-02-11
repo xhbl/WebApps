@@ -47,9 +47,10 @@ export const deleteWord = (word: Word) => {
 /**
  * 批量删除单词
  */
-export const deleteWords = (bookId: number, words: Word[]) => {
+export const deleteWords = (bookId: number, words: Word[], deleteOrphans = false) => {
+  const payload = deleteOrphans ? words.map((w) => ({ ...w, deleteOrphans: true })) : words
   return request.delete<ApiResponse>('/words.php', {
-    data: words,
+    data: payload,
     params: { req: 'w', bid: bookId },
   })
 }

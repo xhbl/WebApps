@@ -136,13 +136,12 @@
             />
           </template>
           <van-icon
-            :name="bid === 0 ? 'delete-o' : 'failure'"
+            name="delete-o"
             class="bottom-bar-icon"
             v-if="!isReviewMode"
             :class="{
               disabled: checkedIds.length === 0,
-              'danger-icon': checkedIds.length > 0 && bid === 0,
-              'warning-icon': checkedIds.length > 0 && bid !== 0,
+              'danger-icon': checkedIds.length > 0,
             }"
             @click="onBatchDelete"
           />
@@ -335,7 +334,7 @@ const getWordPopoverPlacement = (w: Word) => {
 
 const effectiveMode = computed(() => (isSelectMode.value ? 'select' : mode.value))
 
-const deleteActionText = computed(() => (bid.value === 0 ? '删除' : '移除'))
+const deleteActionText = computed(() => '删除')
 
 // 允许移动的条件：不是“全部单词”视图 (bid != 0)，或者是“未入本单词”视图 (orphanFilter = true)
 const allowMove = computed(() => bid.value !== 0 || wordsStore.orphanFilter)
@@ -650,8 +649,8 @@ const handleDelete = async (targets: Word[]) => {
 
   const isAllWords = bid.value === 0
   const isBatch = targets.length > 1
-  const actionText = isAllWords ? '删除' : '移除'
-  const confirmButtonColor = isAllWords ? 'var(--van-danger-color)' : 'var(--van-warning-color)'
+  const actionText = '删除'
+  const confirmButtonColor = 'var(--van-danger-color)'
 
   try {
     if (isAllWords) {
@@ -686,28 +685,29 @@ const handleDelete = async (targets: Word[]) => {
         confirmButtonColor: 'var(--van-danger-color)',
         showCancelButton: true,
       })
+
+      // 执行删除
+      const success = await wordsStore.deleteWords(targets, bid.value)
+      if (success && isSelectMode.value) checkedIds.value = []
     } else {
-      // 单词本模式：仅移除映射
+      // 单词本模式：带选项的删除
       const msg = isBatch
-        ? `确定从当前单词本中移除 所选 ${targets.length} 个单词吗？`
-        : `确定从当前单词本中移除 单词"${targets[0]?.word}"吗？`
+        ? `确定从当前单词本中删除所选 ${targets.length} 个单词吗？`
+        : `确定从当前单词本中删除单词"${targets[0]?.word}"吗？`
 
-      await showGlobalDialog({
-        title: '确认移除',
+      const result = await showGlobalDialog({
+        title: '删除单词',
         message: msg,
-        confirmButtonText: '移除',
-        confirmButtonColor: 'var(--van-warning-color)',
+        confirmButtonText: '删除',
+        confirmButtonColor: 'var(--van-danger-color)',
         showCancelButton: true,
+        showCheckbox: true,
+        checkboxLabel: '同时删除单词本身（若被其他单词本收录则保留）',
       })
-    }
 
-    // 执行操作
-    const success = await wordsStore.deleteWords(targets, bid.value)
-    if (success) {
-      // 如果是批量操作，清空选择
-      if (isSelectMode.value) {
-        checkedIds.value = []
-      }
+      const deleteOrphans = typeof result === 'object' ? result.checked : false
+      const success = await wordsStore.deleteWords(targets, bid.value, false, deleteOrphans)
+      if (success && isSelectMode.value) checkedIds.value = []
     }
   } catch {
     // Cancelled

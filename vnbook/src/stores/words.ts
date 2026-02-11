@@ -401,10 +401,15 @@ function defineWordsStore() {
   /**
    * 批量删除/移除单词
    */
-  const deleteWords = async (targetWords: Word[], bookId: number, silent = false) => {
+  const deleteWords = async (
+    targetWords: Word[],
+    bookId: number,
+    silent = false,
+    deleteOrphans = false,
+  ) => {
     try {
       // 使用封装的 API 调用，自动处理 baseURL 和 headers
-      const response = await wordsApi.deleteWords(bookId, targetWords)
+      const response = await wordsApi.deleteWords(bookId, targetWords, deleteOrphans)
       if (!response.data.success) throw new Error(response.data.message)
 
       const targetIds = new Set(targetWords.map((w) => w.id))
@@ -446,13 +451,11 @@ function defineWordsStore() {
         booksStore.reviewCount = Math.max(0, booksStore.reviewCount - targetWords.length)
       }
 
-      const isAllWords = bookId === 0
-      if (!silent) toast.showSuccess(isAllWords ? '删除成功' : '移除成功')
+      if (!silent) toast.showSuccess('删除成功')
       return true
     } catch (error) {
       console.error('Delete words failed:', error)
-      const isAllWords = bookId === 0
-      if (!silent) toast.showFail(isAllWords ? '删除失败' : '移除失败')
+      if (!silent) toast.showFail('删除失败')
       return false
     }
   }
