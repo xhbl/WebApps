@@ -22,6 +22,7 @@ export interface Word {
   _new?: number
   baseInfo?: BaseDictInfo
   // Review stats
+  in_review?: number
   n_known?: number
   n_unknown?: number
   n_streak?: number

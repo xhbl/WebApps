@@ -40,7 +40,7 @@
                   <van-icon
                     name="bookmark-o"
                     class="bookmark-icon"
-                    :class="{ hidden: isEditMode }"
+                    :class="{ hidden: isEditMode || !w.in_review }"
                   />
                 </div>
                 <div class="phon-row" v-if="w.phon" @click.stop="playAudio(w.word)">
@@ -50,7 +50,7 @@
                 <div v-if="isEditMode" class="edit-float-icon word-edit" @click.stop>
                   <van-popover
                     v-model:show="popoverMap['word-' + w.id]"
-                    :actions="wordActions"
+                    :actions="getWordActions(w)"
                     placement="bottom-end"
                     @select="(action) => onWordAction(action, w)"
                     @open="onPopoverOpen('word-' + w.id)"
@@ -208,12 +208,14 @@ import ExpEditorDialog from '@/components/ExpEditorDialog.vue'
 import SenEditorDialog from '@/components/SenEditorDialog.vue'
 import { usePopoverMap } from '@/composables/usePopoverMap'
 import { showGlobalDialog } from '@/composables/useGlobalDialog'
+import { useWordOperations } from '@/composables/useWordOperations'
 
 const route = useRoute()
 const router = useRouter()
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
 const wordsStore = useWordsStore()
+const { handleAddToReview } = useWordOperations()
 const swipeRef = ref()
 const activeTab = ref(0)
 const showDict = ref(authStore.userInfo?.cfg?.showDict !== false)
@@ -385,7 +387,15 @@ const wordActions = [
   { text: '编辑音标', icon: 'certificate', key: 'edit-phon' },
 ]
 
-const onWordAction = (action: { key: string }, w: Word) => {
+const getWordActions = (w: Word) => {
+  const actions = [...wordActions]
+  if (!w.in_review) {
+    actions.push({ text: '添加复习', icon: 'bookmark-o', key: 'add-review' })
+  }
+  return actions
+}
+
+const onWordAction = async (action: { key: string }, w: Word) => {
   closeAllPopovers()
   if (action.key === 'add-exp') {
     onAddExp(w.id)
@@ -393,6 +403,8 @@ const onWordAction = (action: { key: string }, w: Word) => {
     editingWord.value = w
     wordEditorMode.value = 'phon'
     showWordEditor.value = true
+  } else if (action.key === 'add-review') {
+    await handleAddToReview(w)
   }
 }
 

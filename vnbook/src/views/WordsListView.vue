@@ -276,12 +276,15 @@ import type { Word, SortMode, Book } from '@/types'
 import type { SearchInstance, PopoverAction } from 'vant'
 import { usePopupHistory } from '@/composables/usePopupHistory'
 import { showGlobalDialog } from '@/composables/useGlobalDialog'
+import { useWordOperations } from '@/composables/useWordOperations'
 
 const route = useRoute()
 const router = useRouter()
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
 const wordsStore: WordsStore = useWordsStore()
+const { handleAddToReview: addToReviewOp, handleRemoveFromReview: removeFromReviewOp } =
+  useWordOperations()
 
 const bid = computed(() => Number(route.params.bid))
 const isReviewMode = computed(() => bid.value === -1)
@@ -384,7 +387,7 @@ const onWordAction = async (action: { key: string }, w: Word) => {
       query: { single: 'true', edit: 'true' },
     })
   } else if (action.key === 'review') {
-    await handleAddToReview([w])
+    await addToReviewOp([w])
   } else if (action.key === 'books') {
     const result = await wordsStore.getBelongingBooks(w.id)
     if (result) {
@@ -395,7 +398,7 @@ const onWordAction = async (action: { key: string }, w: Word) => {
       import('@/utils/toast').then(({ toast }) => toast.showFail('获取失败'))
     }
   } else if (action.key === 'remove-review') {
-    await handleRemoveFromReview([w])
+    await removeFromReviewOp([w])
   } else if (action.key === 'move') {
     handleMove([w])
   } else if (action.key === 'delete') {
@@ -426,7 +429,7 @@ onActivated(async () => {
   if (currentBid.value !== newBid) {
     currentBid.value = newBid
 
-    // Initialize select mode based on URL (handles refresh with query param)
+    // 根据 URL 初始化选择模式（处理带查询参数的刷新）
     isSelectMode.value = route.query.select === 'true'
     // 切换单词本时重置搜索状态
     isSearchActive.value = false
@@ -436,7 +439,7 @@ onActivated(async () => {
     wordsStore.clearWords()
     window.scrollTo(0, 0)
 
-    // Sync orphan filter from URL (must be after clearWords)
+    // 从 URL 同步未入本过滤器状态（必须在 clearWords 之后）
     if (newBid === 0) {
       wordsStore.orphanFilter = route.query.orphan === 'true'
     } else {
@@ -455,14 +458,14 @@ onActivated(async () => {
     await wordsStore.loadWords(newBid)
     loading.value = false
   } else {
-    // Sync orphan filter from URL
+    // 从 URL 同步未入本过滤器状态
     if (newBid === 0) {
       wordsStore.orphanFilter = route.query.orphan === 'true'
     } else {
       wordsStore.orphanFilter = false
     }
 
-    // Sync select mode with URL
+    // 从 URL 同步选择模式
     const qSelect = route.query.select === 'true'
     if (isSelectMode.value !== qSelect) {
       isSelectMode.value = qSelect
@@ -628,22 +631,6 @@ const onMoveConfirm = async (action: { name: string; value: number }) => {
   } catch {}
 }
 
-const handleRemoveFromReview = async (targets: Word[]) => {
-  if (targets.length === 0) return
-  try {
-    await showGlobalDialog({
-      title: '取消复习',
-      message: `确定将 ${targets.length > 1 ? `所选 ${targets.length} 个单词` : `单词"${targets[0]?.word}"`} 移出复习本吗？`,
-      confirmButtonText: '移出',
-      confirmButtonColor: 'var(--van-warning-color)',
-      showCancelButton: true,
-    })
-    // 复习本 ID 为 -1
-    await wordsStore.deleteWords(targets, -1)
-    if (isSelectMode.value) checkedIds.value = []
-  } catch {}
-}
-
 const handleDelete = async (targets: Word[]) => {
   if (targets.length === 0) return
 
@@ -723,31 +710,15 @@ const onBatchDelete = async () => {
 const onBatchCancelReview = async () => {
   if (checkedIds.value.length === 0) return
   const targets = wordsStore.words.filter((w) => checkedIds.value.includes(w.id))
-  await handleRemoveFromReview(targets)
-}
-
-const handleAddToReview = async (targets: Word[]) => {
-  if (targets.length === 0) return
-  try {
-    await showGlobalDialog({
-      title: '加入复习',
-      message: `确定将 ${targets.length > 1 ? `所选 ${targets.length} 个单词` : `单词"${targets[0]?.word}"`} 加入复习本吗？`,
-      confirmButtonText: '加入',
-      confirmButtonColor: 'var(--van-primary-color)',
-      showCancelButton: true,
-    })
-    const success =
-      targets.length === 1
-        ? await wordsStore.addToReview(targets[0]!)
-        : await wordsStore.batchAddToReview(targets)
-    if (success && isSelectMode.value) checkedIds.value = []
-  } catch {}
+  const success = await removeFromReviewOp(targets)
+  if (success && isSelectMode.value) checkedIds.value = []
 }
 
 const onBatchBookmark = async () => {
   if (checkedIds.value.length === 0) return
   const targets = wordsStore.words.filter((w) => checkedIds.value.includes(w.id))
-  await handleAddToReview(targets)
+  const success = await addToReviewOp(targets)
+  if (success && isSelectMode.value) checkedIds.value = []
 }
 
 const onWordItemClick = (w: Word) => {

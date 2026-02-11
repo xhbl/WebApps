@@ -114,6 +114,7 @@ function defineWordsStore() {
             n_known: word.n_known ? Number(word.n_known) : undefined,
             n_unknown: word.n_unknown ? Number(word.n_unknown) : undefined,
             n_streak: word.n_streak ? Number(word.n_streak) : undefined,
+            in_review: word.in_review ? Number(word.in_review) : 0,
             time_r: word.time_r,
             explanations: (word.explanations || []).map((e) => {
               const exp = e as Explanation & { sentences?: unknown[] }
@@ -175,6 +176,7 @@ function defineWordsStore() {
           time_c: w.time_c,
           book_count: Number(w.book_count || 0),
           _new: w._new,
+          in_review: w.in_review ? Number(w.in_review) : 0,
           explanations: (w.explanations || []).map((e) => ({
             id: Number(e.id),
             word_id: Number(e.word_id),
@@ -348,6 +350,7 @@ function defineWordsStore() {
           word.n_known = 0
           word.n_unknown = 0
         }
+        word.in_review = 1
 
         // 更新复习本计数
         const booksStore = useBooksStore()
@@ -368,12 +371,12 @@ function defineWordsStore() {
   /**
    * 批量加入复习本
    */
-  const batchAddToReview = async (targetWords: Word[]) => {
+  const batchAddToReview = async (targetWords: Word[], silent = false) => {
     try {
       // 复用 addWordsToBook 接口，传入 bid=-1
       const response = await wordsApi.addWordsToBook(-1, targetWords)
       if (response.data.success) {
-        toast.showSuccess('已加入复习本')
+        if (!silent) toast.showSuccess('已加入复习本')
         targetWords.forEach((w) => {
           if (w.n_streak === undefined) {
             w.n_streak = 0
@@ -429,6 +432,7 @@ function defineWordsStore() {
               wordInList.n_streak = undefined
               wordInList.n_known = undefined
               wordInList.n_unknown = undefined
+              wordInList.in_review = 0
             }
           })
         }

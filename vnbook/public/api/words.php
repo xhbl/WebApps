@@ -28,7 +28,8 @@ function getWords($bid, $wid = null, $word = null)
         if ($bid == 0) {
             // Fetch all words for the user (All Words view)
             $sql = "SELECT w.id, w.user_id, w.word, w.phon, w.time_c,
-                    (SELECT COUNT(*) FROM vnu_mapbw m WHERE m.word_id = w.id) as book_count
+                    (SELECT COUNT(*) FROM vnu_mapbw m WHERE m.word_id = w.id) as book_count,
+                    (SELECT COUNT(*) FROM vnu_review r WHERE r.word_id = w.id) as in_review
                     FROM vnu_words w
                     WHERE w.user_id = ?";
             $params = [$uid];
@@ -37,14 +38,16 @@ function getWords($bid, $wid = null, $word = null)
             // Use r.time_c (added to review time) as the main time_c for sorting consistency
             $sql = "SELECT w.id, w.user_id, w.word, w.phon, r.time_c,
                     r.n_known, r.n_unknown, r.n_streak, r.time_r,
-                    (SELECT COUNT(*) FROM vnu_mapbw m WHERE m.word_id = w.id) as book_count
+                    (SELECT COUNT(*) FROM vnu_mapbw m WHERE m.word_id = w.id) as book_count,
+                    1 as in_review
                     FROM vnu_words w
                     JOIN vnu_review r ON w.id = r.word_id
                     WHERE w.user_id = ?";
             $params = [$uid];
         } else {
             // Get words for this book (only those mapped to this book)
-            $sql = "SELECT w.id, w.user_id, w.word, w.phon, w.time_c, m.book_id, m.id as map_id
+            $sql = "SELECT w.id, w.user_id, w.word, w.phon, w.time_c, m.book_id, m.id as map_id,
+                    (SELECT COUNT(*) FROM vnu_review r WHERE r.word_id = w.id) as in_review
                     FROM vnu_words w
                     LEFT JOIN vnu_mapbw m ON w.id = m.word_id AND m.book_id = ?
                     WHERE w.user_id = ? AND m.id IS NOT NULL";

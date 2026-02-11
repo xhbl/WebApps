@@ -101,8 +101,10 @@ const actions = computed(() => {
   }
   const list: { text: string; icon: string; key: string; className?: string }[] = [
     { text: '编辑', icon: 'edit', key: 'edit' },
-    { text: '加入复习', icon: 'bookmark-o', key: 'review' },
   ]
+  if (!props.word.in_review) {
+    list.push({ text: '加入复习', icon: 'bookmark-o', key: 'review' })
+  }
   if (props.allowMove) {
     list.push({
       text: props.moveText || '移动到...',
