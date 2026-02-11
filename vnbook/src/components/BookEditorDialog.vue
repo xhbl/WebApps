@@ -46,7 +46,7 @@ watch(
   () => props.modelValue,
   (v) => (show.value = v),
 )
-usePopupHistory(show)
+const { close } = usePopupHistory(show)
 
 const isNew = computed(() => !props.book || props.book._new === 1)
 const edit = ref<Book>({
@@ -132,9 +132,10 @@ const onSubmit = () =>
 
 const onCancel = () => (show.value = false)
 
-const onDelete = () => {
+const onDelete = async () => {
+  // 先安全关闭弹窗，再抛出事件，确保父组件接收事件时历史记录已回退完成
+  await close()
   emit('delete', edit.value)
-  show.value = false
 }
 </script>
 

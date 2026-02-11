@@ -28,7 +28,7 @@ export function useAppMenu(options: UseAppMenuOptions = {}) {
   const authStore = useAuthStore()
   const showActionSheet = ref(false)
   const openMenu = () => (showActionSheet.value = true)
-  usePopupHistory(showActionSheet)
+  const { close } = usePopupHistory(showActionSheet)
   const showUserMod = ref(false)
 
   const actions = computed<MenuAction[]>(() => {
@@ -69,48 +69,45 @@ export function useAppMenu(options: UseAppMenuOptions = {}) {
     return list
   })
 
-  const onMenuSelect = (action: MenuAction & { handler?: () => void }) => {
-    showActionSheet.value = false
+  const onMenuSelect = async (action: MenuAction & { handler?: () => void }) => {
+    // 使用封装的 close 方法，自动处理历史记录回退等待
+    await close()
 
-    // 延迟执行后续操作，等待 ActionSheet 关闭触发的 history.back() 完成
-    // 防止 history 操作冲突（Pop State 尚未完成就尝试 Push State 或导航）
-    setTimeout(() => {
-      // 优先处理自定义 handler
-      if (action.handler) {
-        action.handler()
-        return
-      }
+    // 优先处理自定义 handler
+    if (action.handler) {
+      action.handler()
+      return
+    }
 
-      switch (action.key) {
-        case 'mod':
-          showUserMod.value = true
-          break
-        case 'logout':
-          const userName = authStore.userDisplayName || '请确认'
-          showDialog({
-            title: userName,
-            message: '确定要退出登录吗？',
-            confirmButtonText: '退出',
-            cancelButtonText: '取消',
-            showCancelButton: true,
+    switch (action.key) {
+      case 'mod':
+        showUserMod.value = true
+        break
+      case 'logout':
+        const userName = authStore.userDisplayName || '请确认'
+        showDialog({
+          title: userName,
+          message: '确定要退出登录吗？',
+          confirmButtonText: '退出',
+          cancelButtonText: '取消',
+          showCancelButton: true,
+        })
+          .then(async () => {
+            toast.showLoading('') // 仅显示转圈动画，视觉上更轻量
+            try {
+              await authStore.logout()
+              toast.showSuccess('已退出登录')
+            } catch (e) {
+              console.error(e)
+              toast.hideLoading()
+            } finally {
+              // 退出后跳转登录页。不带 redirect 参数，以便切换用户后默认进入主页
+              router.replace({ name: 'Login' })
+            }
           })
-            .then(async () => {
-              toast.showLoading('') // 仅显示转圈动画，视觉上更轻量
-              try {
-                await authStore.logout()
-                toast.showSuccess('已退出登录')
-              } catch (e) {
-                console.error(e)
-                toast.hideLoading()
-              } finally {
-                // 退出后跳转登录页。不带 redirect 参数，以便切换用户后默认进入主页
-                router.replace({ name: 'Login' })
-              }
-            })
-            .catch(() => {})
-          break
-      }
-    }, 100)
+          .catch(() => {})
+        break
+    }
   }
 
   // 定义一个包装组件，将内部状态 showUserMod 绑定到 UserModDialog

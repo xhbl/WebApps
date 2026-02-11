@@ -111,4 +111,15 @@ export function usePopupHistory(show: Ref<boolean>) {
 
   onUnmounted(cleanup)
   onDeactivated(cleanup)
+
+  /**
+   * 安全关闭弹窗并等待历史记录回退完成
+   * 用于在关闭当前弹窗后立即打开新弹窗的场景，防止冲突
+   */
+  const close = () => {
+    show.value = false
+    return new Promise<void>((resolve) => setTimeout(resolve, 100))
+  }
+
+  return { close }
 }

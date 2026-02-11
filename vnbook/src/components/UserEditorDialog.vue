@@ -83,7 +83,7 @@ watch(
     }
   },
 )
-usePopupHistory(show)
+const { close } = usePopupHistory(show)
 
 const isNew = computed(() => !props.user || props.user._new === 1)
 const password = ref('')
@@ -129,9 +129,9 @@ const onSubmit = async () => {
 
 const onCancel = () => (show.value = false)
 
-const onDelete = () => {
+const onDelete = async () => {
+  await close()
   emit('delete', edit.value)
-  show.value = false
 }
 </script>
 

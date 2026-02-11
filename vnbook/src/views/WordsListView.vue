@@ -577,7 +577,7 @@ const toggleSelectAll = () => {
 // --- 移动功能逻辑 ---
 const showMoveSheet = ref(false)
 const pendingMoveWords = ref<Word[]>([])
-usePopupHistory(showMoveSheet)
+const { close: closeMoveSheet } = usePopupHistory(showMoveSheet)
 
 const moveTargetOptions = computed(() => {
   // 过滤掉当前单词本
@@ -606,9 +606,8 @@ const onBatchMove = () => {
 }
 
 const onMoveConfirm = async (action: { name: string; value: number }) => {
-  showMoveSheet.value = false
-  // 等待 ActionSheet 关闭触发的 history.back() 完成，防止 Dialog 被立即关闭
-  await new Promise((resolve) => setTimeout(resolve, 100))
+  // 安全关闭并等待
+  await closeMoveSheet()
 
   const targetBookId = action.value
   const targets = pendingMoveWords.value
