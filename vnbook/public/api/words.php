@@ -613,6 +613,29 @@ try {
         exit;
     }
 
+    // Handle get belonging books (req=books)
+    if ($req == 'books' && $wid) {
+        $db = DB::vnb();
+        $uid = $_SESSION['user_id'];
+        $stmt = $db->prepare("
+            SELECT b.id, b.title 
+            FROM vnu_books b
+            JOIN vnu_mapbw m ON b.id = m.book_id
+            WHERE m.word_id = ? AND m.user_id = ?
+            ORDER BY b.title
+        ");
+        $stmt->execute([$wid, $uid]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Check review status
+        $stmt = $db->prepare("SELECT 1 FROM vnu_review WHERE word_id = ? AND user_id = ?");
+        $stmt->execute([$wid, $uid]);
+        $inReview = (bool)$stmt->fetchColumn();
+
+        echo json_encode(['success' => true, 'book' => $rows, 'inReview' => $inReview]);
+        exit;
+    }
+
     // Auto-detect request type if not specified
     if (!$req) {
         if ($sid) $req = 's';

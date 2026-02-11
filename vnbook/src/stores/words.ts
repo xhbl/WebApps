@@ -817,6 +817,25 @@ function defineWordsStore() {
   }
 
   /**
+   * 获取单词所属的单词本
+   */
+  const getBelongingBooks = async (wordId: number) => {
+    try {
+      const response = await wordsApi.getWordBooks(wordId)
+      if (response.data.success) {
+        return {
+          books: response.data.book || [],
+          inReview: !!response.data.inReview,
+        }
+      }
+      return null
+    } catch (e) {
+      console.error('Get belonging books failed', e)
+      return null
+    }
+  }
+
+  /**
    * 移动单词
    */
   const moveWords = async (
@@ -899,6 +918,7 @@ function defineWordsStore() {
     toggleOrphanFilter,
     checkWordExistence,
     lookupDict,
+    getBelongingBooks,
   }
 }
 

@@ -134,3 +134,12 @@ export const suggestWords = (prefix: string) => {
     headers: { 'X-No-Loading': 'true' },
   })
 }
+
+/**
+ * 获取单词所属的单词本列表
+ */
+export const getWordBooks = (wordId: number) => {
+  return request.get<ApiResponse>('/words.php', {
+    params: { req: 'books', wid: wordId },
+  })
+}

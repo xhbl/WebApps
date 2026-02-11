@@ -117,6 +117,7 @@ export interface ApiResponse<T = unknown> {
   login?: LoginInfo
   data?: T
   reviewCount?: number
+  inReview?: boolean
 }
 
 // Nonce 响应类型

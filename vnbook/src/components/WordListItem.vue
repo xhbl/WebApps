@@ -90,6 +90,7 @@ const actions = computed(() => {
   if (props.isReviewMode) {
     return [
       { text: '编辑', icon: 'edit', key: 'edit' },
+      { text: '所属词本', icon: 'label-o', key: 'books' },
       {
         text: '取消复习',
         icon: 'bookmark-o',
@@ -109,6 +110,7 @@ const actions = computed(() => {
       key: 'move',
     })
   }
+  list.push({ text: '所属词本', icon: 'label-o', key: 'books' })
   if (props.deleteText) {
     list.push({
       text: props.deleteText,

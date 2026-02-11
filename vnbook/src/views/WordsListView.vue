@@ -221,6 +221,30 @@
     />
     <review-guide-dialog v-model="showReviewGuide" />
 
+    <van-dialog
+      v-model:show="showBelongingBooks"
+      title="所属单词本"
+      :show-confirm-button="false"
+      close-on-click-overlay
+      :close-on-popstate="false"
+    >
+      <div class="belonging-books-content">
+        <div v-if="belongingBooksList.length === 0 && !wordInReview" class="empty-text">
+          无所属单词本（未入本）
+        </div>
+        <van-cell-group v-else>
+          <van-cell
+            v-for="book in belongingBooksList"
+            :key="book.id"
+            :title="book.title"
+            icon="label-o"
+            class="book-item"
+          />
+          <van-cell v-if="wordInReview" title="已加入复习本" icon="bookmark" class="book-item" />
+        </van-cell-group>
+      </div>
+    </van-dialog>
+
     <van-action-sheet
       v-model:show="showMoveSheet"
       :actions="moveTargetOptions"
@@ -250,7 +274,7 @@ import { usePopoverMap } from '@/composables/usePopoverMap'
 import WordEditorDialog from '@/components/WordEditorDialog.vue'
 import WordListItem from '@/components/WordListItem.vue'
 import ReviewGuideDialog from '@/components/ReviewGuideDialog.vue'
-import type { Word, SortMode } from '@/types'
+import type { Word, SortMode, Book } from '@/types'
 import type { SearchInstance, PopoverAction } from 'vant'
 import { usePopupHistory } from '@/composables/usePopupHistory'
 
@@ -347,6 +371,11 @@ const onSortSelect = (action: PopoverAction) => {
   }
 }
 
+const showBelongingBooks = ref(false)
+const belongingBooksList = ref<Book[]>([])
+const wordInReview = ref(false)
+usePopupHistory(showBelongingBooks)
+
 const onWordAction = async (action: { key: string }, w: Word) => {
   showWordPopover.value[w.id] = false
   if (action.key === 'edit') {
@@ -357,6 +386,15 @@ const onWordAction = async (action: { key: string }, w: Word) => {
     })
   } else if (action.key === 'review') {
     await handleAddToReview([w])
+  } else if (action.key === 'books') {
+    const result = await wordsStore.getBelongingBooks(w.id)
+    if (result) {
+      belongingBooksList.value = result.books
+      wordInReview.value = result.inReview
+      showBelongingBooks.value = true
+    } else {
+      import('@/utils/toast').then(({ toast }) => toast.showFail('获取失败'))
+    }
   } else if (action.key === 'remove-review') {
     await handleRemoveFromReview([w])
   } else if (action.key === 'move') {
@@ -1015,5 +1053,24 @@ const { openMenu, AppMenu } = useAppMenu({
 .sort-wrapper {
   display: flex;
   align-items: center;
+}
+
+.belonging-books-content {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 10px 0;
+}
+.empty-text {
+  text-align: center;
+  padding: 20px;
+  color: var(--van-gray-6);
+}
+
+.book-item :deep(.van-cell__left-icon) {
+  color: var(--van-primary-color);
+}
+
+.belonging-books-content :deep(.van-cell-group)::after {
+  border-bottom-width: 0;
 }
 </style>
