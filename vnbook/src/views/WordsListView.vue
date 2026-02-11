@@ -219,6 +219,7 @@
       :word="editingWord"
       @update:word="editingWord = $event"
     />
+    <review-guide-dialog v-model="showReviewGuide" />
 
     <van-action-sheet
       v-model:show="showMoveSheet"
@@ -248,6 +249,7 @@ import { useAppMenu } from '@/composables/useAppMenu'
 import { usePopoverMap } from '@/composables/usePopoverMap'
 import WordEditorDialog from '@/components/WordEditorDialog.vue'
 import WordListItem from '@/components/WordListItem.vue'
+import ReviewGuideDialog from '@/components/ReviewGuideDialog.vue'
 import type { Word, SortMode } from '@/types'
 import type { SearchInstance, PopoverAction } from 'vant'
 import { usePopupHistory } from '@/composables/usePopupHistory'
@@ -261,6 +263,7 @@ const wordsStore: WordsStore = useWordsStore()
 const bid = computed(() => Number(route.params.bid))
 const isReviewMode = computed(() => bid.value === -1)
 const showWordEditor = ref(false)
+const showReviewGuide = ref(false)
 const editingWord = ref<Word | null>(null)
 const refreshing = ref(false)
 const loading = ref(true)
@@ -326,10 +329,10 @@ const sortActions = computed(() => {
   if (isReviewMode.value) {
     actions.push({ text: '复习进度 (连胜升序)', value: 'streak' })
     actions.push({ text: '最新加入 (时间倒序)', value: 'date' })
-    actions.push({ text: '字母顺序', value: 'alpha' })
+    actions.push({ text: '字母表顺序', value: 'alpha' })
   } else {
     actions.push({ text: '最新加入 (时间倒序)', value: 'date' })
-    actions.push({ text: '字母顺序', value: 'alpha' })
+    actions.push({ text: '字母表顺序', value: 'alpha' })
   }
   // 标记当前选中项
   return actions.map((a) => ({
@@ -451,11 +454,7 @@ const openAddWord = () => {
 }
 
 const showReviewInfo = () => {
-  showDialog({
-    title: '复习本说明',
-    message:
-      '这里显示所有已加入复习的单词。\n\n列表显示了每个单词的复习统计：\n红色：不认识次数\n绿色：认识次数\n蓝色：当前连续认识次数',
-  })
+  showReviewGuide.value = true
 }
 
 const enterSearchMode = () => {

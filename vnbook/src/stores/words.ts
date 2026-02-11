@@ -73,7 +73,7 @@ function defineWordsStore() {
         groups.get(letter)!.push(word)
       })
 
-      // 按字母顺序排序
+      // 按字母表顺序
       const sortedEntries = Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]))
 
       return sortedEntries.map(([letter, words]) => ({
@@ -205,7 +205,7 @@ function defineWordsStore() {
       // 按复习进度(连胜)升序
       words.value.sort((a, b) => (a.n_streak || 0) - (b.n_streak || 0))
     } else {
-      // 按字母顺序
+      // 按字母表顺序
       words.value.sort((a, b) => a.word.localeCompare(b.word))
     }
   }

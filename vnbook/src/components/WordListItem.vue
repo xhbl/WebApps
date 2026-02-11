@@ -39,9 +39,11 @@
 
     <template #label>
       <div v-if="isReviewMode" class="review-stats">
-        <span class="stat-item unknown">不认识 {{ word.n_unknown || 0 }}次</span>
-        <span class="stat-item known">认识 {{ word.n_known || 0 }}次</span>
-        <span class="stat-item streak">连续 {{ word.n_streak || 0 }}次</span>
+        <span class="stat-item unknown"> <van-icon name="cross" /> {{ word.n_unknown || 0 }} </span>
+        <span class="stat-item known"> <van-icon name="success" /> {{ word.n_known || 0 }} </span>
+        <span class="stat-item streak">
+          <van-icon name="fire" /> {{ word.n_streak || 0 }}/{{ targetStreak }}
+        </span>
       </div>
       <div v-else>
         {{ definition }}
@@ -52,6 +54,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import type { Word } from '@/types'
 import type { PopoverPlacement } from 'vant'
 
@@ -74,6 +77,13 @@ const emit = defineEmits<{
   (e: 'open-popover'): void
   (e: 'action', action: { key: string }, word: Word): void
 }>()
+
+const authStore = useAuthStore()
+
+const targetStreak = computed(() => {
+  const val = authStore.userInfo?.cfg?.targetStreak
+  return typeof val === 'number' ? val : 3
+})
 
 const actions = computed(() => {
   if (props.isReviewMode) {
@@ -205,8 +215,16 @@ const onSelect = (action: { key: string }) => {
 
 .review-stats {
   display: flex;
-  gap: 10px;
-  font-size: 12px;
+  gap: 20px;
+  font-size: var(--van-font-size-sm);
+  align-items: center;
+  font-weight: bold;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .stat-item.unknown {
