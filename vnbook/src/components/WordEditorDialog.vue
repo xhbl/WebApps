@@ -81,6 +81,12 @@
           </div>
         </div>
 
+        <div class="options-section" v-if="step === 'detail'">
+          <van-checkbox v-model="addToReview" shape="round" icon-size="18px"
+            >加入复习本</van-checkbox
+          >
+        </div>
+
         <div class="actions">
           <van-button round type="primary" native-type="submit" :loading="loading">
             {{ isNew && step === 'input' ? '添加' : '保存' }}
@@ -142,6 +148,7 @@ const dictData = ref({
   definition: '',
   found: false,
 })
+const addToReview = ref(false)
 const dictContentRef = ref<HTMLElement | null>(null)
 const inputWrapperRef = ref<HTMLElement | null>(null)
 
@@ -232,6 +239,7 @@ const { isRestoring, clearDraft } = useDialogDraft({
     editingWord: props.word,
     bid: props.bid,
     mode: props.mode,
+    addToReview: addToReview.value,
   }),
   restoreState: async (state: {
     step: 'input' | 'detail'
@@ -240,6 +248,7 @@ const { isRestoring, clearDraft } = useDialogDraft({
     editingWord?: typeof props.word
     bid?: number
     mode?: 'full' | 'phon'
+    addToReview?: boolean
   }) => {
     if (state.editingWord) emit('update:word', state.editingWord)
     if (state.mode) emit('update:mode', state.mode)
@@ -249,6 +258,7 @@ const { isRestoring, clearDraft } = useDialogDraft({
     step.value = state.step
     formData.value = state.formData
     if (state.dictData) dictData.value = state.dictData
+    if (state.addToReview !== undefined) addToReview.value = state.addToReview
   },
 })
 
@@ -315,6 +325,7 @@ const initForm = () => {
     } else {
       queryDictionary(props.word.word)
     }
+    addToReview.value = false
   } else {
     // 新增模式
     step.value = 'input'
@@ -322,6 +333,7 @@ const initForm = () => {
     dictData.value = { phon: '', definition: '', found: false }
     suggestions.value = []
     showSuggestions.value = false
+    addToReview.value = false
   }
 }
 
@@ -454,7 +466,12 @@ const onSubmit = () =>
       // 如果需要保存释义，需构造 Explanation 数组。目前仅保存单词和音标。
     }
 
-    const saved = await wordsStore.saveWord(w, props.bid)
+    const saved = await wordsStore.saveWord(w, props.bid, addToReview.value)
+
+    if (!saved && addToReview.value) {
+      toast.showFail('保存失败')
+      return
+    }
 
     // 处理单词已存在的情况 (_new === 2)
     if (saved && saved._new === 2) {
@@ -468,8 +485,19 @@ const onSubmit = () =>
           message,
         })
         // 用户确认后，再次调用 saveWord（此时传入的对象 _new 为 2，后端会执行关联操作）
-        const retrySaved = await wordsStore.saveWord(saved, props.bid)
+        const retrySaved = await wordsStore.saveWord(saved, props.bid, addToReview.value)
         if (retrySaved) {
+          if (addToReview.value) {
+            const reviewSuccess = await wordsStore.addToReview(retrySaved, true)
+            if (reviewSuccess) {
+              toast.showSuccess('添加成功并加入复习本')
+            } else {
+              toast.showSuccess('添加成功，但加入复习本失败')
+            }
+          } else {
+            // 如果没有勾选加入复习本，且 saveWord 是 silent=false (默认)，store 已显示 toast
+            // 如果 saveWord 是 silent=true (这里是 addToReview.value 为 false)，则 store 显示 toast
+          }
           show.value = false
         }
       } catch {
@@ -479,6 +507,15 @@ const onSubmit = () =>
     }
 
     if (saved) {
+      if (addToReview.value) {
+        const reviewSuccess = await wordsStore.addToReview(saved, true)
+        const actionText = isNew.value ? '添加' : '更新'
+        if (reviewSuccess) {
+          toast.showSuccess(`${actionText}成功并加入复习本`)
+        } else {
+          toast.showSuccess(`${actionText}成功，但加入复习本失败`)
+        }
+      }
       show.value = false
     }
   })
@@ -584,6 +621,11 @@ h3 {
 
 .dict-line {
   margin-bottom: 4px;
+}
+
+.options-section {
+  padding: 10px 16px 0;
+  display: flex;
 }
 
 .input-wrapper {

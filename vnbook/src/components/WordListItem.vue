@@ -43,6 +43,7 @@
         <span class="stat-item known"> <van-icon name="success" /> {{ word.n_known || 0 }} </span>
         <span class="stat-item streak">
           <van-icon name="fire" /> {{ word.n_streak || 0 }}/{{ targetStreak }}
+          <van-icon v-if="(word.n_streak || 0) >= targetStreak" name="medal" class="medal-icon" />
         </span>
       </div>
       <div v-else>
@@ -237,6 +238,11 @@ const onSelect = (action: { key: string }) => {
 
 .stat-item.streak {
   color: var(--van-primary-color);
+}
+
+.medal-icon {
+  color: var(--van-warning-color);
+  margin-left: 4px;
 }
 </style>
 

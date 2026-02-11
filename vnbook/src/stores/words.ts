@@ -249,7 +249,7 @@ function defineWordsStore() {
     }
     sortWords()
   }
-  const saveWord = async (word: Word, bookId?: number) => {
+  const saveWord = async (word: Word, bookId?: number, silent = false) => {
     try {
       // 由 API 层处理 bid 传递
       const booksStore = useBooksStore()
@@ -301,7 +301,7 @@ function defineWordsStore() {
           if (existingIndex === -1) {
             words.value.push(savedWord)
             sortWords()
-            toast.showSuccess('添加成功')
+            if (!silent) toast.showSuccess('添加成功')
 
             // 更新单词本数量
             const booksStore = useBooksStore()
@@ -311,7 +311,7 @@ function defineWordsStore() {
           } else {
             // 如果列表里已有（例如在“全部单词”视图），则更新信息
             words.value[existingIndex] = savedWord
-            toast.showSuccess('更新成功')
+            if (!silent) toast.showSuccess('更新成功')
           }
         } else {
           // 更新
@@ -321,7 +321,7 @@ function defineWordsStore() {
             savedWord.explanations = words.value[index]?.explanations
             words.value[index] = savedWord
           }
-          toast.showSuccess('更新成功')
+          if (!silent) toast.showSuccess('更新成功')
         }
 
         return savedWord
@@ -329,7 +329,7 @@ function defineWordsStore() {
       return null
     } catch (error) {
       console.error('Save word failed:', error)
-      toast.showFail('保存失败')
+      if (!silent) toast.showFail('保存失败')
       return null
     }
   }
@@ -337,11 +337,11 @@ function defineWordsStore() {
   /**
    * 加入复习本
    */
-  const addToReview = async (word: Word) => {
+  const addToReview = async (word: Word, silent = false) => {
     try {
       const response = await wordsApi.saveWord({ ...word, book_id: -1, _new: 1 })
       if (response.data.success) {
-        toast.showSuccess('已加入复习本')
+        if (!silent) toast.showSuccess('已加入复习本')
         // 更新本地状态，显示复习标记
         if (word.n_streak === undefined) {
           word.n_streak = 0
@@ -356,11 +356,11 @@ function defineWordsStore() {
 
         return true
       }
-      toast.showFail('加入失败')
+      if (!silent) toast.showFail('加入失败')
       return false
     } catch (error) {
       console.error('Add to review failed:', error)
-      toast.showFail('操作失败')
+      if (!silent) toast.showFail('操作失败')
       return false
     }
   }
