@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import GlobalDialog from '@/components/GlobalDialog.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -15,6 +16,7 @@ const authStore = useAuthStore()
         </keep-alive>
       </transition>
     </router-view>
+    <GlobalDialog />
   </div>
 </template>
 

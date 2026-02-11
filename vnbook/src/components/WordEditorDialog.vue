@@ -105,7 +105,7 @@ import { suggestWords } from '@/api/words'
 import type { Word, BaseDictDefinition } from '@/types'
 import { toast, useSubmitLoading } from '@/utils/toast'
 import { useDialogDraft } from '@/composables/useDialogDraft'
-import { showDialog } from 'vant'
+import { showGlobalDialog } from '@/composables/useGlobalDialog'
 import { usePopupHistory } from '@/composables/usePopupHistory'
 
 const props = defineProps<{
@@ -377,7 +377,7 @@ const isPhonMatch = computed(() => {
 
 const onResetPhon = () => {
   if (isPhonMatch.value) return
-  showDialog({
+  showGlobalDialog({
     title: '提示',
     message: '重置为词典音标吗？',
     showCancelButton: true,
@@ -407,7 +407,7 @@ const dictDataLines = computed(() => {
 })
 
 const onShowInfo = () => {
-  showDialog({
+  showGlobalDialog({
     message:
       '请在单词卡片页中添加和编辑释义及相关例句，根据需要只添加必要的内容在单词本中，可以从词典选择，也可以自行编辑。',
     showConfirmButton: false,
@@ -480,9 +480,10 @@ const onSubmit = () =>
           (saved.book_count || 0) > 0
             ? `单词"${saved.word}"已存在于其他单词本中，要加入此单词本吗？`
             : `单词"${saved.word}"是一个未入本单词，要加入此单词本吗？`
-        await showDialog({
+        await showGlobalDialog({
           title: '单词已存在',
           message,
+          showCancelButton: true,
         })
         // 用户确认后，再次调用 saveWord（此时传入的对象 _new 为 2，后端会执行关联操作）
         const retrySaved = await wordsStore.saveWord(saved, props.bid, addToReview.value)

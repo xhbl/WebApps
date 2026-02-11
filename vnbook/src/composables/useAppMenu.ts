@@ -1,6 +1,7 @@
 import { ref, computed, defineComponent, h } from 'vue'
 import { useRouter } from 'vue-router'
-import { showDialog, ActionSheet } from 'vant'
+import { ActionSheet } from 'vant'
+import { showGlobalDialog } from '@/composables/useGlobalDialog'
 import { useAuthStore } from '@/stores/auth'
 import UserModDialog from '@/components/UserModDialog.vue'
 import { toast } from '@/utils/toast'
@@ -85,27 +86,17 @@ export function useAppMenu(options: UseAppMenuOptions = {}) {
         break
       case 'logout':
         const userName = authStore.userDisplayName || '请确认'
-        showDialog({
-          title: userName,
-          message: '确定要退出登录吗？',
-          confirmButtonText: '退出',
-          cancelButtonText: '取消',
-          showCancelButton: true,
-        })
-          .then(async () => {
-            toast.showLoading('') // 仅显示转圈动画，视觉上更轻量
-            try {
-              await authStore.logout()
-              toast.showSuccess('已退出登录')
-            } catch (e) {
-              console.error(e)
-              toast.hideLoading()
-            } finally {
-              // 退出后跳转登录页。不带 redirect 参数，以便切换用户后默认进入主页
-              router.replace({ name: 'Login' })
-            }
+        try {
+          await showGlobalDialog({
+            title: userName,
+            message: '确定要退出登录吗？',
+            confirmButtonText: '退出',
+            showCancelButton: true,
           })
-          .catch(() => {})
+          await onLogoutConfirm()
+        } catch {
+          // Cancelled
+        }
         break
     }
   }
@@ -120,6 +111,20 @@ export function useAppMenu(options: UseAppMenuOptions = {}) {
         })
     },
   })
+
+  const onLogoutConfirm = async () => {
+    toast.showLoading('')
+    try {
+      await authStore.logout()
+      toast.showSuccess('已退出登录')
+    } catch (e) {
+      console.error(e)
+      toast.hideLoading()
+    } finally {
+      // 退出后跳转登录页
+      router.replace({ name: 'Login' })
+    }
+  }
 
   // 定义 ActionSheet 包装组件
   const AppMenu = defineComponent({

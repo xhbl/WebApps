@@ -39,8 +39,6 @@
     <UserDialog />
 
     <user-editor-dialog v-model="showEditor" :user="editorUser" @delete="deleteUser" />
-    <van-dialog></van-dialog
-    ><!-- 占位符，让showDialog样式统一 -->
   </div>
 </template>
 
@@ -53,7 +51,7 @@ export default {
 <script setup lang="ts">
 import { ref, onActivated } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-import { showDialog } from 'vant'
+import { showGlobalDialog } from '@/composables/useGlobalDialog'
 import { useUsersStore } from '@/stores/users'
 import { useAuthStore } from '@/stores/auth'
 import { useAppMenu } from '@/composables/useAppMenu'
@@ -110,22 +108,18 @@ const editUser = (u: User) => {
 }
 
 const deleteUser = async (u: User) => {
-  // 弹窗确认逻辑迁移到 View 层
   try {
-    await showDialog({
+    await showGlobalDialog({
       title: '删除用户',
       message: `确定要删除用户“${u.dispname?.trim() || u.name}”吗？<br><br><span style="color:var(--van-danger-color)"><b>此操作将永久删除该用户和其所有相关数据，且无法撤销。</b></span>`,
       confirmButtonText: '删除',
       confirmButtonColor: 'var(--van-danger-color)',
-      cancelButtonText: '取消',
       showCancelButton: true,
       allowHtml: true,
     })
     await usersStore.deleteUser(u)
     editorUser.value = null
-  } catch {
-    // 用户点击取消，不做任何处理
-  }
+  } catch {}
 }
 </script>
 

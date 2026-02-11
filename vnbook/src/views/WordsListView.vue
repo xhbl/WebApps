@@ -265,7 +265,6 @@ export default {
 <script setup lang="ts">
 import { computed, ref, onActivated, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
-import { showDialog } from 'vant'
 import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
 import { useWordsStore, type WordsStore } from '@/stores/words'
@@ -277,6 +276,7 @@ import ReviewGuideDialog from '@/components/ReviewGuideDialog.vue'
 import type { Word, SortMode, Book } from '@/types'
 import type { SearchInstance, PopoverAction } from 'vant'
 import { usePopupHistory } from '@/composables/usePopupHistory'
+import { showGlobalDialog } from '@/composables/useGlobalDialog'
 
 const route = useRoute()
 const router = useRouter()
@@ -592,7 +592,7 @@ const moveTargetOptions = computed(() => {
 const handleMove = (targets: Word[]) => {
   if (targets.length === 0) return
   if (moveTargetOptions.value.length === 0) {
-    showDialog({ message: '没有可以移动的目标单词本' })
+    showGlobalDialog({ message: '没有可以移动的目标单词本', showCancelButton: false })
     return
   }
   pendingMoveWords.value = targets
@@ -616,7 +616,7 @@ const onMoveConfirm = async (action: { name: string; value: number }) => {
   const actionText = isAdd ? '添加' : '移动'
 
   try {
-    await showDialog({
+    await showGlobalDialog({
       title: `确认${actionText}`,
       message: `确定将 ${isBatch ? `所选 ${targets.length} 个单词` : `单词"${targets[0]?.word}"`} ${actionText}到 "${action.name}" 吗？`,
       confirmButtonText: actionText,
@@ -632,7 +632,7 @@ const onMoveConfirm = async (action: { name: string; value: number }) => {
 const handleRemoveFromReview = async (targets: Word[]) => {
   if (targets.length === 0) return
   try {
-    await showDialog({
+    await showGlobalDialog({
       title: '取消复习',
       message: `确定将 ${targets.length > 1 ? `所选 ${targets.length} 个单词` : `单词"${targets[0]?.word}"`} 移出复习本吗？`,
       confirmButtonText: '移出',
@@ -665,7 +665,7 @@ const handleDelete = async (targets: Word[]) => {
           ? `所选单词中有 ${linkedWordsCount} 个已被单词本收录，确认要删除吗？`
           : `此单词已在 ${targets[0]?.book_count} 个单词本中收录，确认要删除吗？`
 
-        await showDialog({
+        await showGlobalDialog({
           title: '确认删除',
           message: msg,
           confirmButtonText: '下一步',
@@ -679,7 +679,7 @@ const handleDelete = async (targets: Word[]) => {
         ? `删除后将无法恢复，确认删除所选 ${targets.length} 个单词吗？`
         : `删除后将无法恢复，确认删除单词"${targets[0]?.word}"吗？`
 
-      await showDialog({
+      await showGlobalDialog({
         title: '永久删除',
         message: msg,
         confirmButtonText: '删除',
@@ -692,7 +692,7 @@ const handleDelete = async (targets: Word[]) => {
         ? `确定从当前单词本中移除 所选 ${targets.length} 个单词吗？`
         : `确定从当前单词本中移除 单词"${targets[0]?.word}"吗？`
 
-      await showDialog({
+      await showGlobalDialog({
         title: '确认移除',
         message: msg,
         confirmButtonText: '移除',
@@ -729,19 +729,17 @@ const onBatchCancelReview = async () => {
 const handleAddToReview = async (targets: Word[]) => {
   if (targets.length === 0) return
   try {
-    await showDialog({
+    await showGlobalDialog({
       title: '加入复习',
       message: `确定将 ${targets.length > 1 ? `所选 ${targets.length} 个单词` : `单词"${targets[0]?.word}"`} 加入复习本吗？`,
       confirmButtonText: '加入',
       confirmButtonColor: 'var(--van-primary-color)',
       showCancelButton: true,
     })
-
     const success =
       targets.length === 1
         ? await wordsStore.addToReview(targets[0]!)
         : await wordsStore.batchAddToReview(targets)
-
     if (success && isSelectMode.value) checkedIds.value = []
   } catch {}
 }

@@ -207,7 +207,7 @@ import WordEditorDialog from '@/components/WordEditorDialog.vue'
 import ExpEditorDialog from '@/components/ExpEditorDialog.vue'
 import SenEditorDialog from '@/components/SenEditorDialog.vue'
 import { usePopoverMap } from '@/composables/usePopoverMap'
-import { showDialog } from 'vant'
+import { showGlobalDialog } from '@/composables/useGlobalDialog'
 
 const route = useRoute()
 const router = useRouter()
@@ -442,7 +442,7 @@ const onSenAction = (action: { key: string }, sen: Sentence, exp: Explanation) =
   } else if (action.key === 'move-down') {
     wordsStore.moveSentence(exp.id, sen.id, 1)
   } else if (action.key === 'delete') {
-    showDialog({
+    showGlobalDialog({
       title: '删除例句',
       message: '确定要删除这条例句吗？此操作不可恢复。',
       showCancelButton: true,
@@ -466,7 +466,7 @@ const onExpAction = (action: { key: string }, exp: Explanation, word: Word) => {
   } else if (action.key === 'move-down') {
     wordsStore.moveExplanation(word.id, exp.id, 1)
   } else if (action.key === 'delete') {
-    showDialog({
+    showGlobalDialog({
       title: '删除释义',
       message: '确定要删除这条释义及其下的所有例句吗？此操作不可恢复。',
       showCancelButton: true,

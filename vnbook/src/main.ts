@@ -6,7 +6,7 @@ import '@/styles/global.css'
 import App from './App.vue'
 import router from './router'
 
-import { showConfirmDialog } from 'vant'
+import { showGlobalDialog } from '@/composables/useGlobalDialog'
 import { registerSW } from 'virtual:pwa-register'
 
 const app = createApp(App)
@@ -25,7 +25,7 @@ if (import.meta.env.PROD && import.meta.env.VITE_BUILD_PWA === 'true') {
     immediate: true,
     onNeedRefresh() {
       console.log('检测到新内容，应用已准备好更新')
-      showConfirmDialog({
+      showGlobalDialog({
         title: '发现新版本',
         message: '应用有新内容可用，是否立即刷新以加载最新版本？',
         confirmButtonText: '立即刷新',

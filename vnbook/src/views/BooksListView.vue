@@ -116,28 +116,6 @@
       @update:book="editorBook = $event"
       @delete="deleteBook"
     />
-    <van-dialog
-      v-model:show="showDeleteDialog"
-      :title="deleteDialogTitle"
-      show-cancel-button
-      confirm-button-text="删除"
-      confirm-button-color="var(--van-danger-color)"
-      cancel-button-text="取消"
-      @confirm="onConfirmDeleteBook"
-      :close-on-popstate="false"
-    >
-      <div class="custom-dialog-container">
-        <div class="delete-message">
-          {{ deleteDialogMessage }}
-        </div>
-
-        <div class="delete-checkbox-area">
-          <van-checkbox v-model="deleteWordsChecked" icon-size="18px">
-            同时删除单词本内的所有单词（若也存在于其他单词本中则不会被删除）
-          </van-checkbox>
-        </div>
-      </div>
-    </van-dialog>
   </div>
 </template>
 
@@ -156,7 +134,7 @@ import { useAppMenu } from '@/composables/useAppMenu'
 import { usePopoverMap } from '@/composables/usePopoverMap'
 import BookEditorDialog from '@/components/BookEditorDialog.vue'
 import type { Book } from '@/types'
-import { usePopupHistory } from '@/composables/usePopupHistory'
+import { showGlobalDialog } from '@/composables/useGlobalDialog'
 
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
@@ -323,28 +301,21 @@ const editBook = (b: Book) => {
   showEditor.value = true
 }
 
-const showDeleteDialog = ref(false)
-const deleteDialogTitle = ref('')
-const deleteDialogMessage = ref('')
-const deleteWordsChecked = ref(false)
-usePopupHistory(showDeleteDialog)
-let pendingDeleteBook: Book | null = null
-
-const deleteBook = (book: Book) => {
-  pendingDeleteBook = book
-  deleteDialogTitle.value = '删除单词本'
-  deleteDialogMessage.value = `确定要删除“${book.title}”单词本吗？`
-  deleteWordsChecked.value = false
-  showDeleteDialog.value = true
-}
-
-const onConfirmDeleteBook = async () => {
-  if (!pendingDeleteBook) return
-  // 这里可将 deleteWordsChecked.value 作为参数传递给 store 或 API
-  await booksStore.deleteBook({ ...pendingDeleteBook, deleteWords: deleteWordsChecked.value })
-  editorBook.value = null
-  showDeleteDialog.value = false
-  pendingDeleteBook = null
+const deleteBook = async (book: Book) => {
+  try {
+    const result = await showGlobalDialog({
+      title: '删除单词本',
+      message: `确定要删除“${book.title}”单词本吗？`,
+      showCancelButton: true,
+      confirmButtonText: '删除',
+      confirmButtonColor: 'var(--van-danger-color)',
+      showCheckbox: true,
+      checkboxLabel: '同时删除单词本内的所有单词（若也存在于其他单词本中则不会被删除）',
+    })
+    const deleteWords = typeof result === 'object' ? result.checked : false
+    await booksStore.deleteBook({ ...book, deleteWords })
+    editorBook.value = null
+  } catch {}
 }
 </script>
 
@@ -415,31 +386,6 @@ const onConfirmDeleteBook = async () => {
 /* 确保单元格内容与图标对齐 */
 :deep(.van-cell) {
   align-items: center;
-}
-
-.custom-dialog-container {
-  padding: 8px 24px 24px; /* Vant 原生 Dialog message 有较大的左右边距 */
-}
-
-.delete-message {
-  font-size: var(--van-dialog-message-font-size);
-  line-height: var(--van-dialog-message-line-height);
-  color: var(--van-dialog-message-color);
-  text-align: center;
-  word-break: normal; /* 确保不在单词中间截断 */
-  overflow-wrap: break-word; /* 仅在空格或必要时换行 */
-  margin-bottom: 16px; /* 撑开文字与复选框的间距 */
-}
-
-.delete-checkbox-area {
-  display: flex;
-  justify-content: center; /* 居中对齐复选框 */
-}
-
-/* 调整复选框文字大小，使其不突兀 */
-:deep(.delete-checkbox-area .van-checkbox__label) {
-  font-size: 14px;
-  color: var(--van-text-color-2);
 }
 
 .sticky-header {
