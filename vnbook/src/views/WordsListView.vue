@@ -592,10 +592,7 @@ const moveTargetOptions = computed(() => {
 const handleMove = (targets: Word[]) => {
   if (targets.length === 0) return
   if (moveTargetOptions.value.length === 0) {
-    // 如果没有其他单词本
-    import('@/utils/toast').then(({ toast }) => {
-      toast.show('没有可以移动的目标单词本')
-    })
+    showDialog({ message: '没有可以移动的目标单词本' })
     return
   }
   pendingMoveWords.value = targets
@@ -610,6 +607,9 @@ const onBatchMove = () => {
 
 const onMoveConfirm = async (action: { name: string; value: number }) => {
   showMoveSheet.value = false
+  // 等待 ActionSheet 关闭触发的 history.back() 完成，防止 Dialog 被立即关闭
+  await new Promise((resolve) => setTimeout(resolve, 100))
+
   const targetBookId = action.value
   const targets = pendingMoveWords.value
   const isBatch = targets.length > 1
