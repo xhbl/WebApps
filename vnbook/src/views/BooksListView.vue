@@ -2,7 +2,7 @@
   <div class="books-manage-view" @click="closeAllPopovers">
     <van-nav-bar :title="userBookTitle" fixed :placeholder="false" z-index="100">
       <template #left>
-        <van-icon name="plus" class="nav-bar-icon" @click="openNewBook" />
+        <van-icon name="plus" class="nav-bar-icon" @click="openAddBook" />
       </template>
       <template #right>
         <van-icon name="ellipsis" class="nav-bar-icon" @click="openMenu" />
@@ -111,10 +111,10 @@
     <AppMenu />
     <UserDialog />
     <book-editor-dialog
-      v-model="showEditor"
-      :book="editorBook"
-      @update:book="editorBook = $event"
-      @delete="deleteBook"
+      v-model="showBookEditor"
+      :book="editingBook"
+      @update:book="editingBook = $event"
+      @delete="handleDeleteBook"
     />
   </div>
 </template>
@@ -132,13 +132,23 @@ import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
 import { useAppMenu } from '@/composables/useAppMenu'
 import { usePopoverMap } from '@/composables/usePopoverMap'
+import { useBookOperations } from '@/composables/useBookOperations'
 import BookEditorDialog from '@/components/BookEditorDialog.vue'
 import type { Book } from '@/types'
-import { showGlobalDialog } from '@/composables/useGlobalDialog'
 
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
 const router = useRouter()
+const {
+  showBookEditor,
+  editingBook,
+  openAddBook,
+  openEditBook,
+  handleDeleteBook,
+  handlePinBook,
+  handleMoveBook,
+} = useBookOperations()
+
 const enterWordsList = (b: Book) => {
   // 跳转到单词本详情页（WordsListView）
   router.push(`/books/${b.id}/words`)
@@ -149,8 +159,7 @@ const enterAllWords = () => {
 const enterReviewBook = () => {
   router.push(`/books/-1/words`)
 }
-const showEditor = ref(false)
-const editorBook = ref<Book | null>(null)
+
 const refreshing = ref(false)
 const loading = ref(true)
 
@@ -191,11 +200,6 @@ const onRefresh = async () => {
   refreshing.value = true
   await booksStore.loadBooks()
   refreshing.value = false
-}
-
-const openNewBook = () => {
-  editorBook.value = { id: 0, title: '', nums: 0, time_c: '', hide: 0, _new: 1 }
-  showEditor.value = true
 }
 
 const { popoverMap, onOpen: onPopoverOpen, closeAll: closeAllPopovers } = usePopoverMap()
@@ -268,20 +272,20 @@ const onBookAction = (action: { key: string }, b: Book) => {
   popoverMap.value[b.id] = false
   if (action.key === 'edit') {
     popoverMap.value[b.id] = false
-    editBook(b)
+    openEditBook(b)
   } else if (action.key === 'pin') {
-    booksStore.togglePin(b)
+    handlePinBook(b)
   } else if (action.key === 'up') {
-    booksStore.moveBook(b, -1)
+    handleMoveBook(b, -1)
   } else if (action.key === 'down') {
-    booksStore.moveBook(b, 1)
+    handleMoveBook(b, 1)
   }
 }
 
 const { openMenu, AppMenu, UserDialog } = useAppMenu({
   get items() {
     return [
-      { name: '新建单词本', icon: 'plus', handler: openNewBook },
+      { name: '新建单词本', icon: 'plus', handler: openAddBook },
       {
         name: showReviewBook.value ? '隐藏[复习本]' : '显示[复习本]',
         icon: showReviewBook.value ? 'closed-eye' : 'eye-o',
@@ -295,28 +299,6 @@ const { openMenu, AppMenu, UserDialog } = useAppMenu({
     ]
   },
 })
-
-const editBook = (b: Book) => {
-  editorBook.value = { ...b, _new: 0 }
-  showEditor.value = true
-}
-
-const deleteBook = async (book: Book) => {
-  try {
-    const result = await showGlobalDialog({
-      title: '删除单词本',
-      message: `确定要删除“${book.title}”单词本吗？`,
-      showCancelButton: true,
-      confirmButtonText: '删除',
-      confirmButtonColor: 'var(--van-danger-color)',
-      showCheckbox: true,
-      checkboxLabel: '同时删除单词本内的所有单词（若也存在于其他单词本中则不会被删除）',
-    })
-    const deleteWords = typeof result === 'object' ? result.checked : false
-    await booksStore.deleteBook({ ...book, deleteWords })
-    editorBook.value = null
-  } catch {}
-}
 </script>
 
 <style scoped>
