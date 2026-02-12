@@ -394,7 +394,8 @@ const onWordAction = async (action: { key: string }, w: Word) => {
       query: { single: 'true', edit: 'true' },
     })
   } else if (action.key === 'review') {
-    await addToReviewOp([w])
+    // 普通视图里不用弹出确认对话框
+    await addToReviewOp([w], false)
   } else if (action.key === 'books') {
     const result = await wordsStore.getBelongingBooks(w.id)
     if (result) {
@@ -405,7 +406,8 @@ const onWordAction = async (action: { key: string }, w: Word) => {
       import('@/utils/toast').then(({ toast }) => toast.showFail('获取失败'))
     }
   } else if (action.key === 'remove-review') {
-    await removeFromReviewOp([w])
+    // 复习本视图里需要确认，普通视图不需要
+    await removeFromReviewOp([w], isReviewMode.value)
   } else if (action.key === 'move') {
     handleMove([w], bid.value)
   } else if (action.key === 'delete') {

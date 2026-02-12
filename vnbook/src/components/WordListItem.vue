@@ -99,11 +99,18 @@ const actions = computed(() => {
       },
     ]
   }
-  const list: { text: string; icon: string; key: string; className?: string }[] = [
+  const list: { text: string; icon: string; key: string; className?: string; color?: string }[] = [
     { text: '编辑', icon: 'edit', key: 'edit' },
   ]
   if (!props.word.in_review) {
     list.push({ text: '加入复习', icon: 'bookmark-o', key: 'review' })
+  } else {
+    list.push({
+      text: '取消复习',
+      icon: 'bookmark-o',
+      key: 'remove-review',
+      color: 'var(--van-warning-color)',
+    })
   }
   if (props.allowMove) {
     list.push({

@@ -40,7 +40,11 @@
                   <van-icon
                     name="bookmark-o"
                     class="bookmark-icon"
-                    :class="{ hidden: isEditMode || !w.in_review }"
+                    :class="{
+                      hidden: isEditMode || bid === -1,
+                      active: w.in_review,
+                    }"
+                    @click.stop="toggleReview(w)"
                   />
                 </div>
                 <div class="phon-row" v-if="w.phon" @click.stop="playAudio(w.word)">
@@ -50,7 +54,7 @@
                 <div v-if="isEditMode" class="edit-float-icon word-edit" @click.stop>
                   <van-popover
                     v-model:show="popoverMap['word-' + w.id]"
-                    :actions="getWordActions(w)"
+                    :actions="wordActions"
                     placement="bottom-end"
                     @select="(action) => onWordAction(action, w)"
                     @open="onPopoverOpen('word-' + w.id)"
@@ -216,6 +220,7 @@ const authStore = useAuthStore()
 const wordsStore = useWordsStore()
 const {
   handleAddToReview,
+  handleRemoveFromReview,
   showExpEditor,
   editingExp,
   openAddExp: onAddExp,
@@ -237,6 +242,14 @@ const { popoverMap, onOpen: onPopoverOpen, closeAll: closeAllPopovers } = usePop
 
 const wid = Number(route.params.wid)
 const bid = Number(route.params.bid)
+
+const toggleReview = async (w: Word) => {
+  if (w.in_review) {
+    await handleRemoveFromReview(w, false)
+  } else {
+    await handleAddToReview(w, false)
+  }
+}
 
 const isSingleMode = computed(() => route.query.single === 'true')
 const autoEdit = computed(() => route.query.edit === 'true')
@@ -363,14 +376,6 @@ const wordActions = [
   { text: '编辑音标', icon: 'certificate', key: 'edit-phon' },
 ]
 
-const getWordActions = (w: Word) => {
-  const actions = [...wordActions]
-  if (!w.in_review) {
-    actions.push({ text: '添加复习', icon: 'bookmark-o', key: 'add-review' })
-  }
-  return actions
-}
-
 const onWordAction = async (action: { key: string }, w: Word) => {
   closeAllPopovers()
   if (action.key === 'add-exp') {
@@ -379,8 +384,6 @@ const onWordAction = async (action: { key: string }, w: Word) => {
     editingWord.value = w
     wordEditorMode.value = 'phon'
     showWordEditor.value = true
-  } else if (action.key === 'add-review') {
-    await handleAddToReview(w)
   }
 }
 
@@ -586,6 +589,9 @@ const swipeNext = () => swipeRef.value?.next()
   flex-shrink: 0;
   padding: 4px;
   margin-right: -4px;
+}
+.bookmark-icon.active {
+  color: var(--van-primary-color);
 }
 .bookmark-icon.hidden {
   visibility: hidden;
