@@ -3,7 +3,7 @@ export type WordsStore = ReturnType<typeof useWordsStore>
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import * as wordsApi from '@/api/words'
-import type { Word, Explanation, Sentence, SortMode, GroupedWords } from '@/types'
+import type { Word, Explanation, Sentence, SortMode, GroupedWords, ApiResponse } from '@/types'
 import { toast } from '@/utils/toast'
 import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
@@ -100,7 +100,14 @@ function defineWordsStore() {
         sortMode.value = saved || 'date'
       }
 
-      const response = await wordsApi.getWords(bookId)
+      let limit: number | undefined
+      if (bookId === -1) {
+        // 读取用户的复习达标次数设置，默认为 3
+        const targetStreak = authStore.userInfo?.cfg?.targetStreak
+        limit = typeof targetStreak === 'number' ? targetStreak : 3
+      }
+
+      const response = await wordsApi.getWords(bookId, undefined, limit)
       if (response.data.success === true && response.data.word) {
         words.value = response.data.word.map((w: unknown) => {
           const word = w as Word & { explanations?: unknown[] }
@@ -115,6 +122,7 @@ function defineWordsStore() {
             n_unknown: word.n_unknown ? Number(word.n_unknown) : undefined,
             n_streak: word.n_streak ? Number(word.n_streak) : undefined,
             in_review: word.in_review ? Number(word.in_review) : 0,
+            last_status: word.last_status ? Number(word.last_status) : 0,
             time_r: word.time_r,
             explanations: (word.explanations || []).map((e) => {
               const exp = e as Explanation & { sentences?: unknown[] }
@@ -149,6 +157,37 @@ function defineWordsStore() {
 
         // 按排序模式排序
         sortWords()
+
+        // 复习本数据一致性检查
+        if (bookId === -1) {
+          const lastReviewID = authStore.userInfo?.cfg?.lastReviewID || 0
+          // const hasPending = words.value.some((w) => (w.last_status || 0) === 0)
+          // const allPending = words.value.every((w) => (w.last_status || 0) === 0)
+
+          if (lastReviewID !== 0) {
+            // 检查 ID 是否有效
+            const exists = words.value.some((w) => w.id === lastReviewID)
+            if (!exists) {
+              // ID 无效（如被移出），fallback 到下一个未复习且未达标的单词
+              // 参照 WordCardView swipeNextReview 的逻辑
+              const targetStreak =
+                typeof authStore.userInfo?.cfg?.targetStreak === 'number'
+                  ? authStore.userInfo.cfg.targetStreak
+                  : 3
+              const nextPending = words.value.find(
+                (w) => (w.last_status || 0) === 0 && (w.n_streak || 0) < targetStreak,
+              )
+
+              if (nextPending) {
+                await authStore.updateUserConfig({ lastReviewID: nextPending.id })
+              } else {
+                // 如果没有待复习的，重置为 0
+                await authStore.updateUserConfig({ lastReviewID: 0 })
+              }
+            }
+          }
+        }
+
         return true
       }
       return false
@@ -177,6 +216,7 @@ function defineWordsStore() {
           book_count: Number(w.book_count || 0),
           _new: w._new,
           in_review: w.in_review ? Number(w.in_review) : 0,
+          last_status: w.last_status ? Number(w.last_status) : 0,
           explanations: (w.explanations || []).map((e) => ({
             id: Number(e.id),
             word_id: Number(e.word_id),
@@ -205,7 +245,19 @@ function defineWordsStore() {
       words.value.sort((a, b) => b.time_c.localeCompare(a.time_c))
     } else if (sortMode.value === 'streak') {
       // 按复习进度(连胜)升序
-      words.value.sort((a, b) => (a.n_streak || 0) - (b.n_streak || 0))
+      // 次级排序：本次状态升序 (0-未复习, 1-不认识, 2-认识) -> 优先显示未复习
+      // 三级排序：上次复习时间升序（久未复习的在前）
+      words.value.sort((a, b) => {
+        const streakDiff = (a.n_streak || 0) - (b.n_streak || 0)
+        if (streakDiff !== 0) return streakDiff
+
+        const statusDiff = (a.last_status || 0) - (b.last_status || 0)
+        if (statusDiff !== 0) return statusDiff
+
+        const timeA = a.time_r || ''
+        const timeB = b.time_r || ''
+        return timeA.localeCompare(timeB)
+      })
     } else {
       // 按字母表顺序
       words.value.sort((a, b) => a.word.localeCompare(b.word))
@@ -453,6 +505,16 @@ function defineWordsStore() {
       // 更新复习本计数
       if (bookId === -1) {
         booksStore.reviewCount = Math.max(0, booksStore.reviewCount - targetWords.length)
+
+        // Reset lastReviewID if the tracked word is deleted or list becomes empty
+        const lastId = Number(authStore.userInfo?.cfg?.lastReviewID || 0)
+        if (lastId > 0) {
+          if (targetIds.has(lastId)) {
+            authStore.updateUserConfig({ lastReviewID: 0 })
+          } else if (currentBookId.value === -1 && words.value.length === 0) {
+            authStore.updateUserConfig({ lastReviewID: 0 })
+          }
+        }
       }
 
       if (!silent) toast.showSuccess('删除成功')
@@ -894,6 +956,69 @@ function defineWordsStore() {
     }
   }
 
+  /**
+   * 提交复习结果
+   * @param word 单词对象
+   * @param status 1: 不认识, 2: 认识
+   */
+  const submitReviewResult = async (word: Word, status: 1 | 2) => {
+    // 乐观更新
+    const original = { ...word }
+
+    if (status === 1) {
+      // 不认识
+      word.n_unknown = (word.n_unknown || 0) + 1
+      word.n_streak = 0
+      word.last_status = 1
+    } else {
+      // 认识
+      word.n_known = (word.n_known || 0) + 1
+      word.n_streak = (word.n_streak || 0) + 1
+      word.last_status = 2
+    }
+    // 简单更新时间，服务器会返回精确时间
+    word.time_r = new Date().toISOString().replace('T', ' ').substring(0, 19)
+
+    try {
+      const response = await wordsApi.updateReviewStatus(word.id, status)
+      const resData = response.data as ApiResponse & { review?: Word[] }
+      if (resData.success && resData.review && resData.review[0]) {
+        const updated = resData.review[0]
+        // 同步服务器数据
+        Object.assign(word, updated)
+        return true
+      } else {
+        // 失败回滚
+        Object.assign(word, original)
+        return false
+      }
+    } catch (e) {
+      console.error(e)
+      Object.assign(word, original)
+      return false
+    }
+  }
+
+  /**
+   * 重置复习状态
+   */
+  const resetReviewStatus = async () => {
+    try {
+      const response = await wordsApi.resetReview()
+      if (response.data.success) {
+        words.value.forEach((w) => {
+          w.last_status = 0
+        })
+        await authStore.updateUserConfig({ lastReviewID: 0 })
+        return true
+      }
+      return false
+    } catch (e) {
+      console.error(e)
+      return false
+    }
+  }
+
   return {
     words,
     currentWord,
@@ -926,6 +1051,8 @@ function defineWordsStore() {
     checkWordExistence,
     lookupDict,
     getBelongingBooks,
+    submitReviewResult,
+    resetReviewStatus,
   }
 }
 

@@ -26,6 +26,7 @@ export interface Word {
   n_known?: number
   n_unknown?: number
   n_streak?: number
+  last_status?: number
   time_r?: string
 }
 

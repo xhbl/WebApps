@@ -1,18 +1,24 @@
 import { toast } from '@/utils/toast'
 import { useWordsStore } from '@/stores/words'
 import { useBooksStore } from '@/stores/books'
+import { useAuthStore } from '@/stores/auth'
 import { showGlobalDialog } from '@/composables/useGlobalDialog'
 import { usePopupHistory } from '@/composables/usePopupHistory'
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import type { Word, Explanation, Sentence } from '@/types'
 
 export function useWordOperations() {
   const wordsStore = useWordsStore()
   const booksStore = useBooksStore()
+  const authStore = useAuthStore()
+  const router = useRouter()
 
   /**
    * 将一个或多个单词添加到复习本。
    * 操作前会显示确认对话框。
+   * @param targets 目标单词或单词数组
+   * @param confirm 是否显示确认对话框，默认为 true
    */
   const handleAddToReview = async (targets: Word | Word[], confirm: boolean = true) => {
     const targetList = Array.isArray(targets) ? targets : [targets]
@@ -39,12 +45,11 @@ export function useWordOperations() {
       } else {
         success = await wordsStore.batchAddToReview(targetList, true)
         // 批量操作的成功由 store 处理，但如果需要我们可以显示一个 toast
-        // words.ts batchAddToReview 调用 API 并返回布尔值。
         if (success) toast.showSuccess(`已将 ${targetList.length} 个单词添加到复习本`)
       }
       return success
     } catch {
-      // 取消或出错
+      // 用户取消操作或发生错误
       return false
     }
   }
@@ -70,7 +75,7 @@ export function useWordOperations() {
       }
 
       // 复习本 ID 是 -1
-      // 我们传递 silent=true 给 deleteWords，这样我们可以在这里显示自定义的 toast 消息
+      // 传递 silent=true 给 deleteWords，以便在此处显示自定义的 toast 消息
       const success = await wordsStore.deleteWords(targetList, -1, true)
       if (success) {
         if (targetList.length > 1) {
@@ -392,23 +397,89 @@ export function useWordOperations() {
     return await wordsStore.moveSentence(expId, senId, direction)
   }
 
-  return {
-    handleAddToReview,
-    handleRemoveFromReview,
-    handleDelete,
-    handleMove,
-    // 移动相关状态
-    showMoveSheet,
-    moveTargetOptions,
-    onMoveConfirm,
-    closeMoveSheet,
+  // --- 复习操作逻辑 ---
+  /**
+   * 开始复习流程
+   * 优先跳转到上次复习的断点（如果有效且未达标），否则从第一个待复习单词开始
+   */
+  const handleStartReview = (bid: number) => {
+    if (wordsStore.words.length === 0) {
+      toast.show('复习本为空')
+      return
+    }
 
-    // 编辑/添加相关
+    let startId = authStore.userInfo?.cfg?.lastReviewID || 0
+    const targetStreak = Number(authStore.userInfo?.cfg?.targetStreak || 3)
+
+    // 检查断点是否有效：必须存在于当前列表，且未完成复习（status=0 且 streak < target）
+    // 注意：如果用户点击“认识/不认识”，last_status 会变，所以断点通常指向“下一个待复习”的词
+    if (startId !== 0) {
+      const w = wordsStore.words.find((w) => w.id === startId)
+      if (!w || (w.last_status || 0) !== 0 || (w.n_streak || 0) >= targetStreak) {
+        startId = 0
+      }
+    }
+
+    // 如果没有有效断点，查找列表中的第一个待复习单词
+    if (startId === 0) {
+      const firstPending = wordsStore.words.find(
+        (w) => (w.last_status || 0) === 0 && (w.n_streak || 0) < targetStreak,
+      )
+      if (firstPending) {
+        startId = firstPending.id
+      } else {
+        showGlobalDialog({
+          title: '复习完成',
+          message: '当前所有单词均已复习完毕。',
+          confirmButtonText: '知道了',
+          showCancelButton: false,
+        })
+        return
+      }
+    }
+
+    router.push({
+      name: 'WordCard',
+      params: { bid: String(bid), wid: String(startId) },
+    })
+  }
+
+  const handleResetReview = async () => {
+    try {
+      await showGlobalDialog({
+        title: '重置复习',
+        message: '确定要重置当前复习进度吗？所有单词将变为“待复习”状态。',
+        showCancelButton: true,
+      })
+
+      toast.showLoading('重置中...')
+      const success = await wordsStore.resetReviewStatus()
+      if (success) {
+        toast.showSuccess('复习进度已重置')
+      } else {
+        toast.showFail('重置失败')
+      }
+      return success
+    } catch {
+      return false
+    }
+  }
+
+  return {
+    // 增删改相关
     showWordEditor,
     editingWord,
     openAddWord,
     openEditWord,
     handleSaveWord,
+    handleDelete,
+
+    // 移动相关
+    showMoveSheet,
+    moveTargetOptions,
+    onMoveConfirm,
+    closeMoveSheet,
+    handleMove,
 
     // 释义相关
     showExpEditor,
@@ -427,5 +498,11 @@ export function useWordOperations() {
     handleSaveSen,
     handleDeleteSen,
     handleMoveSen,
+
+    // 复习本相关
+    handleAddToReview,
+    handleRemoveFromReview,
+    handleStartReview,
+    handleResetReview,
   }
 }

@@ -134,7 +134,7 @@ function deleteBooks($items)
             $bookId = $item->id;
             $deleteWords = !empty($item->deleteWords);
             if ($deleteWords) {
-                // 勾选了“同时删除”，则删除本次操作后会变成孤儿的单词
+                // If "Delete words" is checked, delete words that will become orphans after this operation
                 $sqlGetOnlyInThisBook = "
                     SELECT word_id FROM vnu_mapbw 
                     WHERE book_id = ? AND user_id = ?
@@ -144,8 +144,8 @@ function deleteBooks($items)
                 $sqlDeleteOrphans = "DELETE FROM vnu_words WHERE id IN ($sqlGetOnlyInThisBook)";
                 $db->prepare($sqlDeleteOrphans)->execute([$bookId, $uid, $bookId, $uid]);
             }
-            // 如果不勾选，则不删除任何单词。下面的删除单词本操作会通过级联删除自动移除关联。
-            // 再删除本子（级联删除映射）
+            // If not checked, do not delete any words. The following book deletion will automatically remove associations via cascade.
+            // Delete book (cascade deletes mappings)
             $db->prepare("DELETE FROM vnu_books WHERE id = ? AND user_id = ?")
                 ->execute([$bookId, $uid]);
         }

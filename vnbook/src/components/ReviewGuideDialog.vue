@@ -10,12 +10,47 @@
     <div class="guide-dialog">
       <h3>复习指导</h3>
 
-      <div class="guide-content">
-        <p>这里显示所有已加入复习的单词。</p>
-        <p>列表显示了每个单词的复习统计：</p>
-        <div class="legend-item unknown"><van-icon name="cross" /> <span>不认识次数</span></div>
-        <div class="legend-item known"><van-icon name="success" /> <span>认识次数</span></div>
-        <div class="legend-item streak"><van-icon name="fire" /> <span>当前连续认识次数</span></div>
+      <div class="guide-section">
+        <div class="section-title">图例说明</div>
+        <div class="legend-grid">
+          <div class="legend-item unknown"><van-icon name="cross" /> <span>不认识</span></div>
+          <div class="legend-item known"><van-icon name="success" /> <span>认识</span></div>
+          <div class="legend-item streak"><van-icon name="fire" /> <span>连续认识</span></div>
+          <div class="legend-item medal"><van-icon name="medal" /> <span>已掌握</span></div>
+        </div>
+      </div>
+
+      <div class="guide-section">
+        <div class="section-title">复习流程</div>
+        <div class="step-list">
+          <div class="step-item">
+            <span class="step-num">1</span>
+            <span
+              >点击下方中间的图标<van-icon
+                name="play-circle-o"
+                class="inline-icon"
+              />启动复习。</span
+            >
+          </div>
+          <div class="step-item">
+            <span class="step-num">2</span>
+            <span>进入单词卡片，点击遮罩显示释义。</span>
+          </div>
+          <div class="step-item">
+            <span class="step-num">3</span>
+            <span
+              >根据记忆选择 <span class="text-danger">不认识</span> 或
+              <span class="text-success">认识</span>。</span
+            >
+          </div>
+          <div class="step-item">
+            <span class="step-num">4</span>
+            <span
+              >连续认识次数达标后获得
+              <van-icon name="medal" class="inline-icon medal" /> 并自动移除。</span
+            >
+          </div>
+        </div>
       </div>
 
       <div class="setting-section">
@@ -107,21 +142,29 @@ h3 {
   text-align: center;
   flex-shrink: 0;
 }
-.guide-content {
-  margin-bottom: 32px;
-  font-size: var(--van-font-size-md);
-  line-height: 1.6;
-  color: var(--van-text-color);
+.guide-section {
+  margin-bottom: 16px;
 }
-.guide-content p {
-  margin: 0 0 8px 0;
+.section-title {
+  font-weight: bold;
+  font-size: var(--van-font-size-sm);
+  margin-bottom: 12px;
+  color: var(--van-text-color);
+  padding-left: 8px;
+  border-left: 3px solid var(--van-primary-color);
+  line-height: 1;
+}
+.legend-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 0 4px;
 }
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 12px;
-  font-weight: bold;
+  gap: 8px;
+  font-size: var(--van-font-size-sm);
 }
 .legend-item .van-icon {
   font-size: 18px;
@@ -135,8 +178,55 @@ h3 {
 .legend-item.streak {
   color: var(--van-primary-color);
 }
+.legend-item.medal {
+  color: var(--van-warning-color);
+}
+
+.step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.step-item {
+  display: flex;
+  align-items: flex-start;
+  font-size: var(--van-font-size-sm);
+  line-height: 1.2;
+  color: var(--van-text-color-2);
+}
+.step-num {
+  width: 18px;
+  height: 18px;
+  background: var(--van-gray-2);
+  color: var(--van-gray-7);
+  border-radius: 50%;
+  text-align: center;
+  line-height: 18px;
+  font-size: 12px;
+  margin-right: 8px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-weight: bold;
+}
+.inline-icon {
+  vertical-align: -3px;
+  font-size: 16px;
+  color: var(--van-primary-color);
+}
+.inline-icon.medal {
+  color: #ff976a;
+}
+.text-danger {
+  color: var(--van-danger-color);
+  font-weight: bold;
+}
+.text-success {
+  color: var(--van-success-color);
+  font-weight: bold;
+}
+
 .setting-section {
-  padding-top: 24px;
+  padding-top: 16px;
   border-top: 1px solid var(--van-border-color);
 }
 .setting-header {

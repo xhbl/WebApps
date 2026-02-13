@@ -54,6 +54,7 @@ function createVnbInitData()
                 `phon` VARCHAR(255) DEFAULT NULL,
                 `time_c` DATETIME DEFAULT CURRENT_TIMESTAMP,
                 INDEX `idx_vnu_user_word` (`user_id`, `word`),
+                INDEX `idx_user_timec` (`user_id`, `time_c` DESC),
                 CONSTRAINT `fk_word_user` FOREIGN KEY (`user_id`) REFERENCES `vnb_users` (`id`) ON DELETE CASCADE
             ) ENGINE=InnoDB",
 
@@ -104,9 +105,11 @@ function createVnbInitData()
                 `n_known` TINYINT UNSIGNED DEFAULT 0,
                 `n_unknown` TINYINT UNSIGNED DEFAULT 0,
                 `n_streak` TINYINT UNSIGNED DEFAULT 0,
+                `last_status` TINYINT DEFAULT 0,
                 `time_c` DATETIME DEFAULT CURRENT_TIMESTAMP,
                 `time_r` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 UNIQUE INDEX `idx_u_w` (`user_id`, `word_id`),
+                INDEX `idx_user_timec` (`user_id`, `time_c` DESC),
                 CONSTRAINT `fk_vnr_u` FOREIGN KEY (`user_id`) REFERENCES `vnb_users` (`id`) ON DELETE CASCADE,
                 CONSTRAINT `fk_vnr_w` FOREIGN KEY (`word_id`) REFERENCES `vnu_words` (`id`) ON DELETE CASCADE
             ) ENGINE=InnoDB",

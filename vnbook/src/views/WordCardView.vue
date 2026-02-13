@@ -8,7 +8,10 @@
         <van-icon
           name="edit"
           class="nav-bar-icon"
-          :class="{ active: isEditMode }"
+          :class="{
+            active: isEditMode,
+            disabled: isReviewMode && !showAnswer && currentStatus === 0,
+          }"
           @click="toggleEditMode"
         />
       </template>
@@ -23,6 +26,15 @@
         type="primary"
         plain
         @click="swipePrev"
+      />
+      <van-button
+        v-if="isDesktop && !isSingleMode"
+        class="nav-btn nav-next"
+        icon="arrow"
+        round
+        type="primary"
+        plain
+        @click="swipeNext"
       />
       <van-swipe
         ref="swipeRef"
@@ -66,100 +78,113 @@
                 </div>
               </div>
 
-              <div class="card-content">
-                <div class="exps" v-if="w.explanations && w.explanations.length">
+              <div class="card-content" :class="{ 'review-padding': isReviewMode }">
+                <div class="review-content-wrapper" style="position: relative">
                   <div
-                    class="exp-item van-hairline--bottom"
-                    v-for="(e, index) in w.explanations"
-                    :key="e.id"
+                    v-if="isReviewMode && !showAnswer && currentStatus === 0"
+                    class="review-mask"
+                    @click.stop="revealAnswer"
                   >
-                    <div class="exp-header">
-                      <span class="exp-pos">{{ e.pos }}</span>
-                      <span class="exp-cn">{{ e.exp?.zh }}</span>
-                    </div>
-                    <div class="exp-en" v-if="e.exp?.en">{{ e.exp.en }}</div>
-                    <div v-if="isEditMode" class="edit-float-icon exp-edit" @click.stop>
-                      <van-popover
-                        v-model:show="popoverMap['exp-' + e.id]"
-                        :actions="getExpActions(e, w)"
-                        :placement="getPopoverPlacement(index, w.explanations.length)"
-                        @select="(action) => onExpAction(action, e, w)"
-                        @open="onPopoverOpen('exp-' + e.id)"
+                    <div class="mask-hint">点击显示释义</div>
+                  </div>
+                  <div
+                    :class="{ 'review-hidden': isReviewMode && !showAnswer && currentStatus === 0 }"
+                  >
+                    <div class="exps" v-if="w.explanations && w.explanations.length">
+                      <div
+                        class="exp-item van-hairline--bottom"
+                        v-for="(e, index) in w.explanations"
+                        :key="e.id"
                       >
-                        <template #reference>
-                          <van-icon name="edit" />
-                        </template>
-                      </van-popover>
-                    </div>
-                    <div class="sens-block" v-if="e.sentences && e.sentences.length">
-                      <div class="sen-item" v-for="s in e.sentences" :key="s.id">
-                        <div class="sen-label">
-                          <van-icon name="guide-o" />
+                        <div class="exp-header">
+                          <span class="exp-pos">{{ e.pos }}</span>
+                          <span class="exp-cn">{{ e.exp?.zh }}</span>
                         </div>
-                        <div class="sen-content">
-                          <div class="sen-en">{{ s.sen?.en }}</div>
-                          <div class="sen-ch" v-if="s.sen?.zh">{{ s.sen.zh }}</div>
-                          <div class="sen-memo" v-if="s.smemo">[{{ s.smemo }}]</div>
-                        </div>
-                        <div v-if="isEditMode" class="edit-float-icon sen-edit" @click.stop>
+                        <div class="exp-en" v-if="e.exp?.en">{{ e.exp.en }}</div>
+                        <div v-if="isEditMode" class="edit-float-icon exp-edit" @click.stop>
                           <van-popover
-                            v-model:show="popoverMap['sen-' + s.id]"
-                            :actions="getSenActions(s, e)"
-                            placement="bottom-end"
-                            @select="(action) => onSenAction(action, s, e)"
-                            @open="onPopoverOpen('sen-' + s.id)"
+                            v-model:show="popoverMap['exp-' + e.id]"
+                            :actions="getExpActions(e, w)"
+                            :placement="getPopoverPlacement(index, w.explanations.length)"
+                            @select="(action) => onExpAction(action, e, w)"
+                            @open="onPopoverOpen('exp-' + e.id)"
                           >
                             <template #reference>
                               <van-icon name="edit" />
                             </template>
                           </van-popover>
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="empty-exps" v-else>
-                  尚未在单词本中添加释义例句内容，请点击右上方图标进入编辑模式添加。
-                </div>
-
-                <div class="dict-section-wrapper" v-if="w.baseInfo?.definitions?.length">
-                  <div class="dict-tabs" v-if="showDict">
-                    <div class="dict-float-icon" @click.stop="showDict = false">
-                      <van-icon name="closed-eye" />
-                    </div>
-                    <van-tabs
-                      v-model:active="activeTab"
-                      shrink
-                      background="transparent"
-                      :border="false"
-                      line-width="0px"
-                      color="var(--van-primary-color)"
-                    >
-                      <van-tab title="基本词典">
-                        <div class="dict-content-box">
-                          <div
-                            v-for="(item, idx) in getDictZh(w.baseInfo.definitions)"
-                            :key="'zh' + idx"
-                            class="dict-item"
-                          >
-                            <span class="dict-pos">{{ item.pos }}</span>
-                            <span class="dict-text-zh">{{ item.text }}</span>
-                          </div>
-                          <div
-                            v-for="(item, idx) in getDictEn(w.baseInfo.definitions)"
-                            :key="'en' + idx"
-                            class="dict-item"
-                          >
-                            <span class="dict-pos">{{ item.pos }}</span>
-                            <span class="dict-text-en">{{ item.text }}</span>
+                        <div class="sens-block" v-if="e.sentences && e.sentences.length">
+                          <div class="sen-item" v-for="s in e.sentences" :key="s.id">
+                            <div class="sen-label">
+                              <van-icon name="guide-o" />
+                            </div>
+                            <div class="sen-content">
+                              <div class="sen-en">{{ s.sen?.en }}</div>
+                              <div class="sen-ch" v-if="s.sen?.zh">{{ s.sen.zh }}</div>
+                              <div class="sen-memo" v-if="s.smemo">[{{ s.smemo }}]</div>
+                            </div>
+                            <div v-if="isEditMode" class="edit-float-icon sen-edit" @click.stop>
+                              <van-popover
+                                v-model:show="popoverMap['sen-' + s.id]"
+                                :actions="getSenActions(s, e)"
+                                placement="bottom-end"
+                                @select="(action) => onSenAction(action, s, e)"
+                                @open="onPopoverOpen('sen-' + s.id)"
+                              >
+                                <template #reference>
+                                  <van-icon name="edit" />
+                                </template>
+                              </van-popover>
+                            </div>
                           </div>
                         </div>
-                      </van-tab>
-                      <!-- <van-tab title="其它词典"></van-tab> -->
-                    </van-tabs>
-                  </div>
-                  <div v-else class="dict-collapsed" @click="showDict = true">
-                    <span class="dict-collapsed-text">显示词典信息</span>
+                      </div>
+                    </div>
+                    <div class="empty-exps" v-else>
+                      尚未在单词本中添加释义例句内容，请点击右上方图标进入编辑模式添加。
+                    </div>
+
+                    <div class="dict-section-wrapper" v-if="w.baseInfo?.definitions?.length">
+                      <div class="dict-tabs" v-if="showDict">
+                        <div class="dict-float-icon" @click.stop="showDict = false">
+                          <van-icon name="closed-eye" />
+                        </div>
+                        <van-tabs
+                          v-model:active="activeTab"
+                          shrink
+                          background="transparent"
+                          :border="false"
+                          line-width="0px"
+                          color="var(--van-primary-color)"
+                        >
+                          <van-tab title="基本词典">
+                            <div class="dict-content-box">
+                              <div
+                                v-for="(item, idx) in getDictZh(w.baseInfo.definitions)"
+                                :key="'zh' + idx"
+                                class="dict-item"
+                              >
+                                <span class="dict-pos">{{ item.pos }}</span>
+                                <span class="dict-text-zh">{{ item.text }}</span>
+                              </div>
+                              <div
+                                v-for="(item, idx) in getDictEn(w.baseInfo.definitions)"
+                                :key="'en' + idx"
+                                class="dict-item"
+                              >
+                                <span class="dict-pos">{{ item.pos }}</span>
+                                <span class="dict-text-en">{{ item.text }}</span>
+                              </div>
+                            </div>
+                          </van-tab>
+                          <!-- <van-tab title="其它词典"></van-tab> -->
+                        </van-tabs>
+                      </div>
+                      <div v-else class="dict-collapsed" @click="showDict = true">
+                        <span class="dict-collapsed-text">显示词典信息</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -167,15 +192,77 @@
           </van-pull-refresh>
         </van-swipe-item>
       </van-swipe>
-      <van-button
-        v-if="isDesktop && !isSingleMode"
-        class="nav-btn nav-next"
-        icon="arrow"
-        round
-        type="primary"
-        plain
-        @click="swipeNext"
-      />
+
+      <div v-if="isReviewMode" class="review-footer safe-area-bottom">
+        <!-- Status 0: 未复习 -->
+        <template v-if="currentStatus === 0">
+          <div class="review-btn unknown" @click="onReviewResult(1)">
+            <van-icon name="cross" class="btn-icon" />
+            <span>不认识</span>
+          </div>
+          <div class="review-btn known" @click="onReviewResult(2)">
+            <van-icon name="success" class="btn-icon" />
+            <span>认识</span>
+          </div>
+        </template>
+
+        <!-- Status 1: 不认识 (左侧灰色不认识，右侧下一个) -->
+        <template v-else-if="currentStatus === 1">
+          <div class="review-btn unknown disabled">
+            <van-icon name="cross" class="btn-icon" />
+            <span>不认识</span>
+          </div>
+          <div class="review-btn next" @click="swipeNextReview">
+            <span>下一个</span>
+            <van-icon name="arrow" class="btn-icon-right" />
+          </div>
+        </template>
+
+        <!-- Status 2: 认识 (左侧灰色认识，右侧下一个) -->
+        <template v-else-if="currentStatus === 2">
+          <div class="review-btn known disabled">
+            <van-icon name="success" class="btn-icon" />
+            <span>认识</span>
+          </div>
+          <div class="review-btn next" @click="swipeNextReview">
+            <span>下一个</span>
+            <van-icon name="arrow" class="btn-icon-right" />
+          </div>
+        </template>
+
+        <!-- Status 3: Mastered (已达标) -->
+        <template v-else-if="currentStatus === 3">
+          <div class="review-btn mastered disabled">
+            <van-icon name="medal" class="btn-icon" />
+            <span>已掌握</span>
+          </div>
+          <div class="review-btn next" @click="swipeNextReview">
+            <span>下一个</span>
+            <van-icon name="arrow" class="btn-icon-right" />
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Review Stats Overlay -->
+    <!-- 显示逻辑：复习模式且当前单词已复习（status > 0），或者已掌握（status == 3） -->
+    <!-- 注意：status > 0 意味着已经点击了认识/不认识，遮罩已移除 -->
+    <div v-if="isReviewMode && currentStatus > 0" class="review-stats-overlay">
+      <div class="stat-item unknown">
+        <van-icon name="cross" />
+        <span class="stat-label">不认识:</span>
+        <span class="stat-value">{{ currentWord?.n_unknown || 0 }}</span>
+      </div>
+      <div class="stat-item known">
+        <van-icon name="success" />
+        <span class="stat-label">认识:</span>
+        <span class="stat-value">{{ currentWord?.n_known || 0 }}</span>
+      </div>
+      <div class="stat-item streak">
+        <van-icon name="fire" />
+        <span class="stat-label">连续:</span>
+        <span class="stat-value">{{ currentWord?.n_streak || 0 }}/{{ targetStreak }}</span>
+      </div>
     </div>
 
     <word-editor-dialog
@@ -197,12 +284,24 @@
       :sentence="editingSen"
       @update:sentence="editingSen = $event"
     />
+
+    <!-- Mastered Animation Overlay -->
+    <transition name="fade">
+      <div v-if="showMasteredAnimation" class="mastered-animation-overlay">
+        <div class="mastered-content">
+          <van-icon name="medal" class="mastered-icon" />
+          <div class="mastered-text">已掌握单词</div>
+          <div class="mastered-word">{{ currentWord?.word }}</div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { showDialog } from 'vant'
 import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
 import { useWordsStore } from '@/stores/words'
@@ -238,10 +337,33 @@ const swipeRef = ref()
 const activeTab = ref(0)
 const showDict = ref(authStore.userInfo?.cfg?.showDict !== false)
 const refreshing = ref(false)
+const showMasteredAnimation = ref(false)
 const { popoverMap, onOpen: onPopoverOpen, closeAll: closeAllPopovers } = usePopoverMap()
 
 const wid = Number(route.params.wid)
 const bid = Number(route.params.bid)
+const isReviewMode = computed(() => {
+  // 必须是复习本
+  if (bid !== -1) return false
+  // 如果是单页模式（无论是否处于编辑状态），都视为普通视图（非复习模式）
+  if (route.query.single === 'true') return false
+  // 其它情况（包括复习过程中的临时编辑）均保持复习模式逻辑
+  return true
+})
+const showAnswer = ref(false)
+const isMastered = (w: Word | undefined) => {
+  if (!w) return false
+  const targetStreak = Number(authStore.userInfo?.cfg?.targetStreak || 3)
+  return (w.n_streak || 0) >= targetStreak
+}
+
+const currentStatus = computed(() => {
+  const w = cardList.value[currentIndex.value]
+  if (isReviewMode.value && isMastered(w)) {
+    return 3 // Status 3: Mastered
+  }
+  return w?.last_status ?? 0
+})
 
 const toggleReview = async (w: Word) => {
   if (w.in_review) {
@@ -270,14 +392,24 @@ onMounted(async () => {
   if (autoEdit.value) {
     isEditMode.value = true
   }
+
+  // 初始化更新断点：如果当前进入的单词是有效的待复习词，则记录为断点
+  if (isReviewMode.value) {
+    const w = wordsStore.words.find((w) => w.id === wid)
+    // 仅当单词存在、未掌握且状态为“待复习”时更新断点
+    // 允许用户查看已复习的单词而不丢失进度
+    if (w && !isMastered(w) && (w.last_status || 0) === 0) {
+      authStore.updateUserConfig({ lastReviewID: w.id })
+    }
+  }
 })
 
-// 检测是否为桌面设备（非触摸屏或支持悬停）
+// 检测是否为纯桌面设备（无触摸屏）
 const isDesktop = computed(() => {
-  // 检测是否支持精细指针（鼠标）和悬停
-  const hasFinePointer = window.matchMedia('(pointer: fine)').matches
-  const canHover = window.matchMedia('(hover: hover)').matches
-  return hasFinePointer || canHover
+  // 只要设备支持触摸（maxTouchPoints > 0），就认为可以使用滑动手势，不显示导航按钮
+  // 这样可以排除手机、平板以及带触摸屏的笔记本
+  const isTouch = navigator.maxTouchPoints > 0 || 'ontouchstart' in window
+  return !isTouch
 })
 
 const cardList = computed(() => {
@@ -300,6 +432,9 @@ watch(initialIndex, (val) => {
   currentIndex.value = val
 })
 
+const currentWord = computed(() => cardList.value[currentIndex.value])
+const targetStreak = computed(() => Number(authStore.userInfo?.cfg?.targetStreak || 3))
+
 const title = computed(() => {
   let baseTitle = '单词卡片'
   if (bid === 0) {
@@ -318,14 +453,34 @@ const title = computed(() => {
 
 const onChange = (index: number) => {
   currentIndex.value = index
+  // 必须重置 showAnswer，否则如果上一个单词被手动点开了（showAnswer=true），
+  // 滑到下一个 currentStatus===0 的单词时，showAnswer 依然是 true，导致遮罩不显示
+  showAnswer.value = false
   const w = cardList.value[index]
   if (w) {
     wordsStore.setCurrentWord(w)
-    // 更新 URL，以便刷新页面后能停留在当前单词
+    // Prepare new query
+    const newQuery = { ...route.query }
+    // 如果在复习本中滑动，且不是单页模式
+    // 且即将进入的单词有遮罩（未掌握且状态为0），则强制退出编辑模式
+    if (bid === -1 && !isSingleMode.value && newQuery.edit) {
+      const willHaveMask = !isMastered(w) && (w.last_status || 0) === 0
+      if (willHaveMask) {
+        delete newQuery.edit
+        isEditMode.value = false
+      }
+    }
+
+    // Update URL
     router.replace({
       path: `/books/${bid}/words/${w.id}`,
-      query: route.query,
+      query: newQuery,
     })
+    // Update Review Progress (Breakpoint)
+    // Only update breakpoint if the word is pending review and not mastered
+    if (isReviewMode.value && !isMastered(w) && (w.last_status || 0) === 0) {
+      authStore.updateUserConfig({ lastReviewID: w.id })
+    }
   }
 }
 
@@ -348,6 +503,7 @@ const editingWord = ref<Word | null>(null)
 const wordEditorMode = ref<'full' | 'phon'>('full')
 
 const toggleEditMode = () => {
+  if (isReviewMode.value && !showAnswer.value && currentStatus.value === 0) return
   isEditMode.value = !isEditMode.value
   const query = { ...route.query }
   if (isEditMode.value) {
@@ -480,6 +636,71 @@ const getDictEn = (defs: BaseDictDefinition[]) => {
   return list
 }
 
+const revealAnswer = () => {
+  showAnswer.value = true
+}
+
+const onReviewResult = async (status: 1 | 2) => {
+  const current = cardList.value[currentIndex.value]
+  if (current) {
+    // 每次评价后，更新 lastReviewID
+    await authStore.updateUserConfig({ lastReviewID: current.id })
+    await wordsStore.submitReviewResult(current, status)
+
+    // 如果是认识(2)且已达标(Mastered)，显示达标动画
+    if (status === 2 && isMastered(current)) {
+      showMasteredAnimation.value = true
+      setTimeout(async () => {
+        showMasteredAnimation.value = false
+        await nextTick()
+        swipeNextReview()
+      }, 2000)
+    } else if (status === 2) {
+      // 认识：自动跳转下一个未复习的单词
+      await nextTick()
+      swipeNextReview()
+    }
+    // 不认识：状态更新会自动触发视图重绘，移除遮罩（因为 currentStatus 变为 1）
+  }
+}
+
+const swipeNextReview = async () => {
+  const list = cardList.value
+  const len = list.length
+  if (len === 0) return
+
+  const start = currentIndex.value
+  let foundIndex = -1
+
+  // 从当前卡片向后循环搜索下一个 last_status === 0 的项
+  // 如果循环回到自己(即起点)仍无待复习项，判定为复习完成
+  for (let i = 1; i < len; i++) {
+    const idx = (start + i) % len
+    const word = list[idx]
+    if (!word) continue
+    const status = word.last_status || 0
+    if (status === 0 && !isMastered(word)) {
+      foundIndex = idx
+      break
+    }
+  }
+
+  if (foundIndex !== -1) {
+    swipeRef.value?.swipeTo(foundIndex)
+  } else {
+    // 复习完成
+    // 自动重置复习进度
+    await wordsStore.resetReviewStatus()
+
+    showDialog({
+      title: '复习完成',
+      message: '本轮复习已完成，进度已自动重置。',
+    }).then(() => {
+      router.back()
+    })
+  }
+}
+
 const goBack = () => router.back()
 const swipePrev = () => swipeRef.value?.prev()
 const swipeNext = () => swipeRef.value?.next()
@@ -526,6 +747,11 @@ const swipeNext = () => swipeRef.value?.next()
 .nav-bar-icon.active {
   background-color: var(--van-nav-bar-icon-color);
   color: #fff;
+}
+
+.nav-bar-icon.disabled {
+  color: var(--van-gray-4);
+  cursor: not-allowed;
 }
 
 .swipe-wrap {
@@ -665,19 +891,24 @@ const swipeNext = () => swipeRef.value?.next()
 }
 .nav-btn {
   position: absolute;
-  top: auto;
-  bottom: calc(20px + var(--vnb-pad-bottom));
-  transform: scale(0.75);
-  z-index: 10;
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%) scale(0.75);
+  z-index: 60;
   display: inline-flex;
   padding: 0 10px;
   backdrop-filter: blur(6px);
+  opacity: 0.3;
+  transition: opacity 0.3s;
+}
+.nav-btn:hover {
+  opacity: 1;
 }
 .nav-prev {
-  left: 6px;
+  left: 0;
 }
 .nav-next {
-  right: 6px;
+  right: 0;
 }
 
 .dict-tabs {
@@ -757,5 +988,252 @@ const swipeNext = () => swipeRef.value?.next()
   top: -2px;
   right: 0;
   font-size: 16px;
+}
+
+.review-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--van-background);
+  z-index: 20;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  cursor: pointer;
+  padding-top: 40px;
+}
+.mask-hint {
+  color: var(--van-gray-5);
+  font-size: var(--van-font-size-md);
+  border: 1px dashed var(--van-gray-4);
+  padding: 8px 16px;
+  border-radius: 4px;
+}
+.review-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.review-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--van-background);
+  border-top: 1px solid var(--van-border-color);
+  padding: 12px 16px;
+  display: flex;
+  gap: 24px;
+  z-index: 50;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  justify-content: center;
+  .review-btn {
+    min-width: 120px;
+    max-width: 140px;
+    flex: 1;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    font-weight: bold;
+    font-size: var(--van-font-size-md);
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+}
+
+.review-stats-overlay {
+  position: fixed;
+  bottom: calc(12px + 44px + 12px + env(safe-area-inset-bottom) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  gap: 16px;
+  z-index: 100;
+  pointer-events: none;
+  width: max-content;
+  backdrop-filter: blur(4px);
+}
+
+@media (prefers-color-scheme: dark) {
+  .review-stats-overlay {
+    background-color: rgba(30, 30, 30, 0.8);
+  }
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  font-size: var(--van-font-size-sm);
+  color: var(--van-text-color);
+}
+
+.stat-item .van-icon {
+  margin-right: 4px;
+}
+
+.stat-item.unknown {
+  color: var(--van-danger-color);
+}
+.stat-item.known {
+  color: var(--van-success-color);
+}
+.stat-item.streak {
+  color: var(--van-primary-color);
+}
+
+.stat-label {
+  margin-right: 4px;
+  opacity: 0.8;
+  font-size: var(--van-font-size-xs);
+}
+.stat-value {
+  font-weight: bold;
+}
+.review-btn:active {
+  opacity: 0.8;
+}
+.review-btn.reveal {
+  background: var(--van-gray-2);
+  color: var(--van-text-color);
+}
+.review-btn.unknown {
+  background: var(--van-danger-color);
+  color: #fff;
+}
+.review-btn.known {
+  background: var(--van-success-color);
+  color: #fff;
+}
+.review-btn.next {
+  background: var(--van-primary-color);
+  color: #fff;
+}
+.review-btn.disabled {
+  background: var(--van-gray-3);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.review-btn.unknown.disabled {
+  color: var(--van-danger-color);
+}
+.review-btn.known.disabled {
+  color: var(--van-success-color);
+}
+.review-btn.mastered.disabled {
+  color: var(--van-orange);
+}
+.card-content.review-padding {
+  padding-bottom: 80px;
+}
+.btn-icon {
+  margin-right: 4px;
+  font-size: var(--van-font-size-md);
+}
+.btn-icon-left {
+  margin-right: 4px;
+  font-weight: bold;
+}
+.btn-icon-right {
+  margin-left: 4px;
+  font-size: var(--van-font-size-md);
+  font-weight: bold;
+}
+
+.mastered-animation-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2000;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.mastered-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.mastered-icon {
+  font-size: 80px;
+  color: var(--van-warning-color);
+  margin-bottom: 20px;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+}
+
+.mastered-text {
+  font-size: 24px;
+  color: #fff;
+  font-weight: bold;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.mastered-word {
+  font-size: 32px;
+  color: var(--van-warning-color);
+  font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes bounceIn {
+  from,
+  20%,
+  40%,
+  60%,
+  80%,
+  to {
+    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+  }
+
+  0% {
+    opacity: 0;
+    transform: scale3d(0.3, 0.3, 0.3);
+  }
+
+  20% {
+    transform: scale3d(1.1, 1.1, 1.1);
+  }
+
+  40% {
+    transform: scale3d(0.9, 0.9, 0.9);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale3d(1.03, 1.03, 1.03);
+  }
+
+  80% {
+    transform: scale3d(0.97, 0.97, 0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale3d(1, 1, 1);
+  }
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

@@ -43,12 +43,26 @@
         <span class="stat-item known"> <van-icon name="success" /> {{ word.n_known || 0 }} </span>
         <span class="stat-item streak">
           <van-icon name="fire" /> {{ word.n_streak || 0 }}/{{ targetStreak }}
-          <van-icon v-if="(word.n_streak || 0) >= targetStreak" name="medal" class="medal-icon" />
         </span>
       </div>
       <div v-else>
         {{ definition }}
       </div>
+    </template>
+
+    <template #right-icon>
+      <div v-if="isReviewMode" class="status-icon-wrapper">
+        <van-icon
+          v-if="(word.n_streak || 0) >= targetStreak"
+          name="medal"
+          color="#ff976a"
+          size="20"
+        />
+        <van-icon v-else-if="word.last_status === 2" name="success" color="#07c160" size="20" />
+        <van-icon v-else-if="word.last_status === 1" name="cross" color="#ee0a24" size="20" />
+        <van-icon v-else name="arrow" class="van-cell__right-icon" />
+      </div>
+      <van-icon v-else name="arrow" class="van-cell__right-icon" />
     </template>
   </van-cell>
 </template>
@@ -254,6 +268,12 @@ const onSelect = (action: { key: string }) => {
 .medal-icon {
   color: var(--van-warning-color);
   margin-left: 4px;
+}
+
+.status-icon-wrapper {
+  display: flex;
+  align-items: center;
+  height: 100%;
 }
 </style>
 

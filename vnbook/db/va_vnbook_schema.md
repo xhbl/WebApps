@@ -138,6 +138,7 @@ CREATE TABLE `vnu_words` (
     `phon` VARCHAR(255) DEFAULT NULL COMMENT '用户编辑后的音标',
     `time_c` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX `idx_vnu_user_word` (`user_id`, `word`),
+    INDEX `idx_user_timec` (`user_id`, `time_c` DESC),
     CONSTRAINT `fk_vnu_word_user` FOREIGN KEY (`user_id`) REFERENCES `vnb_users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 ```
@@ -260,24 +261,26 @@ CREATE TABLE `vnu_mapbw` (
 
 #### 字段说明
 
-| 字段名      | 数据类型         | 属性                       | 说明             |
-| ----------- | ---------------- | -------------------------- | ---------------- |
-| `id`        | INT              | AUTO_INCREMENT PRIMARY KEY | 记录 ID          |
-| `user_id`   | INT              | NOT NULL, FOREIGN KEY      | 关联用户         |
-| `word_id`   | INT              | NOT NULL, FOREIGN KEY      | 关联单词         |
-| `n_known`   | TINYINT UNSIGNED | DEFAULT 0                  | 累计认识次数     |
-| `n_unknown` | TINYINT UNSIGNED | DEFAULT 0                  | 累计不认识次数   |
-| `n_streak`  | TINYINT UNSIGNED | DEFAULT 0                  | 当前连续认识次数 |
-| `time_c`    | DATETIME         | DEFAULT CURRENT_TIMESTAMP  | 加入复习时间     |
-| `time_r`    | DATETIME         | DEFAULT CURRENT_TIMESTAMP  | 最近复习时间     |
+| 字段名        | 数据类型         | 属性                       | 说明                                   |
+| ------------- | ---------------- | -------------------------- | -------------------------------------- |
+| `id`          | INT              | AUTO_INCREMENT PRIMARY KEY | 记录 ID                                |
+| `user_id`     | INT              | NOT NULL, FOREIGN KEY      | 关联用户                               |
+| `word_id`     | INT              | NOT NULL, FOREIGN KEY      | 关联单词                               |
+| `n_known`     | TINYINT UNSIGNED | DEFAULT 0                  | 累计认识次数                           |
+| `n_unknown`   | TINYINT UNSIGNED | DEFAULT 0                  | 累计不认识次数                         |
+| `n_streak`    | TINYINT UNSIGNED | DEFAULT 0                  | 当前连续认识次数                       |
+| `last_status` | TINYINT          | DEFAULT 0                  | 最近复习状态: 0-待学, 1-不认识, 2-认识 |
+| `time_c`      | DATETIME         | DEFAULT CURRENT_TIMESTAMP  | 加入复习时间                           |
+| `time_r`      | DATETIME         | DEFAULT CURRENT_TIMESTAMP  | 最近复习时间                           |
 
 #### 约束与索引
 
-| 名称     | 类型 | 字段             | 说明               |
-| -------- | ---- | ---------------- | ------------------ |
-| idx_u_w  | 唯一 | user_id, word_id | 单词复习记录唯一性 |
-| fk_vnr_u | 外键 | user_id          | 关联用户           |
-| fk_vnr_w | 外键 | word_id          | 关联单词           |
+| 名称           | 类型 | 字段             | 说明               |
+| -------------- | ---- | ---------------- | ------------------ |
+| idx_u_w        | 唯一 | user_id, word_id | 单词复习记录唯一性 |
+| idx_user_timec | 普通 | user_id, time_c  | 按时间倒序查询优化 |
+| fk_vnr_u       | 外键 | user_id          | 关联用户           |
+| fk_vnr_w       | 外键 | word_id          | 关联单词           |
 
 #### SQL 定义
 
@@ -289,9 +292,11 @@ CREATE TABLE `vnu_review` (
     `n_known` TINYINT UNSIGNED DEFAULT 0 COMMENT '累计认识次数',
     `n_unknown` TINYINT UNSIGNED DEFAULT 0 COMMENT '累计不认识次数',
     `n_streak` TINYINT UNSIGNED DEFAULT 0 COMMENT '当前连续认识次数',
+    `last_status` TINYINT DEFAULT 0 COMMENT '最近复习状态: 0-待学, 1-不认识, 2-认识',
     `time_c` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '加入复习时间',
     `time_r` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最近复习时间',
     UNIQUE INDEX `idx_u_w` (`user_id`, `word_id`),
+    INDEX `idx_user_timec` (`user_id`, `time_c` DESC),
     CONSTRAINT `fk_vnr_u` FOREIGN KEY (`user_id`) REFERENCES `vnb_users` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_vnr_w` FOREIGN KEY (`word_id`) REFERENCES `vnu_words` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB;
@@ -399,11 +404,13 @@ COLLATE utf8mb4_unicode_ci;
 
 ## 版本历史
 
-| 日期       | 版本 | 描述                                                       |
-| ---------- | ---- | ---------------------------------------------------------- |
-| 2026-02-09 | 1.2  | 新增单词复习记录表 `vnu_review`                            |
-| 2026-02-06 | 1.1  | 新增 `sorder` 排序字段和 `smemo` 备注字段 到释义表和例句表 |
-| 2026-02-04 | 1.0  | 初始版本，基于 impdb.php                                   |
+| 日期       | 版本 | 描述                                                        |
+| ---------- | ---- | ----------------------------------------------------------- |
+| 2026-02-12 | 1.4  | 新增 `idx_user_timec` 索引到 `vnu_words` 和 `vnu_review` 表 |
+| 2026-02-11 | 1.3  | 新增 `last_status` 字段到 `vnu_review` 表                   |
+| 2026-02-09 | 1.2  | 新增单词复习记录表 `vnu_review`                             |
+| 2026-02-06 | 1.1  | 新增 `sorder` 排序字段和 `smemo` 备注字段 到释义表和例句表  |
+| 2026-02-04 | 1.0  | 初始版本，基于 impdb.php                                    |
 
 ---
 

@@ -11,6 +11,7 @@
  * - wid (word ID) - optional, filters to specific word
  * - eid (explanation ID) - optional, filters to specific explanation
  * - sid (sentence ID) - optional, filters to specific sentence
+ * - limit (streak limit) - optional, used for review book cleanup
  * - req (request type) - auto-detected if not specified: 'w'=words, 'e'=explanations, 's'=sentences
  */
 
@@ -25,7 +26,27 @@ function getWords($bid, $wid = null, $word = null)
     $uid = $_SESSION['user_id'];
 
     try {
-        if ($bid == 0) {
+        if ($bid == -1) {
+            // Review Book: Perform cleanup before fetching
+            // 1. Remove words that reached streak limit
+            $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 3;
+            if ($limit > 0) {
+                $sqlCleanup = "DELETE FROM vnu_review WHERE user_id = ? AND n_streak >= ?";
+                $stmtCleanup = $db->prepare($sqlCleanup);
+                $stmtCleanup->execute([$uid, $limit]);
+            }
+
+            // Review Book: Fetch words from vnu_review
+            // Use r.time_c (added to review time) as the main time_c for sorting consistency
+            $sql = "SELECT w.id, w.user_id, w.word, w.phon, r.time_c,
+                    r.n_known, r.n_unknown, r.n_streak, r.time_r, r.last_status,
+                    (SELECT COUNT(*) FROM vnu_mapbw m WHERE m.word_id = w.id) as book_count,
+                    1 as in_review
+                    FROM vnu_words w
+                    JOIN vnu_review r ON w.id = r.word_id
+                    WHERE w.user_id = ?";
+            $params = [$uid];
+        } else if ($bid == 0) {
             // Fetch all words for the user (All Words view)
             $sql = "SELECT w.id, w.user_id, w.word, w.phon, w.time_c,
                     (SELECT COUNT(*) FROM vnu_mapbw m WHERE m.word_id = w.id) as book_count,
@@ -33,24 +54,14 @@ function getWords($bid, $wid = null, $word = null)
                     FROM vnu_words w
                     WHERE w.user_id = ?";
             $params = [$uid];
-        } else if ($bid == -1) {
-            // Review Book: Fetch words from vnu_review
-            // Use r.time_c (added to review time) as the main time_c for sorting consistency
-            $sql = "SELECT w.id, w.user_id, w.word, w.phon, r.time_c,
-                    r.n_known, r.n_unknown, r.n_streak, r.time_r,
-                    (SELECT COUNT(*) FROM vnu_mapbw m WHERE m.word_id = w.id) as book_count,
-                    1 as in_review
-                    FROM vnu_words w
-                    JOIN vnu_review r ON w.id = r.word_id
-                    WHERE w.user_id = ?";
-            $params = [$uid];
         } else {
             // Get words for this book (only those mapped to this book)
             $sql = "SELECT w.id, w.user_id, w.word, w.phon, w.time_c, m.book_id, m.id as map_id,
+                    (SELECT COUNT(*) FROM vnu_mapbw mb WHERE mb.word_id = w.id) as book_count,
                     (SELECT COUNT(*) FROM vnu_review r WHERE r.word_id = w.id) as in_review
                     FROM vnu_words w
-                    LEFT JOIN vnu_mapbw m ON w.id = m.word_id AND m.book_id = ?
-                    WHERE w.user_id = ? AND m.id IS NOT NULL";
+                    JOIN vnu_mapbw m ON w.id = m.word_id AND m.book_id = ?
+                    WHERE w.user_id = ?";
             $params = [$bid, $uid];
         }
 
@@ -431,11 +442,20 @@ function updateSentences($items)
         $db->beginTransaction();
 
         foreach ($items as $item) {
-            // Verify explanation belongs to user's word
-            $stmt = $db->prepare("SELECT e.id FROM vnu_explanations e JOIN vnu_words w ON e.word_id = w.id WHERE e.id = ? AND w.user_id = ?");
-            $stmt->execute([$item->exp_id, $uid]);
-            if (!$stmt->fetch()) {
-                throw new Exception("Unauthorized: explanation not found");
+            // Verify word belongs to user
+            $stmt = $db->prepare("SELECT s.id FROM vnu_sentences s JOIN vnu_explanations e ON s.exp_id = e.id JOIN vnu_words w ON e.word_id = w.id WHERE s.id = ? AND w.user_id = ?");
+            // If new sentence (no ID yet), we verify exp_id instead
+            if (empty($item->_new)) {
+                $stmt->execute([$item->id, $uid]);
+                if (!$stmt->fetch()) {
+                    throw new Exception("Unauthorized: sentence not found");
+                }
+            } else {
+                $stmt = $db->prepare("SELECT e.id FROM vnu_explanations e JOIN vnu_words w ON e.word_id = w.id WHERE e.id = ? AND w.user_id = ?");
+                $stmt->execute([$item->exp_id, $uid]);
+                if (!$stmt->fetch()) {
+                    throw new Exception("Unauthorized: explanation not found");
+                }
             }
 
             if (!empty($item->_new)) {
@@ -449,26 +469,28 @@ function updateSentences($items)
             } else {
                 // Update existing sentence
                 $senJson = json_encode($item->sen ?? []);
-                $sql = "UPDATE vnu_sentences SET sen = ?";
-                $params = [$senJson];
+                $sql = "UPDATE vnu_sentences SET sen = ?, smemo = ?";
+                $params = [$senJson, $item->smemo ?? null];
 
                 if (isset($item->sorder)) {
                     $sql .= ", sorder = ?";
                     $params[] = $item->sorder;
                 }
 
-                if (property_exists($item, 'smemo')) {
-                    $sql .= ", smemo = ?";
-                    $params[] = $item->smemo;
-                }
-
-                $sql .= " WHERE id = ? AND exp_id IN (SELECT e.id FROM vnu_explanations e JOIN vnu_words w ON e.word_id = w.id WHERE w.user_id = ?)";
+                $sql .= " WHERE id = ?";
                 $params[] = $item->id;
-                $params[] = $uid;
-                $db->prepare($sql)->execute($params);
+
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
             }
 
-            $out[] = $item;
+            $stmt = $db->prepare("SELECT * FROM vnu_sentences WHERE id = ?");
+            $stmt->execute([$item->id]);
+            $sentence = $stmt->fetch(PDO::FETCH_ASSOC);
+            $sentence['sen'] = json_decode($sentence['sen']);
+            $sentence['_new'] = 0;
+
+            $out[] = (object)$sentence;
         }
 
         $db->commit();
@@ -479,6 +501,67 @@ function updateSentences($items)
         $ret->e = $e->getMessage();
     }
 
+    return $ret;
+}
+
+/**
+ * Update review status
+ */
+function updateReviewStatus($items)
+{
+    $db = DB::vnb();
+    $uid = $_SESSION['user_id'];
+    $ret = new stdClass();
+    $ret->v = false;
+    $out = [];
+
+    try {
+        $db->beginTransaction();
+
+        foreach ($items as $item) {
+            $wordId = $item->id;
+            $status = $item->status; // 1: unknown, 2: known
+
+            if ($status == 1) {
+                // Unknown: n_unknown++, n_streak=0, last_status=1
+                $sql = "UPDATE vnu_review SET 
+                        n_unknown = n_unknown + 1, 
+                        n_streak = 0, 
+                        last_status = 1,
+                        time_r = NOW()
+                        WHERE word_id = ? AND user_id = ?";
+            } else if ($status == 2) {
+                // Known: n_known++, n_streak++, last_status=2
+                $sql = "UPDATE vnu_review SET 
+                        n_known = n_known + 1, 
+                        n_streak = n_streak + 1, 
+                        last_status = 2,
+                        time_r = NOW()
+                        WHERE word_id = ? AND user_id = ?";
+            } else {
+                continue;
+            }
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$wordId, $uid]);
+
+            // Fetch updated review data
+            $stmt = $db->prepare("SELECT word_id as id, n_known, n_unknown, n_streak, last_status, time_r 
+                                  FROM vnu_review WHERE word_id = ? AND user_id = ?");
+            $stmt->execute([$wordId, $uid]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row) {
+                $out[] = (object)$row;
+            }
+        }
+
+        $db->commit();
+        $ret->v = true;
+        $ret->o = $out;
+    } catch (Exception $e) {
+        $db->rollBack();
+        $ret->e = $e->getMessage();
+    }
     return $ret;
 }
 
@@ -711,6 +794,21 @@ try {
     } else if ($method == 'PUT' && $input) {
         // Update operations
         if ($req == 'w') {
+            // Handle reset review request
+            if (isset($_GET['action']) && $_GET['action'] == 'reset_review') {
+                $db = DB::vnb();
+                $uid = $_SESSION['user_id'];
+                try {
+                    $sql = "UPDATE vnu_review SET last_status = 0 WHERE user_id = ?";
+                    $stmt = $db->prepare($sql);
+                    $stmt->execute([$uid]);
+                    echo json_encode(['success' => true]);
+                } catch (Exception $e) {
+                    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+                }
+                exit;
+            }
+
             $ret = updateWords($bid, $input);
             if ($ret->v) {
                 // Attach Base Dictionary Info for updated/created words
@@ -744,6 +842,13 @@ try {
             $ret = updateSentences($input);
             if ($ret->v) {
                 $response = ['success' => true, 'sentence' => $ret->o];
+            } else {
+                $response['message'] = $ret->e;
+            }
+        } else if ($req == 'r') {
+            $ret = updateReviewStatus($input);
+            if ($ret->v) {
+                $response = ['success' => true, 'review' => $ret->o];
             } else {
                 $response['message'] = $ret->e;
             }

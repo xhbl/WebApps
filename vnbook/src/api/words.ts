@@ -4,12 +4,13 @@ import type { Word, Explanation, Sentence, ApiResponse, BaseDictInfo } from '@/t
 /**
  * 获取单词列表（包含释义和例句）
  */
-export const getWords = (bookId: number, word?: string) => {
+export const getWords = (bookId: number, word?: string, limit?: number) => {
   return request.get<ApiResponse>('/words.php', {
     params: {
       bid: bookId,
       req: 'w',
       word,
+      limit,
     },
   })
 }
@@ -143,4 +144,32 @@ export const getWordBooks = (wordId: number) => {
   return request.get<ApiResponse>('/words.php', {
     params: { req: 'books', wid: wordId },
   })
+}
+
+/**
+ * 更新复习状态
+ * @param status 1: 不认识 (unknown), 2: 认识 (known)
+ */
+export const updateReviewStatus = (wordId: number, status: 1 | 2) => {
+  return request.put<ApiResponse>(
+    '/words.php',
+    { id: wordId, status },
+    {
+      params: { req: 'r' },
+      headers: { 'X-No-Loading': 'true' },
+    },
+  )
+}
+
+/**
+ * 重置复习进度
+ */
+export const resetReview = () => {
+  return request.put<ApiResponse>(
+    '/words.php',
+    {},
+    {
+      params: { req: 'w', action: 'reset_review' },
+    },
+  )
 }

@@ -166,12 +166,22 @@
           />
         </div>
         <div class="bottom-bar-center">
-          <van-icon
-            v-if="isReviewMode"
-            name="info-o"
-            class="bottom-bar-icon large-icon"
-            @click="showReviewInfo"
-          />
+          <div v-if="isReviewMode" class="review-controls">
+            <van-icon
+              name="replay"
+              class="bottom-bar-icon"
+              :class="{ disabled: !isResetActive }"
+              @click="onResetReview"
+            />
+            <div class="play-wrapper" @click="onPlayReview">
+              <van-icon
+                :name="hasActiveReview ? 'play-circle' : 'play-circle-o'"
+                class="bottom-bar-icon large-icon play-icon"
+                :class="{ breathing: hasActiveReview }"
+              />
+            </div>
+            <van-icon name="info-o" class="bottom-bar-icon" @click="showReviewInfo" />
+          </div>
           <van-icon
             v-else-if="bid > 0"
             name="plus"
@@ -273,6 +283,7 @@ import WordEditorDialog from '@/components/WordEditorDialog.vue'
 import WordListItem from '@/components/WordListItem.vue'
 import ReviewGuideDialog from '@/components/ReviewGuideDialog.vue'
 import type { Word, SortMode, Book } from '@/types'
+import { toast } from '@/utils/toast'
 import type { SearchInstance, PopoverAction } from 'vant'
 import { usePopupHistory } from '@/composables/usePopupHistory'
 import { useWordOperations } from '@/composables/useWordOperations'
@@ -293,10 +304,20 @@ const {
   showWordEditor,
   editingWord,
   openAddWord,
+  handleStartReview,
+  handleResetReview,
 } = useWordOperations()
 
 const bid = computed(() => Number(route.params.bid))
 const isReviewMode = computed(() => bid.value === -1)
+const isResetActive = computed(() => {
+  return wordsStore.words.some((w) => (w.last_status || 0) !== 0)
+})
+
+const hasActiveReview = computed(() => {
+  return isResetActive.value
+})
+
 const showReviewGuide = ref(false)
 const refreshing = ref(false)
 const loading = ref(true)
@@ -403,7 +424,7 @@ const onWordAction = async (action: { key: string }, w: Word) => {
       wordInReview.value = result.inReview
       showBelongingBooks.value = true
     } else {
-      import('@/utils/toast').then(({ toast }) => toast.showFail('获取失败'))
+      toast.showFail('获取失败')
     }
   } else if (action.key === 'remove-review') {
     // 复习本视图里需要确认，普通视图不需要
@@ -482,7 +503,8 @@ onActivated(async () => {
     }
 
     if (scrollTop.value > 0) window.scrollTo(0, scrollTop.value)
-    await wordsStore.loadWords(newBid)
+    // 保持本地状态，避免复习后达标单词立即消失，如需同步最新数据可手动刷新
+    // await wordsStore.loadWords(newBid)
     loading.value = false
   }
 })
@@ -529,6 +551,13 @@ const toggleOrphanFilter = () => {
     router.replace({ query })
   })
 }
+
+const onResetReview = async () => {
+  if (!isResetActive.value) return
+  await handleResetReview()
+}
+
+const onPlayReview = () => handleStartReview(bid.value)
 
 const onSearchUpdate = (val: string) => wordsStore.setSearchKeyword(val)
 
@@ -624,6 +653,10 @@ const openWordCard = (w: Word) => {
   const query: Record<string, string> = {}
   if (bid.value === 0) {
     query.single = 'true'
+  }
+  // Review Mode: preserve review state
+  if (isReviewMode.value) {
+    query.review = 'true'
   }
   router.push({ path: `/books/${bid.value}/words/${w.id}`, query })
 }
@@ -809,20 +842,61 @@ const { openMenu, AppMenu } = useAppMenu({
   flex: 1;
   display: flex;
   justify-content: flex-start;
-  gap: 24px;
-}
-
-.bottom-bar-center {
-  display: flex;
-  justify-content: center;
-  width: 40px;
+  align-items: center;
+  gap: 20px;
 }
 
 .bottom-bar-right {
   flex: 1;
   display: flex;
   justify-content: flex-end;
-  gap: 24px;
+  align-items: center;
+  gap: 20px;
+}
+
+.bottom-bar-center {
+  flex: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 20px;
+}
+
+.review-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.play-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.play-icon {
+  color: var(--van-primary-color);
+  font-size: 32px;
+  transition: all 0.3s;
+}
+.play-icon.breathing {
+  color: var(--van-success-color);
+  animation: breathing 2s infinite ease-in-out;
+}
+
+@keyframes breathing {
+  0% {
+    transform: scale(1);
+    text-shadow: 0 0 0 rgba(7, 193, 96, 0);
+  }
+  50% {
+    transform: scale(1.1);
+    text-shadow: 0 0 10px rgba(7, 193, 96, 0.5);
+  }
+  100% {
+    transform: scale(1);
+    text-shadow: 0 0 0 rgba(7, 193, 96, 0);
+  }
 }
 
 .bottom-bar-icon {
