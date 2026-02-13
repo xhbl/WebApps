@@ -31,7 +31,9 @@ def get_db_config(db_address='127.0.0.1:3306', user_credentials='root:_dbpasswor
 
 def import_json_file(db_config):
     """导入 JSON 文件并显示进度"""
-    json_file = 'coca_vocab_20k_ce.json'
+    # json_file = 'coca_vocab_20k_ce.json'
+    json_file = 'va_basedict_r01.json'
+
     connection = None
     try:
         # 建立连接
@@ -67,7 +69,10 @@ def import_json_file(db_config):
                     ipas = word_entry.get('ipas', [])
                     
                     # JSON转义
-                    ipas_json = json.dumps(ipas, ensure_ascii=False).replace("'", "''")
+                    # 关键修复：确保所有反斜杠被转义。
+                    # Python的json.dumps会转义 \ 为 \\，但在构建SQL字符串时，MySQL需要 \\\\ 才能存入一个 \。
+                    # 同时单引号 ' 需要转义为 ''。
+                    ipas_json = json.dumps(ipas, ensure_ascii=False).replace("\\", "\\\\").replace("'", "''")
                     
                     # 插入words表
                     insert_word_sql = (
@@ -90,7 +95,8 @@ def import_json_file(db_config):
                         if 'en' in meanings:
                             meanings_obj['en'] = meanings['en']
                         
-                        meanings_json = json.dumps(meanings_obj, ensure_ascii=False).replace("'", "''")
+                        # 关键修复：同上，转义反斜杠
+                        meanings_json = json.dumps(meanings_obj, ensure_ascii=False).replace("\\", "\\\\").replace("'", "''")
                         
                         # 插入definitions表
                         insert_def_sql = (
@@ -110,8 +116,11 @@ def import_json_file(db_config):
                     
                 except Exception as e:
                     failed += 1
-                    print(f"\n❌ 导入错误 (单词 {word_idx}): {e}")
-                    if word_idx <= 5:
+                    print(f"\n❌ 导入错误 (单词 {word_idx}, ID: {word_id}): {e}")
+                    if isinstance(e, pymysql.err.DataError) and e.args[0] == 1264:
+                         print("   提示: 这可能是因为数据库的 ID 字段类型太小 (例如 SMALLINT)。\n   建议将 `words` 表的 `id` 字段修改为 `INT` 或 `MEDIUMINT`。")
+                    
+                    if word_idx <= 5 or failed <= 5:
                         print(f"   词条: {word_entry.get('word', 'N/A')}")
             
             connection.commit()

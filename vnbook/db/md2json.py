@@ -51,7 +51,8 @@ def parse_definitions_line(line):
         meanings = []
         if raw_content:
             matches = re.findall(r'"((?:[^"\\]|\\.)*)"', raw_content)
-            meanings = [m.strip() for m in matches]
+            # Unescape \" back to "
+            meanings = [m.replace('\\"', '"').strip() for m in matches]
             
         results.append({'pos': pos_raw, 'meanings': meanings})
         
@@ -120,6 +121,10 @@ def parse_coca_file(input_path, output_path):
                     ipas = re.findall(r'/([^/]+)/', ipa_content)
                     current_entry['ipas'] = ipas
                     i += 1
+                elif ipa_line == '-' or ipa_line == '- ':
+                    # Placeholder line for missing IPA
+                    current_entry['ipas'] = []
+                    i += 1
             
             # Next line: ZH Defs
             zh_defs = []
@@ -178,7 +183,16 @@ def parse_coca_file(input_path, output_path):
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(entries, f, ensure_ascii=False, indent=2)
 
+import sys
+
 if __name__ == '__main__':
-    input_file = r'coca_vocab_20k_ce.md'
-    output_file = r'coca_vocab_20k_ce.json'
+    if len(sys.argv) < 3:
+        print("Usage: python md2json.py <input_md_file> <output_json_file>")
+        sys.exit(1)
+        
+    input_file = sys.argv[1]
+    output_file = sys.argv[2]
+    
+    # input_file = r'coca_vocab_20k_ce.md'
+    # output_file = r'coca_vocab_20k_ce.json'
     parse_coca_file(input_file, output_file)

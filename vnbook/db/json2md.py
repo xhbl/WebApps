@@ -21,6 +21,9 @@ def json_to_md(input_path, output_path):
                 # Join with two spaces to match the style
                 ipa_str = "  ".join([f"/{ipa}/" for ipa in entry['ipas']])
                 f.write(f"- {ipa_str}\n")
+            else:
+                # If no IPAs, output a placeholder line
+                f.write("- \n")
             
             # Prepare definitions
             zh_parts = []
@@ -32,9 +35,15 @@ def json_to_md(input_path, output_path):
                 
                 # Helper to format list of strings into "s1","s2"
                 def format_meanings(mlist):
-                    # We assume the strings in JSON already contain necessary escapes (like \")
-                    # because md2json.py preserves them. We just wrap them in quotes.
-                    return ",".join([f'"{m}"' for m in mlist])
+                    # Escape double quotes inside the string to \" so regex can parse it
+                    escaped_list = []
+                    for m in mlist:
+                        # Replace " with \"
+                        # Note: In Python string literal, \" becomes " in memory.
+                        # We want the output file to have \", so we need replace('"', '\\"')
+                        escaped_m = m.replace('"', '\\"')
+                        escaped_list.append(f'"{escaped_m}"')
+                    return ",".join(escaped_list)
 
                 if 'zh' in meanings and meanings['zh']:
                     zh_content = format_meanings(meanings['zh'])
@@ -56,7 +65,16 @@ def json_to_md(input_path, output_path):
             f.write("\n")
     print("Done.")
 
+import sys
+
 if __name__ == '__main__':
-    input_file = r'coca_vocab_20k_ce.json'
-    output_file = r'coca_vocab_20k_clean.md'
+    if len(sys.argv) < 3:
+        print("Usage: python json2md.py <input_json_file> <output_md_file>")
+        sys.exit(1)
+        
+    input_file = sys.argv[1]
+    output_file = sys.argv[2]
+    
+    # input_file = r'coca_vocab_20k_ce.json'
+    # output_file = r'coca_vocab_20k_clean.md'
     json_to_md(input_file, output_file)
