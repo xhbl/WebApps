@@ -277,7 +277,7 @@ import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
 import { useWordsStore, type WordsStore } from '@/stores/words'
-import { useAppMenu } from '@/composables/useAppMenu'
+import { useAppMenu, type AppMenuItem } from '@/composables/useAppMenu'
 import { usePopoverMap } from '@/composables/usePopoverMap'
 import WordEditorDialog from '@/components/WordEditorDialog.vue'
 import WordListItem from '@/components/WordListItem.vue'
@@ -661,85 +661,99 @@ const openWordCard = (w: Word) => {
   router.push({ path: `/books/${bid.value}/words/${w.id}`, query })
 }
 
+const menuItems = computed<AppMenuItem[]>(() => {
+  if (isSelectMode.value) {
+    const actions: AppMenuItem[] = []
+    if (checkedIds.value.length > 0) {
+      if (isReviewMode.value) {
+        actions.push({
+          name: '取消复习',
+          icon: 'bookmark-o',
+          handler: onBatchCancelReview,
+          color: 'var(--van-warning-color)',
+        })
+      } else {
+        actions.push({
+          name: '删除',
+          icon: 'delete-o',
+          handler: onBatchDelete,
+          color: 'var(--van-danger-color)',
+        })
+        actions.push({
+          name: '加入复习',
+          icon: 'bookmark-o',
+          handler: onBatchBookmark,
+        })
+        if (allowMove.value) {
+          actions.push({
+            name: moveActionConfig.value.text,
+            icon: moveActionConfig.value.icon,
+            handler: onBatchMove,
+          })
+        }
+      }
+    }
+    actions.push({ name: '退出批量管理', icon: 'close', handler: () => toggleMode('select') })
+    return actions
+  }
+  const items: AppMenuItem[] = []
+
+  if (isReviewMode.value) {
+    items.push({
+      name: hasActiveReview.value ? '继续复习' : '开始复习',
+      icon: hasActiveReview.value ? 'play-circle' : 'play-circle-o',
+      color: hasActiveReview.value ? 'var(--van-primary-color)' : undefined,
+      handler: onPlayReview,
+    })
+    items.push({
+      name: '重置复习',
+      icon: 'replay',
+      disabled: !isResetActive.value,
+      handler: onResetReview,
+    })
+  }
+
+  if (bid.value > 0 && !isReviewMode.value) {
+    items.push({ name: '添加单词', icon: 'plus', handler: openAddWord })
+  }
+  if (isReviewMode.value) {
+    items.push({ name: '复习指导', icon: 'info-o', handler: showReviewInfo })
+  }
+  if (bid.value === 0) {
+    items.push({
+      name: wordsStore.orphanFilter ? '显示全部单词' : '显示未入本单词',
+      icon: wordsStore.orphanFilter ? 'bars' : 'failure',
+      color: wordsStore.orphanFilter ? undefined : 'var(--van-warning-color)',
+      handler: () => toggleOrphanFilter(),
+    })
+  }
+  items.push(
+    {
+      // 循环切换：默认 -> 语音 -> 编辑 -> 默认
+      name:
+        mode.value === 'edit' ? '关闭编辑栏' : mode.value === 'audio' ? '显示编辑栏' : '显示语音栏',
+      icon: mode.value === 'none' ? 'volume-o' : 'edit',
+      handler: () => {
+        if (mode.value === 'edit')
+          toggleMode('edit') // 关闭
+        else if (mode.value === 'audio')
+          toggleMode('edit') // 切换到编辑
+        else toggleMode('audio') // 切换到语音
+      },
+    },
+    {
+      name: '批量管理',
+      icon: 'passed',
+      handler: () => toggleMode('select'),
+    },
+  )
+  return items
+})
+
 const { openMenu, AppMenu } = useAppMenu({
   showUser: false,
   showLogout: false,
-  get items() {
-    if (isSelectMode.value) {
-      const actions = []
-      if (checkedIds.value.length > 0) {
-        if (isReviewMode.value) {
-          actions.push({
-            name: '取消复习',
-            icon: 'bookmark-o',
-            handler: onBatchCancelReview,
-            color: 'var(--van-warning-color)',
-          })
-        } else {
-          actions.push({
-            name: '删除',
-            icon: 'delete-o',
-            handler: onBatchDelete,
-            color: 'var(--van-danger-color)',
-          })
-          actions.push({
-            name: '加入复习',
-            icon: 'bookmark-o',
-            handler: onBatchBookmark,
-          })
-          if (allowMove.value) {
-            actions.push({
-              name: moveActionConfig.value.text,
-              icon: moveActionConfig.value.icon,
-              handler: onBatchMove,
-            })
-          }
-        }
-      }
-      actions.push({ name: '退出批量管理', icon: 'close', handler: () => toggleMode('select') })
-      return actions
-    }
-    const items = []
-    if (bid.value > 0 && !isReviewMode.value) {
-      items.push({ name: '添加单词', icon: 'plus', handler: openAddWord })
-    }
-    if (isReviewMode.value) {
-      items.push({ name: '复习指导', icon: 'info-o', handler: showReviewInfo })
-    }
-    if (bid.value === 0) {
-      items.push({
-        name: wordsStore.orphanFilter ? '显示全部单词' : '显示未入本单词',
-        icon: wordsStore.orphanFilter ? 'bars' : 'failure',
-        color: wordsStore.orphanFilter ? undefined : 'var(--van-warning-color)',
-        handler: () => toggleOrphanFilter(),
-      })
-    }
-    items.push(
-      {
-        // 循环切换：默认 -> 语音 -> 编辑 -> 默认
-        name:
-          mode.value === 'edit'
-            ? '关闭编辑栏'
-            : mode.value === 'audio'
-              ? '显示编辑栏'
-              : '显示语音栏',
-        icon: mode.value === 'none' ? 'volume-o' : 'edit',
-        handler: () => {
-          if (mode.value === 'edit')
-            toggleMode('edit') // 关闭
-          else if (mode.value === 'audio')
-            toggleMode('edit') // 切换到编辑
-          else toggleMode('audio') // 切换到语音
-        },
-      },
-      {
-        name: '批量管理',
-        icon: 'passed',
-        handler: () => toggleMode('select'),
-      },
-    )
-    return items
-  },
+  items: menuItems,
 })
 </script>
 
@@ -880,22 +894,22 @@ const { openMenu, AppMenu } = useAppMenu({
   transition: all 0.3s;
 }
 .play-icon.breathing {
-  color: var(--van-success-color);
+  color: var(--van-primary-color);
   animation: breathing 2s infinite ease-in-out;
 }
 
 @keyframes breathing {
   0% {
     transform: scale(1);
-    text-shadow: 0 0 0 rgba(7, 193, 96, 0);
+    text-shadow: 0 0 0 rgba(25, 137, 250, 0);
   }
   50% {
     transform: scale(1.1);
-    text-shadow: 0 0 10px rgba(7, 193, 96, 0.5);
+    text-shadow: 0 0 10px rgba(25, 137, 250, 0.5);
   }
   100% {
     transform: scale(1);
-    text-shadow: 0 0 0 rgba(7, 193, 96, 0);
+    text-shadow: 0 0 0 rgba(25, 137, 250, 0);
   }
 }
 

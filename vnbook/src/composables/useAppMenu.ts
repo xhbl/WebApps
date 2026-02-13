@@ -1,4 +1,4 @@
-import { ref, computed, defineComponent, h } from 'vue'
+import { ref, computed, defineComponent, h, unref, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ActionSheet } from 'vant'
 import { showGlobalDialog } from '@/composables/useGlobalDialog'
@@ -13,11 +13,12 @@ export interface AppMenuItem {
   icon?: string
   color?: string
   key?: string
+  disabled?: boolean
   handler?: () => void
 }
 
 export interface UseAppMenuOptions {
-  items?: AppMenuItem[]
+  items?: AppMenuItem[] | Ref<AppMenuItem[]>
   showUser?: boolean
   userIcon?: string
   showLogout?: boolean
@@ -34,14 +35,16 @@ export function useAppMenu(options: UseAppMenuOptions = {}) {
 
   const actions = computed<MenuAction[]>(() => {
     const list: MenuAction[] = []
+    const items = unref(options.items)
 
     // 1. 自定义项
-    if (options.items) {
-      options.items.forEach((item) => {
+    if (items) {
+      items.forEach((item) => {
         list.push({
           name: item.name,
           icon: item.icon,
           color: item.color,
+          disabled: item.disabled,
           key: item.key || item.name,
           handler: item.handler,
         } as MenuAction & { handler?: () => void })
