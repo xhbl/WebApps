@@ -17,6 +17,20 @@ app.use(router)
 app.mount('#app')
 
 /**
+ * Eruda Mobile Debugging Tool
+ * 仅在开发环境 (DEV) 且为移动端设备时加载
+ */
+if (import.meta.env.DEV && /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+  const script = document.createElement('script')
+  script.src = 'https://cdn.jsdelivr.net/npm/eruda'
+  script.onload = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).eruda.init()
+  }
+  document.body.appendChild(script)
+}
+
+/**
  * PWA Service Worker 注册逻辑
  * 仅在生产环境 (PROD) 时执行
  */
