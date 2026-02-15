@@ -145,41 +145,41 @@
                       尚未在单词本中添加释义例句内容，请点击右上方图标进入编辑模式添加。
                     </div>
 
-                    <div class="dict-section-wrapper" v-if="w.baseInfo?.definitions?.length">
+                    <div class="dict-section-wrapper">
                       <div class="dict-tabs" v-if="showDict">
                         <div class="dict-float-icon" @click.stop="showDict = false">
                           <van-icon name="closed-eye" />
                         </div>
-                        <van-tabs
-                          v-model:active="activeTab"
-                          shrink
-                          background="transparent"
-                          :border="false"
-                          line-width="0px"
-                          color="var(--van-primary-color)"
-                        >
-                          <van-tab title="基本词典">
-                            <div class="dict-content-box">
-                              <div
-                                v-for="(item, idx) in getDictZh(w.baseInfo.definitions)"
-                                :key="'zh' + idx"
-                                class="dict-item"
-                              >
-                                <span class="dict-pos">{{ item.pos }}</span>
-                                <span class="dict-text-zh">{{ item.text }}</span>
-                              </div>
-                              <div
-                                v-for="(item, idx) in getDictEn(w.baseInfo.definitions)"
-                                :key="'en' + idx"
-                                class="dict-item"
-                              >
-                                <span class="dict-pos">{{ item.pos }}</span>
-                                <span class="dict-text-en">{{ item.text }}</span>
-                              </div>
-                            </div>
-                          </van-tab>
-                          <!-- <van-tab title="其它词典"></van-tab> -->
-                        </van-tabs>
+                        <div class="dict-header">
+                          <span class="dict-title-text">基本词典</span>
+                          <span
+                            v-for="d in externalDicts.filter((d) => d.show)"
+                            :key="d.name"
+                            class="ext-dict-link"
+                            @click.stop="openExternalDict(d)"
+                          >
+                            {{ d.name }}
+                          </span>
+                        </div>
+                        <div class="dict-content-box" v-if="w.baseInfo?.definitions?.length">
+                          <div
+                            v-for="(item, idx) in getDictZh(w.baseInfo.definitions)"
+                            :key="'zh' + idx"
+                            class="dict-item"
+                          >
+                            <span class="dict-pos">{{ item.pos }}</span>
+                            <span class="dict-text-zh">{{ item.text }}</span>
+                          </div>
+                          <div
+                            v-for="(item, idx) in getDictEn(w.baseInfo.definitions)"
+                            :key="'en' + idx"
+                            class="dict-item"
+                          >
+                            <span class="dict-pos">{{ item.pos }}</span>
+                            <span class="dict-text-en">{{ item.text }}</span>
+                          </div>
+                        </div>
+                        <div class="dict-empty-content" v-else>暂无基本词典释义</div>
                       </div>
                       <div v-else class="dict-collapsed" @click="showDict = true">
                         <span class="dict-collapsed-text">显示词典信息</span>
@@ -295,6 +295,13 @@
         </div>
       </div>
     </transition>
+    <!-- External Dictionary Popup -->
+    <external-dict-dialog
+      v-model="showDictPopup"
+      :name="currentDictName"
+      :url="currentDictUrl"
+      :margin="currentDictMargin"
+    />
   </div>
 </template>
 
@@ -309,6 +316,7 @@ import type { BaseDictDefinition, Word, Explanation, Sentence } from '@/types'
 import WordEditorDialog from '@/components/WordEditorDialog.vue'
 import ExpEditorDialog from '@/components/ExpEditorDialog.vue'
 import SenEditorDialog from '@/components/SenEditorDialog.vue'
+import ExternalDictDialog from '@/components/ExternalDictDialog.vue'
 import { usePopoverMap } from '@/composables/usePopoverMap'
 import { useWordOperations } from '@/composables/useWordOperations'
 
@@ -334,7 +342,6 @@ const {
   handleMoveSen,
 } = useWordOperations()
 const swipeRef = ref()
-const activeTab = ref(0)
 const showDict = ref(authStore.userInfo?.cfg?.showDict !== false)
 const refreshing = ref(false)
 const showMasteredAnimation = ref(false)
@@ -562,6 +569,21 @@ const getExpActions = (exp: Explanation, word: Word) => {
   return actions
 }
 
+const onExpAction = async (action: { key: string }, exp: Explanation, w: Word) => {
+  closeAllPopovers()
+  if (action.key === 'add-sen') {
+    onAddSen(exp.id)
+  } else if (action.key === 'edit-exp') {
+    onEditExp(exp)
+  } else if (action.key === 'delete') {
+    handleDeleteExp(exp)
+  } else if (action.key === 'move-up') {
+    handleMoveExp(w.id, exp.id, -1)
+  } else if (action.key === 'move-down') {
+    handleMoveExp(w.id, exp.id, 1)
+  }
+}
+
 const getSenActions = (sen: Sentence, exp: Explanation) => {
   const actions: { text: string; icon: string; key: string; color?: string }[] = [
     { text: '编辑例句', icon: 'edit', key: 'edit-sen' },
@@ -580,60 +602,63 @@ const getSenActions = (sen: Sentence, exp: Explanation) => {
   return actions
 }
 
-const onSenAction = (action: { key: string }, sen: Sentence, exp: Explanation) => {
+const onSenAction = async (action: { key: string }, sen: Sentence, exp: Explanation) => {
   closeAllPopovers()
   if (action.key === 'edit-sen') {
     onEditSen(sen)
+  } else if (action.key === 'delete') {
+    handleDeleteSen(sen, exp.id)
   } else if (action.key === 'move-up') {
     handleMoveSen(exp.id, sen.id, -1)
   } else if (action.key === 'move-down') {
     handleMoveSen(exp.id, sen.id, 1)
-  } else if (action.key === 'delete') {
-    handleDeleteSen(sen, exp.id)
-  }
-}
-
-const onExpAction = (action: { key: string }, exp: Explanation, word: Word) => {
-  closeAllPopovers()
-  if (action.key === 'add-sen') {
-    onAddSen(exp.id)
-  } else if (action.key === 'edit-exp') {
-    onEditExp(exp)
-  } else if (action.key === 'move-up') {
-    handleMoveExp(word.id, exp.id, -1)
-  } else if (action.key === 'move-down') {
-    handleMoveExp(word.id, exp.id, 1)
-  } else if (action.key === 'delete') {
-    handleDeleteExp(exp)
   }
 }
 
 const getPopoverPlacement = (index: number, total: number) => {
-  if (total > 3 && index >= total - 1) {
-    return 'top-end'
-  }
-  return 'bottom-end'
+  if (total <= 1) return 'bottom-end'
+  if (index === 0) return 'bottom-end'
+  if (index === total - 1) return 'top-end'
+  return 'bottom-end' // Default
 }
 
-const getDictZh = (defs: BaseDictDefinition[]) => {
-  return defs
+const getDictZh = (definitions: BaseDictDefinition[]) => {
+  return definitions
     .map((d) => {
-      const text = d.meanings?.zh?.join('; ')
-      return text ? { pos: d.pos, text } : null
+      const meanings = d.meanings?.zh?.join('; ')
+      return meanings ? { pos: d.pos, text: meanings } : null
     })
     .filter((item): item is { pos: string; text: string } => item !== null)
 }
 
-const getDictEn = (defs: BaseDictDefinition[]) => {
-  const list: { pos: string; text: string }[] = []
-  defs.forEach((d) => {
-    if (d.meanings?.en) {
-      d.meanings.en.forEach((text) => {
-        if (text) list.push({ pos: d.pos, text })
-      })
-    }
+const getDictEn = (definitions: BaseDictDefinition[]) => {
+  const lines: { pos: string; text: string }[] = []
+  definitions.forEach((d) => {
+    d.meanings?.en?.forEach((m) => {
+      if (m) lines.push({ pos: d.pos, text: m })
+    })
   })
-  return list
+  return lines
+}
+
+import { EXTERNAL_DICTS } from '@/constants/dictionaries'
+
+// External Dictionary Configuration
+const externalDicts = EXTERNAL_DICTS
+
+const showDictPopup = ref(false)
+const currentDictName = ref('')
+const currentDictUrl = ref('')
+const currentDictMargin = ref('')
+
+const openExternalDict = (dict: { name: string; title?: string; url: string; margin?: string }) => {
+  if (!currentWord.value) return
+  currentDictName.value = dict.title || dict.name
+  // Some dictionaries might have issues with non-standard URL characters
+  const word = encodeURIComponent(currentWord.value.word.trim())
+  currentDictUrl.value = dict.url.replace('{word}', word)
+  currentDictMargin.value = dict.margin || ''
+  showDictPopup.value = true
 }
 
 const revealAnswer = () => {
@@ -914,18 +939,23 @@ const swipeNext = () => swipeRef.value?.next()
 .dict-tabs {
   margin-top: 16px;
   position: relative;
-  --van-tabs-line-height: 30px;
 }
-:deep(.van-tabs__nav) {
-  background-color: transparent;
-  padding-left: 0;
-}
-:deep(.van-tab) {
-  padding: 0 16px 0 0;
-}
-:deep(.van-tab--active) {
+.dict-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   font-size: var(--van-font-size-sm);
   font-weight: bold;
+  margin-bottom: 8px;
+  color: var(--van-text-color);
+  text-align: left;
+  padding-right: 32px; /* Avoid overlap with the eye icon */
+}
+.ext-dict-link {
+  font-weight: normal;
+  color: var(--van-primary-color);
+  cursor: pointer;
 }
 .dict-content-box {
   padding: 5px 0;
@@ -955,12 +985,18 @@ const swipeNext = () => swipeRef.value?.next()
   z-index: 10;
   font-size: 18px;
 }
+.dict-empty-content {
+  font-size: var(--van-font-size-sm);
+  color: var(--van-text-color-3);
+  padding: 8px 0;
+  text-align: center;
+}
 .dict-collapsed {
   margin-top: 16px;
-  padding: 10px 0;
   text-align: center;
-  color: var(--van-gray-5);
-  font-size: var(--van-font-size-sm);
+  padding: 10px;
+  background-color: var(--van-background-2);
+  border-radius: 4px;
   cursor: pointer;
 }
 

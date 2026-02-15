@@ -121,6 +121,13 @@ export default defineConfig(() => {
           // 所以需要移除 /api 前缀才能正确访问到 index.php
           rewrite: (path) => path.replace(/^\/api/, ''),
         },
+        // 外部字典路径
+        '/dict': {
+          target: 'http://192.168.17.88', // 所在服务器地址
+          changeOrigin: true, // 必须开启，伪装 Host 头
+          // 如果后端访问地址本身就是 http://x.x.x.x/dict/...
+          // 这里就不要写 rewrite 逻辑
+        },
       },
     },
   }
