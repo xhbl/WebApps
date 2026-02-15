@@ -1022,6 +1022,7 @@ function defineWordsStore() {
   return {
     words,
     currentWord,
+    currentBookId,
     sortMode,
     groupedWords,
     searchKeyword,

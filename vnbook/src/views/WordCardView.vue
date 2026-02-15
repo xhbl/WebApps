@@ -389,10 +389,22 @@ watch(showDict, (val) => {
 
 // 页面加载时确保数据已加载
 onMounted(async () => {
-  // 如果 words 为空，重新加载
-  if (!wordsStore.words.length && !isNaN(bid)) {
+  // 检查数据有效性：
+  // 1. Store 中的书 ID 必须与当前路由匹配
+  // 2. 如果不是空列表，必须包含当前查看的单词（防止数据过时）
+  // 3. 列表不能为空（除非本来就没数据，但 loadWords 会处理）
+  const isBookMismatch = wordsStore.currentBookId !== bid
+  const isWordMissing =
+    !isSingleMode.value &&
+    wordsStore.words.length > 0 &&
+    !wordsStore.words.some((w) => w.id === wid)
+  const isEmpty = wordsStore.words.length === 0
+
+  if ((isBookMismatch || isWordMissing || isEmpty) && !isNaN(bid)) {
     await wordsStore.loadWords(bid)
   }
+
+  // 确保在复习本且有内容时，若进入时 store 为空被刷新了，需要重新检查
   if (bid > 0 && booksStore.books.length === 0) {
     await booksStore.loadBooks()
   }
