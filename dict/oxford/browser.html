@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>牛津高阶英汉双解词典 - 浏览器</title>
+<link rel="icon" href="oaldpe.png" type="image/png">
+    <script src='oaldpe-jquery.js'></script>
+    <script src='oaldpe.js'></script>
+    <style>
+
+        @import url("oaldpe.css");
+        body { font-family: sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+        
+        #search-container {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        #search-box {
+            flex: 1;
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+        #search-btn {
+            padding: 8px 16px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        
+        #search-btn:hover {
+            background: #0056b3;
+        }
+        
+        #content { flex: 1; border: 1px solid #ddd; padding: 20px; overflow: auto; position: relative; border-radius: 8px; }
+    
+    </style>
+</head>
+<body>
+
+        <div id="search-container">
+            <input type="text" id="search-box" placeholder="输入单词..." />
+            <button id="search-btn">🔍</button>
+        </div>
+        <div id="content" class="oaldpe">
+            <p style="color: #666; text-align: center; margin-top: 50px;">输入单词开始搜索。</p>
+        </div>
+    
+    <script>
+
+        async function search(word, updateHistory = true) {
+            if (!word) return;
+            
+            const contentDiv = document.getElementById('content');
+            
+            // 简单 UI 反馈
+            document.body.style.cursor = 'wait';
+            const searchBtn = document.getElementById('search-btn');
+            if (searchBtn) searchBtn.disabled = true;
+            
+            try {
+                const response = await fetch(`search.php?q=${encodeURIComponent(word)}`);
+                const data = await response.json();
+                
+                document.body.style.cursor = 'default';
+                if (searchBtn) searchBtn.disabled = false;
+
+                if (data.found) {
+                    // 成功：更新 URL 和 页面
+                    if (updateHistory) {
+                        const url = new URL(window.location);
+                        url.searchParams.set('q', word);
+                        const urlString = url.toString().replace(/\+/g, '%20');
+                        window.history.pushState({ q: word }, '', urlString);
+                    }
+                    
+                    contentDiv.innerHTML = data.content;
+                    
+                    // 重新初始化词典交互逻辑
+                    if (window.oaldpeInit && typeof window.main === 'function') {
+                        try {
+                            const $content = $(contentDiv);
+                            $content.find('*').off(); 
+                            window.oaldpeInit.$allContainers = $content;
+                            window.main();
+                        } catch (err) {
+                            console.error('Error re-initializing dictionary script:', err);
+                        }
+                    }
+                } else {
+                    // 失败：仅提示，不跳转
+                    if (updateHistory) {
+                        alert(`未找到单词: "${word}"`);
+                    } else {
+                        // 历史回退遇到的错误，必须显示
+                        contentDiv.innerHTML = `<p style="text-align: center; margin-top: 50px; color: #999;">“${word}” 未找到</p>`;
+                    }
+                }
+            } catch (e) {
+                document.body.style.cursor = 'default';
+                if (searchBtn) searchBtn.disabled = false;
+                
+                if (updateHistory) {
+                    alert(`错误: ${e.message}`);
+                } else {
+                    contentDiv.innerHTML = `<p style="text-align: center; color: red;">错误: ${e.message}</p>`;
+                }
+            }
+        }
+        
+        window.search = search;
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            const searchBox = document.getElementById('search-box');
+            const searchBtn = document.getElementById('search-btn');
+            
+            const params = new URLSearchParams(window.location.search);
+            const word = params.get('word') || params.get('q');
+            
+            if (word) {
+                searchBox.value = word;
+                // 初始化时替换当前状态，不新增历史记录
+                const url = new URL(window.location);
+                url.searchParams.set('q', word);
+                window.history.replaceState({ q: word }, '', url.toString());
+                search(word, false);
+            }
+            
+            // 监听后退/前进事件
+            window.addEventListener('popstate', (event) => {
+                const state = event.state;
+                if (state && state.q) {
+                    searchBox.value = state.q;
+                    search(state.q, false);
+                } else {
+                    // 尝试从 URL 获取
+                    const p = new URLSearchParams(window.location.search);
+                    const w = p.get('word') || p.get('q');
+                    if (w) {
+                        searchBox.value = w;
+                        search(w, false);
+                    }
+                }
+            });
+            
+            searchBtn.addEventListener('click', () => search(searchBox.value));
+            
+            searchBox.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') search(searchBox.value);
+            });
+            
+            document.addEventListener('click', function(e) {
+                const link = e.target.closest('a');
+                if (link) {
+                    const href = link.getAttribute('href');
+                    if (href && (href.endsWith('.mp3') || href.endsWith('.wav'))) {
+                        e.preventDefault();
+                        console.log('Playing audio:', href);
+                        const audio = new Audio(href);
+                        audio.play().catch(err => console.error('Audio play error:', err));
+                    }
+                }
+            });
+        });
+    
+    </script>
+</body>
+</html>

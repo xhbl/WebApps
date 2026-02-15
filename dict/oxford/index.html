@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>牛津高阶英汉双解词典</title>
+<link rel="icon" href="oaldpe.png" type="image/png">
+    <script src='oaldpe-jquery.js'></script>
+    <script src='oaldpe.js'></script>
+    <style>
+
+        @import url("oaldpe.css");
+        html { height: 100%; width: 100%; margin: 0; padding: 0; }
+        body { 
+            font-family: sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100%; 
+            width: 100%;
+            box-sizing: border-box; 
+            overflow: hidden; /* Prevent body scroll */
+        }
+        /* Search box removed as requested */
+        #content { 
+            flex: 1; 
+            border: none; 
+            padding: 0; 
+            overflow-y: auto; 
+            overflow-x: hidden;
+            position: relative; 
+            -webkit-overflow-scrolling: touch; /* Enable smooth scrolling on iOS */
+            width: 100%;
+            box-sizing: border-box;
+        }
+    
+    </style>
+</head>
+<body>
+
+        <div id="content" class="oaldpe"></div>
+    
+    <script>
+
+        async function search(word, updateHistory = true) {
+            if (!word) return;
+            
+            const contentDiv = document.getElementById('content');
+            
+            // 简单 UI 反馈：鼠标变为等待状态
+            document.body.style.cursor = 'wait';
+            // 不清空 contentDiv，防止查询失败时丢失当前页面
+            
+            try {
+                const response = await fetch(`search.php?q=${encodeURIComponent(word)}`);
+                const data = await response.json();
+                
+                document.body.style.cursor = 'default';
+
+                if (data.found) {
+                    // 查询成功：更新历史记录并渲染内容
+                    if (updateHistory) {
+                        const url = new URL(window.location);
+                        url.searchParams.set('word', word);
+                        const urlString = url.toString().replace(/\+/g, '%20');
+                        window.history.pushState({ word: word }, '', urlString);
+                    }
+
+                    contentDiv.innerHTML = data.content;
+                    
+                    // 重新初始化词典脚本
+                    if (window.oaldpeInit && typeof window.main === 'function') {
+                        try {
+                            const $content = $(contentDiv);
+                            $content.find('*').off();
+                            window.oaldpeInit.$allContainers = $content;
+                            window.main();
+                        } catch (e) { console.error(e); }
+                    }
+                } else {
+                    // 查询失败 (未找到)：仅提示，不跳转，不破坏当前页面
+                    if (updateHistory) {
+                        // 用户主动搜索 -> 弹窗提示
+                        alert(`未找到单词: "${word}"`);
+                    } else {
+                        // 历史回退 (popstate) -> 必须更新页面 (显示错误信息)
+                        contentDiv.innerHTML = `<p style="text-align: center; margin-top: 50px; color: #999;">“${word}” 未找到</p>`;
+                    }
+                }
+            } catch (e) {
+                document.body.style.cursor = 'default';
+                if (updateHistory) {
+                    alert(`查询出错: ${e.message}`);
+                } else {
+                    contentDiv.innerHTML = `<p>Error: ${e.message}</p>`;
+                }
+            }
+        }
+        
+        window.search = search;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const word = params.get('word') || params.get('q');
+            
+            // 初始化时不推入历史，只替换当前状态
+            if (word) {
+                const url = new URL(window.location);
+                url.searchParams.set('word', word);
+                window.history.replaceState({ word: word }, '', url.toString());
+                search(word, false);
+            }
+            
+            // 监听后退/前进事件 (Handle Back/Forward buttons)
+            window.addEventListener('popstate', (event) => {
+                const state = event.state;
+                if (state && state.word) {
+                    search(state.word, false);
+                } else {
+                    // 如果没有 state (可能是页面初始加载状态)，尝试从 URL 获取
+                    const p = new URLSearchParams(window.location.search);
+                    const w = p.get('word') || p.get('q');
+                    if (w) search(w, false);
+                }
+            });
+            
+            // 全局音频点击处理 (Handle audio clicks globally)
+            // 拦截所有 .mp3 链接点击，改为直接播放，防止浏览器跳转
+            document.addEventListener('click', function(e) {
+                const link = e.target.closest('a');
+                if (link) {
+                    const href = link.getAttribute('href');
+                    if (href && (href.endsWith('.mp3') || href.endsWith('.wav'))) {
+                        e.preventDefault();
+                        console.log('Playing audio:', href);
+                        const audio = new Audio(href);
+                        audio.play().catch(err => console.error('Audio play error:', err));
+                    }
+                }
+            });
+        });
+    
+    </script>
+</body>
+</html>
