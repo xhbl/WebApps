@@ -153,12 +153,26 @@
                         <div class="dict-header">
                           <span class="dict-title-text">基本词典</span>
                           <span
-                            v-for="d in externalDicts.filter((d) => d.show)"
+                            v-for="d in visibleExternalDicts"
                             :key="d.name"
                             class="ext-dict-link"
                             @click.stop="openExternalDict(d)"
                           >
                             {{ d.name }}
+                          </span>
+                          <span @click.stop v-if="hasVisibleOnlineDicts">
+                            <van-popover
+                              v-model:show="popoverMap.onlineDict"
+                              :actions="onlineDictActions"
+                              placement="bottom-end"
+                              :teleport="null"
+                              @select="openExternalDict"
+                              @open="onPopoverOpen('onlineDict')"
+                            >
+                              <template #reference>
+                                <span class="ext-dict-link">网络</span>
+                              </template>
+                            </van-popover>
                           </span>
                         </div>
                         <div class="dict-content-box" v-if="w.baseInfo?.definitions?.length">
@@ -653,15 +667,25 @@ const getDictEn = (definitions: BaseDictDefinition[]) => {
   return lines
 }
 
-import { EXTERNAL_DICTS } from '@/constants/dictionaries'
+import { EXTERNAL_DICTS, ONLINE_DICTS } from '@/constants/dictionaries'
 
 // External Dictionary Configuration
-const externalDicts = EXTERNAL_DICTS
-
 const showDictPopup = ref(false)
 const currentDictName = ref('')
 const currentDictUrl = ref('')
 const currentDictMargin = ref('')
+
+const visibleExternalDicts = computed(() => EXTERNAL_DICTS.filter((d) => d.show))
+
+const onlineDictActions = computed(() => {
+  return ONLINE_DICTS.filter((d) => d.show).map((d) => ({
+    ...d,
+    text: d.name,
+    className: 'online-dict-action',
+  }))
+})
+
+const hasVisibleOnlineDicts = computed(() => ONLINE_DICTS.some((d) => d.show))
 
 const openExternalDict = (dict: { name: string; title?: string; url: string; margin?: string }) => {
   if (!currentWord.value) return
@@ -968,6 +992,12 @@ const swipeNext = () => swipeRef.value?.next()
   font-weight: normal;
   color: var(--van-primary-color);
   cursor: pointer;
+  font-size: var(--van-font-size-sm);
+}
+:global(.online-dict-action .van-popover__action-text) {
+  color: var(--van-primary-color);
+  font-size: var(--van-font-size-sm);
+  font-weight: normal;
 }
 .dict-content-box {
   padding: 5px 0;

@@ -21,17 +21,27 @@ export const EXTERNAL_DICTS: ExternalDictConfig[] = [
     show: false,
     margin: '0',
   },
+]
+
+export const ONLINE_DICTS: ExternalDictConfig[] = [
   {
-    name: '韦氏',
+    name: '韦氏在线',
     title: '韦氏在线词典',
     url: 'https://www.merriam-webster.com/dictionary/{word}',
     show: true,
     margin: '0',
   },
   {
-    name: '自由',
+    name: '自由词典',
     title: '自由在线词典',
     url: 'https://www.thefreedictionary.com/{word}',
+    show: true,
+    margin: '0',
+  },
+  {
+    name: '维基词典',
+    title: '维基在线词典',
+    url: 'https://en.wiktionary.org/wiki/{word}',
     show: true,
     margin: '0',
   },
