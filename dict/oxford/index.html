@@ -62,9 +62,9 @@
                     // 查询成功：更新历史记录并渲染内容
                     if (updateHistory) {
                         const url = new URL(window.location);
-                        url.searchParams.set('word', word);
+                        url.searchParams.set('q', word);
                         const urlString = url.toString().replace(/\+/g, '%20');
-                        window.history.pushState({ word: word }, '', urlString);
+                        window.history.pushState({ q: word }, '', urlString);
                     }
 
                     contentDiv.innerHTML = data.content;
@@ -102,25 +102,25 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
-            const word = params.get('word') || params.get('q');
+            const word = params.get('q') || params.get('word');
             
             // 初始化时不推入历史，只替换当前状态
             if (word) {
                 const url = new URL(window.location);
-                url.searchParams.set('word', word);
-                window.history.replaceState({ word: word }, '', url.toString());
+                url.searchParams.set('q', word);
+                window.history.replaceState({ q: word }, '', url.toString());
                 search(word, false);
             }
             
             // 监听后退/前进事件 (Handle Back/Forward buttons)
             window.addEventListener('popstate', (event) => {
                 const state = event.state;
-                if (state && state.word) {
-                    search(state.word, false);
+                if (state && state.q) {
+                    search(state.q, false);
                 } else {
                     // 如果没有 state (可能是页面初始加载状态)，尝试从 URL 获取
                     const p = new URLSearchParams(window.location.search);
-                    const w = p.get('word') || p.get('q');
+                    const w = p.get('q') || p.get('word');
                     if (w) search(w, false);
                 }
             });

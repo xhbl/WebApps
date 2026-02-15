@@ -1,8 +1,8 @@
 <?php
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+// header('Access-Control-Allow-Origin: *');
 
-$word = $_GET['q'] ?? '';
+$word = $_GET['q'] ?? $_GET['word'] ?? '';
 if (empty($word)) {
     echo json_encode(['found' => false]);
     exit;
@@ -39,8 +39,12 @@ try {
             $result2 = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($result2) {
                 $html = $result2['content'];
+                
             }
         }
+    }
+
+    if ($result) {
         
         // 修正音频路径 (Fix sound:// paths)
         // 将 sound://path/to/file.mp3 转换为 audio/path/to/file.mp3

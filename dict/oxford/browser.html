@@ -126,7 +126,7 @@
             const searchBtn = document.getElementById('search-btn');
             
             const params = new URLSearchParams(window.location.search);
-            const word = params.get('word') || params.get('q');
+            const word = params.get('q') || params.get('word');
             
             if (word) {
                 searchBox.value = word;
@@ -146,7 +146,7 @@
                 } else {
                     // 尝试从 URL 获取
                     const p = new URLSearchParams(window.location.search);
-                    const w = p.get('word') || p.get('q');
+                    const w = p.get('q') || p.get('word');
                     if (w) {
                         searchBox.value = w;
                         search(w, false);
