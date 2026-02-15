@@ -402,7 +402,7 @@ export function useWordOperations() {
    * 开始复习流程
    * 优先跳转到上次复习的断点（如果有效且未达标），否则从第一个待复习单词开始
    */
-  const handleStartReview = (bid: number) => {
+  const handleStartReview = async (bid: number) => {
     if (wordsStore.words.length === 0) {
       toast.show('复习本为空')
       return
@@ -428,12 +428,26 @@ export function useWordOperations() {
       if (firstPending) {
         startId = firstPending.id
       } else {
-        showGlobalDialog({
-          title: '复习完成',
-          message: '当前所有单词均已复习完毕。',
-          confirmButtonText: '知道了',
-          showCancelButton: false,
-        })
+        try {
+          await showGlobalDialog({
+            title: '复习完成',
+            message: '当前所有单词均已复习完毕。点击确定我们将重置进度，从头开始。',
+            confirmButtonText: '确定',
+            showCancelButton: true,
+          })
+
+          const success = await wordsStore.resetReviewStatus()
+          if (success) {
+            toast.showSuccess('复习进度已重置')
+            // 重置成功后，再次调用本函数以重新开始复习
+            // 此时所有 status 应该都是 0，所以会找到第一个单词
+            handleStartReview(bid)
+          } else {
+            toast.showFail('重置失败')
+          }
+        } catch {
+          // 用户取消，不做操作
+        }
         return
       }
     }

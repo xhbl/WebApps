@@ -126,7 +126,7 @@ const actions = computed(() => {
       color: 'var(--van-warning-color)',
     })
   }
-  if (props.allowMove) {
+  if (props.allowMove || (props.word.book_count || 0) === 0) {
     list.push({
       text: props.moveText || '移动到...',
       icon: props.moveIcon || 'exchange',

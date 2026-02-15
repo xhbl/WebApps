@@ -691,7 +691,7 @@ const onReviewResult = async (status: 1 | 2) => {
         showMasteredAnimation.value = false
         await nextTick()
         swipeNextReview()
-      }, 2000)
+      }, 1000)
     } else if (status === 2) {
       // 认识：自动跳转下一个未复习的单词
       await nextTick()
