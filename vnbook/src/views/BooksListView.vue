@@ -172,7 +172,7 @@ const showAllWords = ref(!authStore.userInfo?.cfg?.hideAllWords)
 const showReviewBook = ref(!authStore.userInfo?.cfg?.hideReviewBook)
 
 const totalWords = computed(() => {
-  return booksStore.books.reduce((sum, b) => sum + b.nums, 0)
+  return booksStore.totalWordCount || 0
 })
 
 const scrollTop = ref(0)

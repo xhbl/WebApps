@@ -119,6 +119,8 @@ export interface ApiResponse<T = unknown> {
   login?: LoginInfo
   data?: T
   reviewCount?: number
+  totalWordCount?: number
+  orphanCount?: number
   inReview?: boolean
 }
 

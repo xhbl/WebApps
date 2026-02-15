@@ -185,11 +185,31 @@ try {
             try {
                 $db = DB::vnb();
                 $uid = $_SESSION['user_id'];
+
+                // Total Word Count (All words owned by user)
+                $stmt = $db->prepare("SELECT COUNT(*) FROM vnu_words WHERE user_id = ?");
+                $stmt->execute([$uid]);
+                $response['totalWordCount'] = (int)$stmt->fetchColumn();
+
+                // Review Count
                 $stmt = $db->prepare("SELECT COUNT(*) FROM vnu_review WHERE user_id = ?");
                 $stmt->execute([$uid]);
                 $response['reviewCount'] = (int)$stmt->fetchColumn();
+
+                // Orphan Count (Words not in any book)
+                $stmt = $db->prepare("
+                    SELECT COUNT(*) 
+                    FROM vnu_words w 
+                    WHERE w.user_id = ? 
+                    AND NOT EXISTS (
+                        SELECT 1 FROM vnu_mapbw m WHERE m.word_id = w.id
+                    )
+                ");
+                $stmt->execute([$uid]);
+                $response['orphanCount'] = (int)$stmt->fetchColumn();
             } catch (Exception $e) {
                 $response['reviewCount'] = 0;
+                $response['orphanCount'] = 0;
             }
         } else {
             $response['message'] = "Error fetching books";

@@ -9,6 +9,8 @@ export const useBooksStore = defineStore('books', () => {
   const books = ref<Book[]>([])
   const currentBook = ref<Book | null>(null)
   const reviewCount = ref(0)
+  const orphanCount = ref(0)
+  const totalWordCount = ref(0)
 
   // 本地排序逻辑：ptop DESC, sorder ASC, time_c DESC
   const sortBooksLocal = () => {
@@ -52,6 +54,12 @@ export const useBooksStore = defineStore('books', () => {
         sortBooksLocal()
         if (typeof response.data.reviewCount === 'number') {
           reviewCount.value = response.data.reviewCount
+        }
+        if (typeof response.data.orphanCount === 'number') {
+          orphanCount.value = response.data.orphanCount
+        }
+        if (typeof response.data.totalWordCount === 'number') {
+          totalWordCount.value = response.data.totalWordCount
         }
         return true
       }
@@ -222,6 +230,8 @@ export const useBooksStore = defineStore('books', () => {
     books,
     currentBook,
     reviewCount,
+    orphanCount,
+    totalWordCount,
     loadBooks,
     saveBook,
     deleteBook,

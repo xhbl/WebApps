@@ -6,7 +6,7 @@ import { showGlobalDialog } from '@/composables/useGlobalDialog'
 import { usePopupHistory } from '@/composables/usePopupHistory'
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import type { Word, Explanation, Sentence } from '@/types'
+import type { Word, Explanation, Sentence, Book } from '@/types'
 
 export function useWordOperations() {
   const wordsStore = useWordsStore()
@@ -173,8 +173,8 @@ export function useWordOperations() {
   const moveTargetOptions = computed(() => {
     // 过滤掉当前单词本
     return booksStore.books
-      .filter((b) => b.id !== currentBid.value)
-      .map((b) => ({
+      .filter((b: Book) => b.id !== currentBid.value)
+      .map((b: Book) => ({
         name: `${b.title} (${b.nums}词)`,
         value: b.id,
       }))
