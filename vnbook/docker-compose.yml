@@ -23,7 +23,8 @@ services:
       # 映射 API 代码目录
       # ./public/api -> 主机的 API 文件夹
       # /var/www/html -> 容器内的 Apache 根目录
-      - ./public/api:/var/www/html
+      - ./public/api:/var/www/html/api
+      - ./public/audio:/var/www/html/audio
       - ../dict:/var/www/html/dict
       # 映射 Xdebug 调试配置（用于 VS Code 远程调试）
       - ./.docker/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
@@ -38,6 +39,7 @@ services:
     # 用于 Xdebug 将调试信息回传到主机 IDE
     extra_hosts:
       - 'host.docker.internal:host-gateway'
+      - 'localhost:host-gateway' # 关键点：将 localhost 指向宿主机的网关
 
     # 使用自定义网络，方便容器间通信
     networks:
@@ -90,6 +92,21 @@ services:
       PMA_HOST: db
       # 允许登录任意服务器（包括 NAS 上的数据库）
       PMA_ARBITRARY: 1
+
+    networks:
+      - vnbook-network
+
+  ################################################################################
+  # 4. Edge-TTS 服务 - 文本转语音引擎
+  ################################################################################
+  edge-tts:
+    build:
+      context: .
+      dockerfile: .docker/tts_Dockerfile
+    restart: always
+    container_name: vnbook-tts
+    ports:
+      - '3343:3343'
 
     networks:
       - vnbook-network

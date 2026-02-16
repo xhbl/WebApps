@@ -44,3 +44,6 @@ cookies.txt
 
 # Vitest
 __screenshots__/
+
+# Cache for generated audio files
+/public/audio/

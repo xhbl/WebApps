@@ -1,0 +1,13 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# 直接安装，无需加 -i 参数
+RUN pip install --no-cache-dir edge-tts flask
+
+# 这里的路径相对于 docker-compose.yml 里的 context (.)
+COPY .docker/tts_app.py ./app.py
+
+EXPOSE 3343
+
+CMD ["python", "app.py"]

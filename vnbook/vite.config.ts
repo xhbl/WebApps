@@ -117,9 +117,9 @@ export default defineConfig(() => {
           target: 'http://localhost:8080',
           changeOrigin: true,
           // 重写路径：将 /api/xxx 改为 /xxx
-          // 因为 Docker 映射是 ./public/api:/var/www/html
-          // 所以需要移除 /api 前缀才能正确访问到 index.php
-          rewrite: (path) => path.replace(/^\/api/, ''),
+          // Docker 映射改成了 ./public/api:/var/www/html/api
+          // 所以不需要移除 /api 前缀
+          // rewrite: (path) => path.replace(/^\/api/, ''),
         },
         // 外部字典路径
         '/dict': {
