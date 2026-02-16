@@ -47,7 +47,9 @@ request.interceptors.response.use(
     // 检查业务状态
     if (data.success === false) {
       const message = data.message || '操作失败'
-      toast.showFail(message)
+      if (!response.config.headers['X-No-Toast']) {
+        toast.showFail(message)
+      }
       return Promise.reject(new Error(message))
     }
 
@@ -82,7 +84,9 @@ request.interceptors.response.use(
       message = '请求超时'
     }
 
-    toast.showFail(message)
+    if (!error.config?.headers['X-No-Toast']) {
+      toast.showFail(message)
+    }
     return Promise.reject(error)
   },
 )

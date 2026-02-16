@@ -59,8 +59,12 @@
                     @click.stop="toggleReview(w)"
                   />
                 </div>
-                <div class="phon-row" v-if="w.phon" @click.stop="playAudio(w.word)">
-                  <van-icon name="volume-o" class="phon-icon" />
+                <div class="phon-row" v-if="w.phon" @click.stop="playPronunciation(w.word)">
+                  <van-icon
+                    name="volume-o"
+                    class="phon-icon"
+                    :class="{ loading: loadingWord === w.word }"
+                  />
                   <span class="phon-text">/{{ w.phon }}/</span>
                 </div>
                 <div v-if="isEditMode" class="edit-float-icon word-edit" @click.stop>
@@ -333,12 +337,14 @@ import SenEditorDialog from '@/components/SenEditorDialog.vue'
 import ExternalDictDialog from '@/components/ExternalDictDialog.vue'
 import { usePopoverMap } from '@/composables/usePopoverMap'
 import { useWordOperations } from '@/composables/useWordOperations'
+import { usePronunciation } from '@/composables/usePronunciation'
 
 const route = useRoute()
 const router = useRouter()
 const booksStore = useBooksStore()
 const authStore = useAuthStore()
 const wordsStore = useWordsStore()
+const { play: playPronunciation, loadingWord } = usePronunciation()
 const {
   handleAddToReview,
   handleRemoveFromReview,
@@ -545,19 +551,6 @@ const toggleEditMode = () => {
     delete query.edit
   }
   router.replace({ query })
-}
-
-const playAudio = (word: string) => {
-  if ('speechSynthesis' in window) {
-    const msg = new SpeechSynthesisUtterance(word)
-    msg.lang = 'en-US'
-    const voices = window.speechSynthesis.getVoices()
-    const usVoice = voices.find((voice) => voice.lang === 'en-US')
-    if (usVoice) {
-      msg.voice = usVoice
-    }
-    window.speechSynthesis.speak(msg)
-  }
 }
 
 const wordActions = [
@@ -896,6 +889,10 @@ const swipeNext = () => swipeRef.value?.next()
   margin-right: 4px;
   color: var(--van-primary-color);
 }
+.phon-icon.loading {
+  animation: spin 1s linear infinite;
+}
+
 .empty-exps {
   padding: 12px 0 0;
   color: var(--van-text-color-3);
@@ -1302,6 +1299,15 @@ const swipeNext = () => swipeRef.value?.next()
   to {
     opacity: 1;
     transform: scale3d(1, 1, 1);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 

@@ -24,6 +24,7 @@ services:
       # ./public/api -> 主机的 API 文件夹
       # /var/www/html -> 容器内的 Apache 根目录
       - ./public/api:/var/www/html
+      - ../dict:/var/www/html/dict
       # 映射 Xdebug 调试配置（用于 VS Code 远程调试）
       - ./.docker/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 

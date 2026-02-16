@@ -3,7 +3,11 @@
     <template #icon>
       <!-- Audio Mode -->
       <div v-if="mode === 'audio'" class="icon-wrapper" @click.stop="playAudio">
-        <van-icon name="volume-o" class="list-leading-icon" />
+        <van-icon
+          name="volume-o"
+          class="list-leading-icon"
+          :class="{ loading: loadingWord === word.word }"
+        />
       </div>
 
       <!-- Edit Mode -->
@@ -70,8 +74,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { usePronunciation } from '@/composables/usePronunciation'
 import type { Word } from '@/types'
 import type { PopoverPlacement } from 'vant'
+
+const { play, loadingWord } = usePronunciation()
 
 const props = defineProps<{
   word: Word
@@ -181,16 +188,7 @@ const wordSegments = computed(() => {
 })
 
 const playAudio = () => {
-  if ('speechSynthesis' in window) {
-    const msg = new SpeechSynthesisUtterance(props.word.word)
-    msg.lang = 'en-US'
-    const voices = window.speechSynthesis.getVoices()
-    const usVoice = voices.find((voice) => voice.lang === 'en-US')
-    if (usVoice) {
-      msg.voice = usVoice
-    }
-    window.speechSynthesis.speak(msg)
-  }
+  play(props.word.word)
 }
 
 const onSelect = (action: { key: string }) => {
@@ -223,6 +221,19 @@ const onSelect = (action: { key: string }) => {
 /* 复选框大小微调为 20px，与加粗后的 22px 图标视觉更平衡 */
 .icon-wrapper :deep(.van-checkbox__icon) {
   font-size: 20px;
+}
+
+.list-leading-icon.loading {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .word-text {

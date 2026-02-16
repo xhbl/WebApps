@@ -91,7 +91,6 @@ const onUpdateShow = (val: boolean) => {
 .dict-popup-content h3 {
   text-align: center;
   margin: 0 0 16px;
-  font-size: var(--van-font-size-lg);
   flex-shrink: 0;
 }
 .dict-iframe-container {

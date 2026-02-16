@@ -45,7 +45,7 @@ try {
             $result2 = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($result2) {
                 $html = $result2['content'];
-                $word = $target;
+                
             }
         }
     }
@@ -54,20 +54,64 @@ try {
     $sound_file = null;
 
     if ($result) {
+        // --- Sound File Extraction Logic (Top-container scoped) ---
+        // 只在词头容器 top-container 内查找，避免误匹配到例句音频。
+        $sound_file = null;
 
-        // --- Sound File Extraction Logic ---
-        // Priority 1: Find American English pronunciation (pron-us)
-        if (preg_match('/class="[^"]*?\bpron-us\b[^"]*?".*?href="([^"]+)"/i', $html, $matches)) {
-            $sound_file = $matches[1];
+        $isAudioHref = function($href) {
+            if (!$href) return false;
+            if (stripos($href, 'sound://') === 0) return true;
+            return preg_match('/\.(mp3|wav)(?:$|[?#])/i', $href) === 1;
+        };
+
+        libxml_use_internal_errors(true);
+        $doc = new DOMDocument();
+        $wrapped = '<!DOCTYPE html><html><body>' . $html . '</body></html>';
+        $loaded = $doc->loadHTML('<?xml encoding="utf-8" ?>' . $wrapped);
+
+        if ($loaded !== false) {
+            $xpath = new DOMXPath($doc);
+            $topNodes = $xpath->query("//*[contains(concat(' ', normalize-space(@class), ' '), ' top-container ')]");
+
+            if ($topNodes && $topNodes->length > 0) {
+                $topNode = $topNodes->item(0);
+
+                // Priority 1: pron-us
+                $usNodes = $xpath->query(".//a[contains(concat(' ', normalize-space(@class), ' '), ' pron-us ') and @href]", $topNode);
+                if ($usNodes && $usNodes->length > 0) {
+                    $candidate = $usNodes->item(0)->getAttribute('href');
+                    if ($isAudioHref($candidate)) {
+                        $sound_file = $candidate;
+                    }
+                }
+
+                // Priority 2: pron-br / pron-uk
+                if (!$sound_file) {
+                    $brNodes = $xpath->query(".//a[(contains(concat(' ', normalize-space(@class), ' '), ' pron-br ') or contains(concat(' ', normalize-space(@class), ' '), ' pron-uk ')) and @href]", $topNode);
+                    if ($brNodes && $brNodes->length > 0) {
+                        $candidate = $brNodes->item(0)->getAttribute('href');
+                        if ($isAudioHref($candidate)) {
+                            $sound_file = $candidate;
+                        }
+                    }
+                }
+
+                // Priority 3: first audio link in top-container only
+                if (!$sound_file) {
+                    $allLinks = $xpath->query('.//a[@href]', $topNode);
+                    if ($allLinks) {
+                        foreach ($allLinks as $link) {
+                            $candidate = $link->getAttribute('href');
+                            if ($isAudioHref($candidate)) {
+                                $sound_file = $candidate;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
         }
-        // Priority 2: If no US sound, find British English (pron-br or pron-uk)
-        elseif (preg_match('/class="[^"]*?\bpron-(br|uk)\b[^"]*?".*?href="([^"]+)"/i', $html, $matches)) {
-            $sound_file = $matches[2];
-        }
-        // Priority 3: If still no sound, find the first available audio link (.mp3 or .wav)
-        elseif (preg_match('/href="[^>]*?([^"\\/>]+?\.(mp3|wav))"/i', $html, $matches)) {
-            $sound_file = $matches[1];
-        }
+        libxml_clear_errors();
     }
 
     // --- JSON Response ---
