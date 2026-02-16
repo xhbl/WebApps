@@ -38,8 +38,8 @@ export function usePronunciation() {
 
     try {
       const response = await getAudioUrl(word)
-      if (response.data.success && response.data.data && response.data.data.url) {
-        audio.src = response.data.data.url
+      if (response.data.success && response.data.url) {
+        audio.src = response.data.url
         // When the audio file fails to load or play
         audio.onerror = () => {
           console.error('Audio playback failed, falling back to TTS.')
@@ -71,7 +71,7 @@ export function usePronunciation() {
         speakTTS(word)
         loadingWord.value = null
       }
-    } catch (error) {
+    } catch {
       console.info('Failed to fetch audio URL, falling back to TTS.')
       // Network error or other issue fetching the URL, fallback to TTS
       speakTTS(word)
