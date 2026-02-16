@@ -80,6 +80,7 @@ export const getAudioUrl = (word: string) => {
   return request.get<ApiResponse & { url?: string }>('/audio.php', {
     params: { q: word },
     headers: { 'X-No-Loading': 'true', 'X-No-Toast': 'true' }, // Don't show global loading or toast
+    timeout: 3000, // 3-second timeout for the API request
   })
 }
 
