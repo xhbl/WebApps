@@ -1,10 +1,5 @@
 <?php
-
-// Define the base path for the TTS cache directory.
-define('TTS_CACHE_BASE_PATH', 'audio/tts');
-// Define paths derived from the base path.
-define('TTS_CACHE_DIR_RELATIVE', '../' . TTS_CACHE_BASE_PATH); // For filesystem operations
-define('TTS_CACHE_URL_PREFIX', TTS_CACHE_BASE_PATH . '/');   // For client-facing URLs
+require_once __DIR__ . '/utils.php';
 
 /**
  * Gets a TTS audio URL, generating and caching the audio file if it doesn't exist.
@@ -17,16 +12,21 @@ define('TTS_CACHE_URL_PREFIX', TTS_CACHE_BASE_PATH . '/');   // For client-facin
 function getOrGenerateTTSAudio($word, $cache_filename_base)
 {
     // 1. Cache configuration
-    $cache_dir_relative = TTS_CACHE_DIR_RELATIVE; // Use the defined constant
-    $cache_dir_absolute = realpath(__DIR__ . '/' . $cache_dir_relative);
-    if (!$cache_dir_absolute) {
-        @mkdir(__DIR__ . '/' . $cache_dir_relative, 0755, true);
-        $cache_dir_absolute = realpath(__DIR__ . '/' . $cache_dir_relative);
+    $tts_cache_dir = ABS_PATH_AUDIO . DIRECTORY_SEPARATOR . DIR2_NAME_TTS;
+    $tts_cache_url = REL_URL_AUDIO . '/' . DIR2_NAME_TTS;
+
+    $cache_dir_absolute = $tts_cache_dir;
+    if (!ensure_writable_directory($cache_dir_absolute)) {
+        return [
+            'success' => false,
+            'word' => $word,
+            'message' => 'TTS cache directory not writable'
+        ];
     }
 
     $cache_filename = $cache_filename_base . '.mp3';
-    $cache_filepath = $cache_dir_absolute . '/' . $cache_filename;
-    $cache_url = TTS_CACHE_URL_PREFIX . $cache_filename; // Use the correct URL prefix
+    $cache_filepath = $cache_dir_absolute . DIRECTORY_SEPARATOR . $cache_filename;
+    $cache_url = $tts_cache_url . '/' . $cache_filename;
 
     // 2. Check cache (Cache Hit) - Consistent Response
     if (file_exists($cache_filepath)) {
@@ -34,6 +34,7 @@ function getOrGenerateTTSAudio($word, $cache_filename_base)
     }
 
     // 3. Cache Miss: Call TTS Service
+    // 注意：TTS服务URL保持不变，因为它指向本地服务
     $tts_service_url = "http://localhost:3343/tts?text=" . urlencode($word);
 
     $context = stream_context_create([
@@ -75,8 +76,55 @@ function getOrGenerateTTSAudio($word, $cache_filename_base)
  */
 if (basename(__FILE__) == basename($_SERVER['SCRIPT_FILENAME'])) {
     require_once 'utils.php'; // Include the utils file
+    require_once 'login.php'; // Include the login file for checking
+
+    // First, check if the user is logged in.
+    $logsess = vnb_checklogin();
+
     header('Content-Type: text/html; charset=utf-8');
 
+    // If NOT logged in, display a simple login prompt.
+    if ($logsess->success !== true) {
+?>
+        <!DOCTYPE html>
+        <html lang="en">
+
+        <head>
+            <meta charset="UTF-8">
+            <title>Login Required</title>
+            <link rel="icon" href="data:,">
+            <style>
+                body {
+                    font-family: sans-serif;
+                    max-width: 600px;
+                    margin: 4em auto;
+                    padding: 0 1em;
+                    text-align: center;
+                }
+
+                a {
+                    color: #007bff;
+                    text-decoration: none;
+                }
+
+                a:hover {
+                    text-decoration: underline;
+                }
+            </style>
+        </head>
+
+        <body>
+            <h2>Login Required</h2>
+            <p>This testing page requires authentication to use.</p>
+            <p><a href="<?php echo REL_URL_APP_BASE ?: '/'; ?>">Click here to go to the main application to log in.</a></p>
+        </body>
+
+        </html>
+    <?php
+        exit(); // Stop further execution
+    }
+
+    // If logged in, proceed with the normal test page logic.
     $result = null;
     $word_to_search = '';
 
@@ -88,7 +136,7 @@ if (basename(__FILE__) == basename($_SERVER['SCRIPT_FILENAME'])) {
             $result = getOrGenerateTTSAudio($word_to_search, $filename_base);
         }
     }
-?>
+    ?>
     <!DOCTYPE html>
     <html lang="en">
 

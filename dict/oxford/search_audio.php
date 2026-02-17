@@ -5,7 +5,16 @@ header('Content-Type: application/json');
 // --- Configuration ---
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
 $host = $_SERVER['HTTP_HOST'];
-$script_path = dirname($_SERVER['SCRIPT_NAME']);
+$current_dir = str_replace('\\', '/', realpath(__DIR__) ?: __DIR__);
+$document_root = str_replace('\\', '/', realpath($_SERVER['DOCUMENT_ROOT'] ?? '') ?: ($_SERVER['DOCUMENT_ROOT'] ?? ''));
+
+if ($document_root !== '' && strpos($current_dir, rtrim($document_root, '/')) === 0) {
+    $script_path = substr($current_dir, strlen(rtrim($document_root, '/')));
+} else {
+    $script_path = dirname($_SERVER['SCRIPT_NAME'] ?? '');
+}
+
+$script_path = '/' . trim(str_replace('\\', '/', $script_path), '/');
 $base_audio_url = rtrim($protocol . $host . $script_path, '/') . '/audio/';
 
 $word = $_GET['q'] ?? $_GET['word'] ?? '';
