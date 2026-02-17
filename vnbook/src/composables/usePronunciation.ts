@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import { getAudioUrl } from '@/api/words'
 
 // Create a single Audio instance to prevent multiple playbacks from overlapping
@@ -25,8 +25,36 @@ const speakTTS = (word: string) => {
   }
 }
 
+const playAudio = (url: string, word: string, loadingWordRef: Ref<string | null>) => {
+  try {
+    audio.src = url
+    // When the audio file fails to load or play
+    audio.onerror = () => {
+      console.error('Audio playback failed, falling back to TTS.')
+      speakTTS(word)
+      loadingWordRef.value = null
+    }
+    // When audio playback finishes
+    audio.onended = () => {
+      loadingWordRef.value = null
+    }
+    // When audio can be played
+    audio.oncanplay = () => {
+      audio.play().catch(() => {
+        // Playback was interrupted or failed, fallback to TTS
+        speakTTS(word)
+        loadingWordRef.value = null
+      })
+    }
+  } catch {
+    console.info('Failed to play audio URL, falling back to TTS.')
+    speakTTS(word)
+    loadingWordRef.value = null
+  }
+}
+
 export function usePronunciation() {
-  const play = async (word: string) => {
+  const play = async (word: string, audioUrl?: string) => {
     if (!word || loadingWord.value) return
     // Stop any currently playing audio or speech
     audio.pause()
@@ -36,46 +64,25 @@ export function usePronunciation() {
 
     loadingWord.value = word
 
-    try {
-      const response = await getAudioUrl(word)
-      if (response.data.success && response.data.url) {
-        audio.src = response.data.url
-        // When the audio file fails to load or play
-        audio.onerror = () => {
-          console.error('Audio playback failed, falling back to TTS.')
+    if (audioUrl) {
+      playAudio(audioUrl, word, loadingWord)
+    } else {
+      // No URL provided, try to fetch from API
+      try {
+        const response = await getAudioUrl(word)
+        if (response.data.success && response.data.url) {
+          playAudio(response.data.url, word, loadingWord)
+        } else {
+          // API returned success: false, so fallback to TTS
           speakTTS(word)
           loadingWord.value = null
         }
-        // When audio playback finishes
-        audio.onended = () => {
-          loadingWord.value = null
-        }
-        // When audio can be played
-        audio.oncanplay = () => {
-          audio.play().catch(() => {
-            // Playback was interrupted or failed, fallback to TTS
-            speakTTS(word)
-            loadingWord.value = null
-          })
-        }
-        // Set a timeout for loading, if it takes too long, fallback to TTS
-        setTimeout(() => {
-          if (loadingWord.value === word && audio.paused) {
-            console.log('Audio loading timed out, falling back to TTS.')
-            speakTTS(word)
-            loadingWord.value = null
-          }
-        }, 3000) // 3-second timeout
-      } else {
-        // API returned success: false, so fallback to TTS
+      } catch {
+        console.info('Failed to fetch audio URL, falling back to TTS.')
+        // Network error or other issue fetching the URL, fallback to TTS
         speakTTS(word)
         loadingWord.value = null
       }
-    } catch {
-      console.info('Failed to fetch audio URL, falling back to TTS.')
-      // Network error or other issue fetching the URL, fallback to TTS
-      speakTTS(word)
-      loadingWord.value = null
     }
 
     // A final check to release the lock in case something unexpected happened

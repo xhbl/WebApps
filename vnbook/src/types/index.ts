@@ -16,6 +16,7 @@ export interface Word {
   id: number
   word: string
   phon?: string
+  audio_url?: string
   time_c: string
   explanations?: Explanation[]
   book_count?: number

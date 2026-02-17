@@ -5,16 +5,11 @@
  */
 
 require_once __DIR__ . '/utils.php';
-require_once __DIR__ . '/login.php';
-require_once __DIR__ . '/audiotts.php';
 
-function getAudio($word)
+function getAudio($word, $cached = false)
 {
-    // --- 0. 安全检查 ---
-    $logsess = vnb_checklogin();
-    if ($logsess->success !== true) {
-        return ['success' => false, 'word' => $word, 'message' => 'Unauthorized'];
-    }
+    // 规范化单词：去除首尾空格，确保生成的缓存文件名与 audioq.php (API) 一致
+    $word = trim($word);
 
     // --- 1. 缓存目录配置 ---
     if (!ensure_writable_directory(ABS_PATH_AUDIO)) {
@@ -29,12 +24,19 @@ function getAudio($word)
     $existing_files = glob($cache_pattern);
     if (!empty($existing_files)) {
         $cache_filename = basename($existing_files[0]);
+
         return [
             'success' => true,
             'word' => $word,
             'url' => REL_URL_AUDIO . '/' . $cache_filename,
             'cached' => true
         ];
+    }
+
+    // --- 3.1 仅检查缓存模式 ---
+    if ($cached) {
+        // 在仅缓存模式下，也检查TTS缓存
+        return getOrGenerateTTSAudio($word, $cache_filename_base, true);
     }
 
     // --- 4. 字典查询 ---
@@ -102,16 +104,77 @@ function getAudio($word)
     return getOrGenerateTTSAudio($word, $cache_filename_base);
 }
 
-// API入口
-if (basename(__FILE__) == basename($_SERVER['SCRIPT_FILENAME'])) {
-    header('Content-Type: application/json; charset=utf-8');
+/**
+ * Gets a TTS audio URL, generating and caching the audio file if it doesn't exist.
+ * This function encapsulates all logic related to TTS audio generation.
+ * Moved from audiotts.php
+ *
+ * @param string $word The word or phrase to convert to speech.
+ * @param string $cache_filename_base The pre-computed, unique base for the cache file.
+ * @return array An associative array with a consistent JSON structure.
+ */
+function getOrGenerateTTSAudio($word, $cache_filename_base, $cached_only = false)
+{
+    // 1. Cache configuration
+    $tts_cache_dir = ABS_PATH_AUDIO . DIRECTORY_SEPARATOR . DIR2_NAME_TTS;
+    $tts_cache_url = REL_URL_AUDIO . '/' . DIR2_NAME_TTS;
 
-    $word_to_search = isset($_GET['q']) ? trim($_GET['q']) : '';
-    if (empty($word_to_search)) {
-        echo json_encode(['success' => false, 'message' => 'Query parameter "q" is missing.']);
-        exit;
+    $cache_dir_absolute = $tts_cache_dir;
+    if (!ensure_writable_directory($cache_dir_absolute)) {
+        return [
+            'success' => false,
+            'word' => $word,
+            'message' => 'TTS cache directory not writable'
+        ];
     }
 
-    $result = getAudio($word_to_search);
-    echo json_encode($result, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    $cache_filename = $cache_filename_base . '.mp3';
+    $cache_filepath = $cache_dir_absolute . DIRECTORY_SEPARATOR . $cache_filename;
+    $cache_url = $tts_cache_url . '/' . $cache_filename;
+
+    // 2. Check cache (Cache Hit) - Consistent Response
+    if (file_exists($cache_filepath)) {
+        return ['success' => true, 'word' => $word, 'url' => $cache_url, 'cached' => true];
+    }
+
+    // 3. If in cache-only mode and not found, return failure
+    if ($cached_only) {
+        return ['success' => false, 'word' => $word, 'message' => 'Not cached'];
+    }
+
+    // 3. Cache Miss: Call TTS Service
+    // 注意：TTS服务URL保持不变，因为它指向本地服务
+    $tts_service_url = "http://localhost:3343/tts?text=" . urlencode($word);
+
+    $context = stream_context_create([
+        'http' => [
+            'timeout' => 15, // 15 seconds timeout
+            'ignore_errors' => true // Get content even on non-200 status codes
+        ]
+    ]);
+
+    $audio_data = @file_get_contents($tts_service_url, false, $context);
+
+    // Manually check the HTTP status code from the special $http_response_header variable
+    $http_code = 0;
+    if (isset($http_response_header[0])) {
+        preg_match('{HTTP/1\.\d (\d{3})}', $http_response_header[0], $matches);
+        $http_code = (int)$matches[1];
+    }
+
+    // 4. Process response and create cache - Consistent Response
+    if ($http_code === 200 && $audio_data) {
+        if ($cache_dir_absolute && is_writable($cache_dir_absolute)) {
+            file_put_contents($cache_filepath, $audio_data);
+            return ['success' => true, 'word' => $word, 'url' => $cache_url, 'cached' => false];
+        }
+    }
+
+    // 5. Failure - Consistent Response
+    return [
+        'success' => false,
+        'word' => $word,
+        'message' => 'Failed to find or generate the audio file.',
+        'tts_http_code' => $http_code // Keep for debugging
+    ];
 }

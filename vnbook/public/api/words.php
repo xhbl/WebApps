@@ -16,6 +16,7 @@
  */
 
 require_once 'login.php';
+require_once 'audio.php';
 
 /**
  * Retrieve words for a book with nested explanations
@@ -89,6 +90,10 @@ function getWords($bid, $wid = null, $word = null)
         foreach ($rows as &$row) {
             $row['explanations'] = getExplanations($row['id']);
             $row['_new'] = 0;
+            // Get audio URL (cache-only mode for performance)
+            // This will only return a URL if the audio is already cached.
+            $audioResult = getAudio($row['word'], true);
+            $row['audio_url'] = $audioResult['success'] ? $audioResult['url'] : null;
         }
 
         return $rows;
@@ -351,6 +356,11 @@ function updateWords($bid, $items)
             $word = $stmt->fetch(PDO::FETCH_ASSOC);
             $word['explanations'] = getExplanations($item->id);
             $word['_new'] = isset($item->_new) ? $item->_new : 0;
+
+            // Get audio URL (full generation mode)
+            // This will generate a cache if it doesn't exist, typically on word creation.
+            $audioResult = getAudio($word['word']);
+            $word['audio_url'] = $audioResult['success'] ? $audioResult['url'] : null;
 
             $out[] = (object)$word;
         }

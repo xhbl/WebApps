@@ -59,7 +59,11 @@
                     @click.stop="toggleReview(w)"
                   />
                 </div>
-                <div class="phon-row" v-if="w.phon" @click.stop="playPronunciation(w.word)">
+                <div
+                  class="phon-row"
+                  v-if="w.phon"
+                  @click.stop="playPronunciation(w.word, w.audio_url)"
+                >
                   <van-icon
                     name="volume-o"
                     class="phon-icon"

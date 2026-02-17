@@ -77,7 +77,7 @@ export const updateWordPhon = (wordId: number, phon: string) => {
  * 获取单词发音 URL
  */
 export const getAudioUrl = (word: string) => {
-  return request.get<ApiResponse & { url?: string }>('/audio.php', {
+  return request.get<ApiResponse & { url?: string }>('/audioq.php', {
     params: { q: word },
     headers: { 'X-No-Loading': 'true', 'X-No-Toast': 'true' }, // Don't show global loading or toast
     timeout: 3000, // 3-second timeout for the API request

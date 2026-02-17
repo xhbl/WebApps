@@ -188,7 +188,7 @@ const wordSegments = computed(() => {
 })
 
 const playAudio = () => {
-  play(props.word.word)
+  play(props.word.word, props.word.audio_url)
 }
 
 const onSelect = (action: { key: string }) => {
