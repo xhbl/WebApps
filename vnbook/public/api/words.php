@@ -598,12 +598,25 @@ function deleteWords($bid, $items)
         // Create placeholders string (?,?,?)
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
 
+        // Helper to get words before deletion for audio cleanup
+        $getWordsSql = "SELECT word FROM vnu_words WHERE id IN ($placeholders) AND user_id = ?";
+
         if ($bid == 0) {
             // Mode: All Words - Physical Delete
+            // 1. Get words to delete audio cache
+            $stmt = $db->prepare($getWordsSql);
+            $stmt->execute(array_merge($ids, [$uid]));
+            $wordsToDelete = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
             // Params: [...ids, uid]
             $sql = "DELETE FROM vnu_words WHERE id IN ($placeholders) AND user_id = ?";
             $params = array_merge($ids, [$uid]);
             $db->prepare($sql)->execute($params);
+
+            // Cleanup audio cache
+            foreach ($wordsToDelete as $word) {
+                deleteAudio($word);
+            }
         } else if ($bid == -1) {
             // Mode: Review Book - Remove from review
             // Params: [...ids, uid]
@@ -620,6 +633,15 @@ function deleteWords($bid, $items)
 
             // 2. (Optional) Clean up orphans
             if ($deleteOrphans) {
+                // Identify orphans to be deleted
+                $sqlGetOrphans = "SELECT word FROM vnu_words 
+                                  WHERE id IN ($placeholders) 
+                                  AND user_id = ?
+                                  AND id NOT IN (SELECT word_id FROM vnu_mapbw)";
+                $stmt = $db->prepare($sqlGetOrphans);
+                $stmt->execute(array_merge($ids, [$uid]));
+                $orphans = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
                 // Delete words that are in the target list AND no longer have any mappings
                 // Params: [...ids, uid]
                 $sql = "DELETE FROM vnu_words 
@@ -628,6 +650,11 @@ function deleteWords($bid, $items)
                         AND id NOT IN (SELECT word_id FROM vnu_mapbw)";
                 $params = array_merge($ids, [$uid]);
                 $db->prepare($sql)->execute($params);
+
+                // Cleanup audio cache for orphans
+                foreach ($orphans as $word) {
+                    deleteAudio($word);
+                }
             }
         }
 
