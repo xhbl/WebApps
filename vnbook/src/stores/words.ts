@@ -508,7 +508,7 @@ function defineWordsStore() {
       if (bookId === -1) {
         booksStore.reviewCount = Math.max(0, booksStore.reviewCount - targetWords.length)
 
-        // Reset lastReviewID if the tracked word is deleted or list becomes empty
+        // 如果跟踪的单词被删除或列表变空，重置 lastReviewID
         const lastId = Number(authStore.userInfo?.cfg?.lastReviewID || 0)
         if (lastId > 0) {
           if (targetIds.has(lastId)) {
