@@ -420,6 +420,7 @@ const onShowInfo = () => {
 }
 
 const { loading, withLoading } = useSubmitLoading()
+const { handleSaveWord } = useWordOperations()
 
 const onSubmit = () =>
   withLoading(async () => {
@@ -468,7 +469,6 @@ const onSubmit = () =>
       // 如果需要保存释义，需构造 Explanation 数组。目前仅保存单词和音标。
     }
 
-    const { handleSaveWord } = useWordOperations()
     const success = await handleSaveWord(w, props.bid, addToReview.value, isNew.value)
 
     if (success) {

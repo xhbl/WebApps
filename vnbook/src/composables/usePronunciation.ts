@@ -1,5 +1,6 @@
 import { ref, type Ref } from 'vue'
 import { getAudioUrl } from '@/api/words'
+import { useWordsStore } from '@/stores/words'
 
 // Create a single Audio instance to prevent multiple playbacks from overlapping
 const audio = new Audio()
@@ -54,8 +55,20 @@ const playAudio = (url: string, word: string, loadingWordRef: Ref<string | null>
 }
 
 export function usePronunciation() {
+  const wordsStore = useWordsStore()
+
   const play = async (word: string, audioUrl?: string) => {
     if (!word || loadingWord.value) return
+
+    // 如果调用方没有传递 audioUrl，尝试从 Store 中查找
+    // 这解决了部分组件调用 play 时遗漏 audioUrl 参数的问题
+    if (!audioUrl) {
+      const w = wordsStore.findWordByName(word)
+      if (w?.audio_url) {
+        audioUrl = w.audio_url
+      }
+    }
+
     // Stop any currently playing audio or speech
     audio.pause()
     if (window.speechSynthesis.speaking) {
@@ -71,6 +84,12 @@ export function usePronunciation() {
       try {
         const response = await getAudioUrl(word)
         if (response.data.success && response.data.url) {
+          // 关键修复：获取成功后，立即更新 Store 中的数据
+          // 这样下次点击时，audioUrl 就有值了，不会再触发 API 请求
+          const wordItem = wordsStore.findWordByName(word)
+          if (wordItem) {
+            wordItem.audio_url = response.data.url
+          }
           playAudio(response.data.url, word, loadingWord)
         } else {
           // API returned success: false, so fallback to TTS
