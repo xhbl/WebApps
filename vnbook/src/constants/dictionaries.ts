@@ -16,10 +16,10 @@ export const EXTERNAL_DICTS: ExternalDictConfig[] = [
   },
   {
     name: '剑桥',
-    title: '剑桥高阶英语词典',
-    url: 'https://dictionary.cambridge.org/dictionary/english/{word}',
-    show: false,
-    margin: '0',
+    title: '剑桥英汉双解词典',
+    url: '../dict/cambridge/?q={word}',
+    show: true,
+    margin: '0 6px',
   },
 ]
 
