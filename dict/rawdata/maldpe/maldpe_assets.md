@@ -1,0 +1,6 @@
+- [maldpe.mdx](https://github.com/xhbl/WebApps/releases/download/ext-data-assets/maldpe.mdx)
+- maldpe.mdd
+- [maldpe.css](maldpe.css)
+- [maldpe.js](maldpe.js)
+- [maldpe-jquery-3.6.0.min.js](maldpe-jquery-3.6.0.min.js)
+- [maldpe.png](maldpe.png)

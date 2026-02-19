@@ -981,7 +981,7 @@ const swipeNext = () => swipeRef.value?.next()
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px 12px;
+  gap: 8px 16px;
   font-size: var(--van-font-size-sm);
   font-weight: bold;
   margin-bottom: 8px;

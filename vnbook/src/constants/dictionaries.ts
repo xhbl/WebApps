@@ -12,12 +12,19 @@ export const EXTERNAL_DICTS: ExternalDictConfig[] = [
     title: '牛津高阶英汉双解词典',
     url: '../dict/oxford/?q={word}',
     show: true,
-    margin: '0 10px', // 示例：'-50px 0 0 0' 可隐藏顶部导航栏
+    margin: '0 8px', // 示例：'-50px 0 0 0' 可隐藏顶部导航栏
   },
   {
     name: '剑桥',
     title: '剑桥英汉双解词典',
     url: '../dict/cambridge/?q={word}',
+    show: true,
+    margin: '0 6px',
+  },
+  {
+    name: '韦氏',
+    title: '韦氏高阶英汉双解词典',
+    url: '../dict/merriam/?q={word}',
     show: true,
     margin: '0 6px',
   },
@@ -36,7 +43,7 @@ export const ONLINE_DICTS: ExternalDictConfig[] = [
     title: '自由在线词典',
     url: 'https://www.thefreedictionary.com/{word}',
     show: true,
-    margin: '0',
+    margin: '0 6px',
   },
   {
     name: '维基词典',
