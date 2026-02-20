@@ -32,7 +32,8 @@ def get_db_config(db_address='127.0.0.1:3306', user_credentials='root:_dbpasswor
 def import_json_file(db_config):
     """导入 JSON 文件并显示进度"""
     # json_file = 'coca_vocab_20k_ce.json'
-    json_file = 'va_basedict_r01.json'
+    # json_file = 'va_basedict_r01.json'
+    json_file = 'va_basedict_r02.json'
 
     connection = None
     try:
