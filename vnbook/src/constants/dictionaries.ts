@@ -33,7 +33,7 @@ export const EXTERNAL_DICTS: ExternalDictConfig[] = [
     title: '朗文当代高级英汉辞典',
     url: '../dict/longman/?q={word}',
     show: true,
-    margin: '0 10px',
+    margin: '-0.5em 10px',
   },
 ]
 
@@ -58,5 +58,12 @@ export const ONLINE_DICTS: ExternalDictConfig[] = [
     url: 'https://en.wiktionary.org/wiki/{word}',
     show: true,
     margin: '0',
+  },
+  {
+    name: '有道词典',
+    title: '有道在线词典',
+    url: 'https://www.youdao.com/m/result?lang=en&word={word}',
+    show: true,
+    margin: '-50px 0',
   },
 ]

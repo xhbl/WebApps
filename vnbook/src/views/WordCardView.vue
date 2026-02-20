@@ -974,20 +974,19 @@ const swipeNext = () => swipeRef.value?.next()
 }
 
 .dict-tabs {
-  margin-top: 16px;
+  margin-top: 20px;
   position: relative;
 }
 .dict-header {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px 12px;
+  gap: 8px 10px;
   font-size: var(--van-font-size-sm);
   font-weight: bold;
   margin-bottom: 8px;
   color: var(--van-text-color);
   text-align: left;
-  padding-right: 32px; /* Avoid overlap with the eye icon */
 }
 .ext-dict-link {
   font-weight: normal;
@@ -1021,8 +1020,8 @@ const swipeNext = () => swipeRef.value?.next()
 .dict-float-icon {
   position: absolute;
   right: 0;
-  top: 0;
-  padding: 8px;
+  top: -20px;
+  padding: 4px;
   color: var(--van-gray-5);
   cursor: pointer;
   z-index: 10;

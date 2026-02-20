@@ -18,9 +18,8 @@ function defineWordsStore() {
   const currentWord = ref<Word | null>(null)
   const searchKeyword = ref('')
   const orphanFilter = ref(false)
-  const savedSortMode = authStore.userInfo?.cfg?.wordsListSortMode
   const currentBookId = ref<number | null>(null)
-  const sortMode = ref<SortMode>(savedSortMode === 'alpha' ? 'alpha' : 'date')
+  const sortMode = ref<SortMode>('date')
 
   // Getters
   /**
@@ -95,6 +94,9 @@ function defineWordsStore() {
       if (bookId === -1) {
         const saved = authStore.userInfo?.cfg?.reviewListSortMode as SortMode | undefined
         sortMode.value = saved || 'streak'
+      } else if (bookId === 0) {
+        const saved = authStore.userInfo?.cfg?.allListSortMode as SortMode | undefined
+        sortMode.value = saved || 'date'
       } else {
         const saved = authStore.userInfo?.cfg?.wordsListSortMode as SortMode | undefined
         sortMode.value = saved || 'date'
@@ -287,6 +289,8 @@ function defineWordsStore() {
     sortMode.value = sortMode.value === 'date' ? 'alpha' : 'date'
     if (currentBookId.value === -1) {
       authStore.updateUserConfig({ reviewListSortMode: sortMode.value })
+    } else if (currentBookId.value === 0) {
+      authStore.updateUserConfig({ allListSortMode: sortMode.value })
     } else {
       authStore.updateUserConfig({ wordsListSortMode: sortMode.value })
     }
@@ -300,6 +304,8 @@ function defineWordsStore() {
     sortMode.value = mode
     if (currentBookId.value === -1) {
       authStore.updateUserConfig({ reviewListSortMode: mode })
+    } else if (currentBookId.value === 0) {
+      authStore.updateUserConfig({ allListSortMode: mode })
     } else {
       authStore.updateUserConfig({ wordsListSortMode: mode })
     }

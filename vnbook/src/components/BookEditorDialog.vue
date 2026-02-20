@@ -168,7 +168,7 @@ h3 {
 
 .actions .van-button {
   /* 这样设置可以让按钮在一定范围内自适应，但不会无限拉长 */
-  min-width: 100px;
+  min-width: 90px;
   max-width: 120px;
   flex: 1;
 }

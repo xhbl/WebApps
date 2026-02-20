@@ -857,7 +857,7 @@ const { openMenu, AppMenu } = useAppMenu({
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
 .bottom-bar-right {
@@ -865,7 +865,7 @@ const { openMenu, AppMenu } = useAppMenu({
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
 .bottom-bar-center {
@@ -879,7 +879,7 @@ const { openMenu, AppMenu } = useAppMenu({
 .review-controls {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
 }
 
 .play-wrapper {
@@ -916,7 +916,7 @@ const { openMenu, AppMenu } = useAppMenu({
 .bottom-bar-icon {
   font-size: 22px;
   color: var(--van-nav-bar-icon-color);
-  padding: 4px;
+  padding: 2px;
   border-radius: 4px;
   transition:
     background-color 0.2s,

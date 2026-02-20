@@ -226,7 +226,7 @@ h3 {
   flex-shrink: 0;
 }
 .actions .van-button {
-  min-width: 100px;
+  min-width: 90px;
   max-width: 120px;
   flex: 1;
 }
