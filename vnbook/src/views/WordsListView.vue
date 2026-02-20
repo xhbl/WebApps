@@ -762,11 +762,13 @@ const { openMenu, AppMenu } = useAppMenu({
   min-height: 100vh;
   padding-top: calc(var(--van-nav-bar-height) + var(--vnb-pad-top));
   background-color: var(--van-background);
+  box-sizing: border-box;
 }
 
 .content {
   padding-top: 0px;
-  padding-bottom: calc(var(--van-nav-bar-height) + var(--vnb-pad-bottom));
+  padding-bottom: calc(var(--van-nav-bar-height) + var(--vnb-pad-bottom) + env(safe-area-inset-bottom, 0));
+  box-sizing: border-box;
 }
 
 .loading {
@@ -848,8 +850,13 @@ const { openMenu, AppMenu } = useAppMenu({
   align-items: center;
   z-index: 100;
   padding: 0 16px;
-  padding-bottom: var(--vnb-pad-bottom);
-  box-sizing: content-box;
+  padding-bottom: calc(var(--vnb-pad-bottom) + env(safe-area-inset-bottom, 0));
+  box-sizing: border-box;
+  /* 修复 Safari 移动端 fixed 定位抖动 */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .bottom-bar-left {
