@@ -1,0 +1,78 @@
+# ======================================================================
+# | Security & Protection                                              |
+# ======================================================================
+
+# 1. 禁止访问敏感文件
+# 保护数据库文件 (.db) 和所有隐藏文件 (如 .git, .vscode)
+<FilesMatch "(\.(db|sqlite|sqlite3|log|ini)|^\.)">
+    Require all denied
+</FilesMatch>
+
+# 2. 禁止目录浏览
+# 防止用户看到文件列表，增强安全性
+Options -Indexes
+
+# ======================================================================
+# | Compression (Gzip/Deflate)                                         |
+# ======================================================================
+
+<IfModule mod_deflate.c>
+    # 强制开启压缩，大幅减少传输体积
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css
+    AddOutputFilterByType DEFLATE application/javascript application/json
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE image/svg+xml
+    AddOutputFilterByType DEFLATE application/vnd.ms-fontobject application/x-font-ttf font/opentype
+</IfModule>
+
+# ======================================================================
+# | Browser Caching Strategy (Expires)                                 |
+# ======================================================================
+# 策略说明：
+# 1. 媒体资源 (Audio/Images): 永久缓存 (1年)。因为词典内容一旦生成极少改变。
+# 2. 代码资源 (CSS/JS): 长效缓存 (1个月)。
+# 3. 入口文件 (HTML): 协商缓存 (0秒)。确保用户总能获取最新的引用。
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # 默认策略：1小时
+    ExpiresDefault "access plus 1 hour"
+
+    # [HTML] 每次请求都检查更新
+    # 这样如果你更新了 JS/CSS，用户刷新 HTML 就能立即生效
+    ExpiresByType text/html "access plus 0 seconds"
+
+    # [API/Data] 1周
+    # 单词定义的 JSON 数据极少改变，允许短期缓存
+    ExpiresByType application/json "access plus 1 week"
+
+    # [Static Assets] 1年 (永久缓存)
+    # 图片、音频、字体是词典体积最大的部分，且不会变更
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType audio/mpeg "access plus 1 year"
+    ExpiresByType audio/wav "access plus 1 year"
+    ExpiresByType audio/x-wav "access plus 1 year"
+    ExpiresByType audio/x-spx "access plus 1 year"
+    ExpiresByType font/ttf "access plus 1 year"
+    ExpiresByType font/otf "access plus 1 year"
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType application/font-woff "access plus 1 year"
+
+    # [Code] 1个月
+    # 样式和脚本
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType application/x-javascript "access plus 1 month"
+</IfModule>
+
+# ======================================================================
+# | Character Set                                                      |
+# ======================================================================
+AddDefaultCharset UTF-8

@@ -28,6 +28,13 @@ export const EXTERNAL_DICTS: ExternalDictConfig[] = [
     show: true,
     margin: '0 6px',
   },
+  {
+    name: '朗文',
+    title: '朗文当代高级英汉辞典',
+    url: '../dict/longman/?q={word}',
+    show: true,
+    margin: '0 10px',
+  },
 ]
 
 export const ONLINE_DICTS: ExternalDictConfig[] = [
