@@ -1,6 +1,21 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
+// 系统后退检测：禁用动画以避免手势冲突
+let isSystemBackNavigation = false
+let isProgrammaticBack = false
+
+window.addEventListener('popstate', () => {
+  // 如果是编程式后退，忽略
+  if (isProgrammaticBack) {
+    isProgrammaticBack = false
+    return
+  }
+  isSystemBackNavigation = true
+  // 后备清理，防止标志永久残留
+  setTimeout(() => { isSystemBackNavigation = false }, 1000)
+})
+
 const routes: RouteRecordRaw[] = [
   {
     path: '/login',
@@ -49,9 +64,32 @@ if (window.history && 'scrollRestoration' in window.history) {
   window.history.scrollRestoration = 'manual'
 }
 
+// 猴子补丁 router.back 以标记编程式后退
+const originalBack = router.back
+router.back = function(...args) {
+  isProgrammaticBack = true
+  // 安全清除，防止标志残留
+  setTimeout(() => { isProgrammaticBack = false }, 100)
+  return originalBack.apply(this, args)
+}
+
 // 路由守卫
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
+
+  // 系统后退检测：禁用动画以避免手势冲突
+  if (isSystemBackNavigation) {
+    if (!to.meta) {
+      to.meta = {}
+    }
+    to.meta.disableTransition = true
+    // 调试日志，仅在开发环境输出
+    if (import.meta.env.DEV) {
+      console.log('[System Back] Disable transition for:', to.name || to.path)
+    }
+    // 消费标志，确保只影响当前导航
+    isSystemBackNavigation = false
+  }
 
   // 检查是否需要登录
   if (to.meta.requiresAuth) {
