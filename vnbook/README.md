@@ -4,6 +4,21 @@
 
 **VNBook** 是一款专为个人学习设计的英语单词本应用，让您可以随时随地记录生活中遇到的生词，并通过个性化的方式进行复习。
 
+<div style="width: 100%; display: block;">
+  <img src="pics/vnb_ss01.jpg" style="width: 24%; float: left; margin-right: 1%;" />
+  <img src="pics/vnb_ss02.jpg" style="width: 24%; float: left; margin-right: 1%;" />
+  <img src="pics/vnb_ss03.jpg" style="width: 24%; float: left; margin-right: 1%;" />
+  <img src="pics/vnb_ss04.jpg" style="width: 24%; float: left;" />
+  <div style="clear: both;"></div>
+</div>
+<div style="margin-top: 5px; width: 100%; display: block;">
+  <img src="pics/vnb_ss05.jpg" style="width: 24%; float: left; margin-right: 1%;" />
+  <img src="pics/vnb_ss06.jpg" style="width: 24%; float: left; margin-right: 1%;" />
+  <img src="pics/vnb_ss07.jpg" style="width: 24%; float: left; margin-right: 1%;" />
+  <img src="pics/vnb_ss08.jpg" style="width: 24%; float: left;" />
+  <div style="clear: both;"></div>
+</div>
+
 ### 💡 为什么选择 VNBook？
 
 #### 这不是一本传统词典
@@ -271,7 +286,7 @@ VNBook 支持多用户系统，一个后端服务可供多人同时使用：
   - 🏅 已达标（达到您设定的目标次数）
   - ✅ 本轮认识
   - ❌ 本轮不认识
-  - ⏳ 待复习
+  - ▶️ 待复习
 - **统计信息**：每个单词显示学习进度
 - **智能过滤**：已掌握的单词自动隐藏
 
@@ -428,7 +443,7 @@ VNBook 支持多用户系统，一个后端服务可供多人同时使用：
 
 ## 🚀 快速开始
 
-### 默认登录账号
+### 默认管理员登录账号
 
 ```
 用户名：admin
@@ -466,7 +481,7 @@ VNBook 采用现代 Web 技术构建，确保流畅的用户体验：
 
 ## �📞 需要帮助？
 
-如有问题或建议，请联系管理员或查阅相关文档。
+**E-mail**: [发送邮件](mailto:newxhbl@hotmail.com?subject=[VNBook]%20问询)
 
 ---
 
