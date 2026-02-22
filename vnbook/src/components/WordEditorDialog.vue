@@ -11,6 +11,7 @@
         <van-cell-group>
           <div class="input-wrapper" ref="inputWrapperRef">
             <van-field
+              ref="wordFieldRef"
               v-model="formData.word"
               label="单词"
               placeholder="请输入单词"
@@ -124,9 +125,19 @@ const emit = defineEmits<{
 }>()
 
 const show = ref(props.modelValue)
+const wordFieldRef = ref<{ focus: () => void } | null>(null)
+
 watch(
   () => props.modelValue,
-  (v) => (show.value = v),
+  async (v) => {
+    show.value = v
+    if (v && (!props.word || props.word._new === 1)) {
+      await nextTick()
+      setTimeout(() => {
+        wordFieldRef.value?.focus()
+      }, 500)
+    }
+  },
 )
 usePopupHistory(show)
 

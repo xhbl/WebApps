@@ -5,6 +5,7 @@
       <van-form @submit="onSubmit">
         <van-cell-group>
           <van-field
+            ref="titleFieldRef"
             v-model="edit.title"
             label="名称"
             placeholder="请输入名称"
@@ -49,9 +50,19 @@ const emit = defineEmits<{
 }>()
 
 const show = ref(props.modelValue)
+const titleFieldRef = ref<{ focus: () => void } | null>(null)
+
 watch(
   () => props.modelValue,
-  (v) => (show.value = v),
+  async (v) => {
+    show.value = v
+    if (v && (!props.book || props.book._new === 1)) {
+      await nextTick()
+      setTimeout(() => {
+        titleFieldRef.value?.focus()
+      }, 500)
+    }
+  },
 )
 const { close } = usePopupHistory(show)
 
