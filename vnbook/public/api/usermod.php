@@ -44,12 +44,17 @@ function vnb_moduser($dname, $upassold, $upassnew, $cfg)
             $_SESSION['user_cfg'] = $cfg;
         }
 
+        // 确保返回的 cfg 包含最新的 defaultBookId
+        $updatedCfg = json_decode($_SESSION['user_cfg'] ?? '{}', true);
+        $defaultBookId = $updatedCfg['defaultBookId'] ?? 0;
+
         $retjo->success = true;
         $retjo->login = [
             'sid' => session_id(),
             'uname' => $uname,
             'dname' => $dname,
-            'cfg' => json_decode($_SESSION['user_cfg'] ?? '')
+            'cfg' => $updatedCfg,
+            'defaultBookId' => $defaultBookId
         ];
     } catch (Exception $e) {
         $retjo->message = $e->getMessage();

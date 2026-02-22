@@ -70,7 +70,12 @@
               </div>
             </template>
             <template #right-icon>
-              <img src="/resources/icons/vnb-more.png" class="right-more-icon" />
+              <img
+                v-if="authStore.userInfo?.defaultBookId === b.id"
+                src="/resources/icons/vnb-add.png"
+                class="right-more-icon"
+              />
+              <img v-else src="/resources/icons/vnb-more.png" class="right-more-icon" />
             </template>
           </van-cell>
           <van-cell
@@ -106,6 +111,10 @@
           />
         </div>
       </van-pull-refresh>
+    </div>
+
+    <div v-if="hasDefaultBook" class="add-word-fab" @click="onAddWordToDefaultBook">
+      <van-icon name="plus" />
     </div>
 
     <AppMenu />
@@ -174,6 +183,19 @@ const showReviewBook = ref(!authStore.userInfo?.cfg?.hideReviewBook)
 const totalWords = computed(() => {
   return booksStore.totalWordCount || 0
 })
+
+// 计算是否存在有效的缺省单词本
+const hasDefaultBook = computed(() => {
+  const defaultBookId = authStore.userInfo?.defaultBookId
+  return defaultBookId && booksStore.books.some((b) => b.id === defaultBookId)
+})
+
+// 点击浮动按钮添加单词到缺省单词本
+const onAddWordToDefaultBook = () => {
+  const defaultBookId = authStore.userInfo?.defaultBookId
+  if (!defaultBookId) return
+  router.push({ name: 'WordsList', params: { bid: defaultBookId }, query: { addWord: 'true' } })
+}
 
 // 跟踪当前用户ID，用于检测用户切换
 const currentUserId = ref<number | null>(null)
@@ -432,5 +454,33 @@ const { openMenu, AppMenu, UserDialog } = useAppMenu({
 
 .full-height-refresh {
   min-height: 100%;
+}
+
+.add-word-fab {
+  position: fixed;
+  bottom: calc(25px + env(safe-area-inset-bottom)); /* 距离底部安全区域 */
+  left: 75%; /* 中间偏右 */
+  transform: translateX(-50%);
+  width: 50px;
+  height: 50px;
+  background-color: rgba(var(--van-primary-color-rgb), 0.85);
+  backdrop-filter: blur(4px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(var(--van-primary-color-rgb), 0.4);
+  color: white;
+  font-size: 28px;
+  z-index: 1000;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease-in-out,
+    box-shadow 0.2s ease-in-out;
+}
+
+.add-word-fab:active {
+  transform: translateX(-50%) scale(0.95);
+  box-shadow: 0 2px 8px rgba(var(--van-primary-color-rgb), 0.6);
 }
 </style>

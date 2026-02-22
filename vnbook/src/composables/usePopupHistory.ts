@@ -49,7 +49,7 @@ export function usePopupHistory(show: Ref<boolean>) {
     (val) => {
       if (val) {
         if (!historyPushed.value) {
-          popupPath.value = route.fullPath
+          popupPath.value = route.path
           // 生成唯一 ID 并入栈
           popupId.value = Date.now().toString(36) + Math.random().toString(36).substr(2)
           popupStack.push(popupId.value)
@@ -78,7 +78,7 @@ export function usePopupHistory(show: Ref<boolean>) {
 
         if (historyPushed.value) {
           // 只有在相同路由时才回退
-          if (route.fullPath === popupPath.value) {
+          if (route.path === popupPath.value) {
             // 只有当当前历史状态确实是 popupOpen 时才回退 (防止双重回退)
             // 兼容接管状态 (popupId可能不匹配但popupOpen为true) 和 推送状态
             if (history.state?.popupOpen) {
@@ -98,7 +98,7 @@ export function usePopupHistory(show: Ref<boolean>) {
     if (idx !== -1) popupStack.splice(idx, 1)
 
     if (historyPushed.value) {
-      if (route.fullPath === popupPath.value) {
+      if (route.path === popupPath.value) {
         if (history.state?.popupOpen) {
           history.back()
         }

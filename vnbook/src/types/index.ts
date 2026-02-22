@@ -138,6 +138,7 @@ export interface LoginInfo {
   uid: number
   uname: string
   dname: string
+  defaultBookId?: number // 新增：缺省单词本ID
   cfg?: Record<string, unknown>
 }
 

@@ -499,6 +499,19 @@ watch(
   },
 )
 
+// 专门监听 addWord 参数，确保无论是首次加载还是路由切换都能触发
+watch(
+  () => route.query.addWord,
+  async (val) => {
+    if (val === 'true') {
+      // 清除 URL 参数，防止刷新或再次进入时重复打开
+      await router.replace({ query: { ...route.query, addWord: undefined } })
+      openAddWord()
+    }
+  },
+  { immediate: true },
+)
+
 // 首次挂载时加载
 onMounted(() => {
   if (route.name === 'WordsList' && !isNaN(bid.value)) {

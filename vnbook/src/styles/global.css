@@ -1,6 +1,7 @@
 /* Vant 主题变量 */
 :root {
   --van-primary-color: #1989fa;
+  --van-primary-color-rgb: 25, 137, 250;
   --van-success-color: #07c160;
   --van-danger-color: #f44646;
   --van-warning-color: #ff976c;

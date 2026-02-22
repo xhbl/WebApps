@@ -10,6 +10,12 @@
             placeholder="请输入名称"
             :rules="[{ required: true, message: '请输入名称' }]"
           />
+          <van-field label="设为缺省" :border="false">
+            <template #input>
+              <van-switch v-model="isDefaultBook" size="20" />
+            </template>
+          </van-field>
+          <div class="switch-desc">从首页添加单词会使用缺省单词本</div>
         </van-cell-group>
 
         <div class="actions">
@@ -28,6 +34,7 @@ import { useBooksStore } from '@/stores/books'
 import { useSubmitLoading } from '@/utils/toast'
 import type { Book } from '@/types'
 import { usePopupHistory } from '@/composables/usePopupHistory'
+import { useAuthStore } from '@/stores/auth'
 import { useDialogDraft } from '@/composables/useDialogDraft'
 
 const props = defineProps<{
@@ -49,6 +56,7 @@ watch(
 const { close } = usePopupHistory(show)
 
 const isNew = computed(() => !props.book || props.book._new === 1)
+const authStore = useAuthStore()
 const edit = ref<Book>({
   id: 0,
   title: '',
@@ -58,6 +66,7 @@ const edit = ref<Book>({
   _new: 1,
 })
 
+const isDefaultBook = ref(false)
 // 重置/初始化表单逻辑 (完全对齐 UserEditorDialog)
 const resetForm = () => {
   edit.value = {
@@ -68,6 +77,7 @@ const resetForm = () => {
     hide: 0,
     _new: 1,
   }
+  isDefaultBook.value = false
 }
 
 // --- 状态持久化逻辑 ---
@@ -78,13 +88,19 @@ const { isRestoring, clearDraft } = useDialogDraft({
   getState: () => ({
     edit: edit.value,
     editingBook: props.book,
+    isDefaultBook: isDefaultBook.value,
   }),
-  restoreState: async (state: { edit: Book; editingBook?: Book | null }) => {
+  restoreState: async (state: {
+    edit: Book
+    editingBook?: Book | null
+    isDefaultBook?: boolean
+  }) => {
     // 恢复父组件的 book 状态，确保 isNew 计算正确
     if (state.editingBook) emit('update:book', state.editingBook)
 
     await nextTick()
     edit.value = state.edit
+    if (state.isDefaultBook !== undefined) isDefaultBook.value = state.isDefaultBook
   },
 })
 
@@ -105,9 +121,11 @@ watch(
         hide: book.hide,
         _new: book._new ?? 1,
       }
+      isDefaultBook.value = book.id === authStore.userInfo?.defaultBookId
     } else if (!isRestoring.value) {
       resetForm()
     }
+    if (isNew.value) isDefaultBook.value = false // 新建时默认不勾选
   },
   { immediate: true },
 )
@@ -123,6 +141,17 @@ const onSubmit = () =>
     const b: Book = { ...edit.value }
     const saved = await booksStore.saveBook(b)
     if (saved) {
+      // 处理缺省单词本逻辑
+      const currentDefaultBookId = authStore.userInfo?.defaultBookId
+      if (isDefaultBook.value) {
+        // 如果当前勾选为缺省，则设为缺省
+        await authStore.updateUserConfig({ defaultBookId: saved.id })
+      } else if (currentDefaultBookId === saved.id) {
+        // 如果当前未勾选，但它曾是缺省，则取消缺省
+        await authStore.updateUserConfig({ defaultBookId: 0 })
+      }
+
+      // 关闭弹窗
       show.value = false
     }
   })
@@ -172,5 +201,12 @@ h3 {
 
 :deep(.van-field__label) {
   font-weight: bold;
+}
+
+.switch-desc {
+  font-size: var(--van-font-size-sm);
+  color: var(--van-text-color-3);
+  padding: 0 16px 10px 16px;
+  line-height: 1.4;
 }
 </style>
