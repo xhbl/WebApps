@@ -8,21 +8,20 @@ const loadingWord = ref<string | null>(null)
 
 // TTS 兜底函数
 const speakTTS = (word: string) => {
-  if ('speechSynthesis' in window) {
-    // 如果有正在进行的语音，取消它
-    if (window.speechSynthesis.speaking) {
-      window.speechSynthesis.cancel()
+  const synth = window.speechSynthesis
+  if (synth) {
+    if (synth.speaking) {
+      synth.cancel()
     }
     const msg = new SpeechSynthesisUtterance(word)
     msg.lang = 'en-US'
-    const voices = window.speechSynthesis.getVoices()
-    // 尝试寻找原生美式发音，否则使用默认
+    const voices = synth.getVoices()
     const usVoice = voices.find((voice) => voice.lang === 'en-US' && voice.localService)
     const bestVoice = usVoice || voices.find((voice) => voice.lang === 'en-US')
     if (bestVoice) {
       msg.voice = bestVoice
     }
-    window.speechSynthesis.speak(msg)
+    synth.speak(msg)
   }
 }
 
@@ -71,8 +70,9 @@ export function usePronunciation() {
 
     // 停止任何当前正在播放的音频或语音
     audio.pause()
-    if (window.speechSynthesis.speaking) {
-      window.speechSynthesis.cancel()
+    const synth = window.speechSynthesis
+    if (synth?.speaking) {
+      synth.cancel()
     }
 
     loadingWord.value = word
