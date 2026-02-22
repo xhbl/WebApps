@@ -1,6 +1,6 @@
 <template>
   <div class="users-manage-view">
-    <van-nav-bar title="用户管理" fixed :placeholder="false" z-index="100">
+    <van-nav-bar title="用户管理" :fixed="false" :placeholder="false" z-index="100">
       <template #left>
         <van-icon name="plus" class="nav-bar-icon" @click="openNewUser" />
       </template>
@@ -10,7 +10,7 @@
     </van-nav-bar>
 
     <div class="content">
-      <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
+      <van-pull-refresh v-model="refreshing" @refresh="onRefresh" class="full-height-refresh">
         <div v-if="loading" class="loading">加载中...</div>
         <div v-else>
           <van-cell
@@ -49,8 +49,8 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { ref, onActivated } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { ref, onMounted } from 'vue'
+
 import { showGlobalDialog } from '@/composables/useGlobalDialog'
 import { useUsersStore } from '@/stores/users'
 import { useAuthStore } from '@/stores/auth'
@@ -66,16 +66,11 @@ const editorUser = ref<User | null>(null)
 const refreshing = ref(false)
 const loading = ref(true)
 
-const scrollTop = ref(0)
-
-onBeforeRouteLeave((to, from, next) => {
-  scrollTop.value = window.scrollY
-  next()
-})
-
-onActivated(async () => {
+onMounted(async () => {
   if (!authStore.isLoggedIn) return
-  if (scrollTop.value > 0) window.scrollTo(0, scrollTop.value)
+
+  // 滚动位置由 Vue Router 的 keep-alive 和 scrollBehavior 自动管理
+  // 无需手动恢复
 
   if (usersStore.users.length === 0) loading.value = true
   try {
@@ -125,13 +120,16 @@ const deleteUser = async (u: User) => {
 
 <style scoped>
 .users-manage-view {
-  min-height: 100vh;
-  padding-top: calc(var(--van-nav-bar-height) + var(--vnb-pad-top));
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-top: 0;
   background-color: var(--van-background);
 }
 
 .content {
-  padding-top: 0px;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .loading {
@@ -150,9 +148,9 @@ const deleteUser = async (u: User) => {
   font-size: 22px;
 }
 
-/* 顶部导航栏增加空白 */
-:deep(.van-nav-bar--fixed) {
-  padding-top: var(--vnb-pad-top);
+/* 顶部导航栏样式 */
+:deep(.van-nav-bar) {
+  padding-top: calc(var(--vnb-pad-top) + env(safe-area-inset-top));
   box-sizing: content-box;
   background-color: var(--vnb-nav-background);
 }
@@ -203,5 +201,9 @@ const deleteUser = async (u: User) => {
 /* 确保单元格内容与图标对齐 */
 :deep(.van-cell) {
   align-items: center;
+}
+
+.full-height-refresh {
+  min-height: 100%;
 }
 </style>

@@ -90,9 +90,6 @@ const { isRestoring, clearDraft } = useDialogDraft({
 
 watch(show, (v) => {
   emit('update:modelValue', v)
-  if (!v) {
-    // 弹窗关闭时不需要额外重置，因为打开时会通过 props.book 同步
-  }
 })
 
 // 核心逻辑：监听外部传入的 book 对象

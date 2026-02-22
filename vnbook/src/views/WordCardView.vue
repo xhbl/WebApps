@@ -17,7 +17,7 @@
       </template>
     </van-nav-bar>
 
-    <div class="swipe-wrap">
+    <div class="swipe-wrap" @touchstart.capture="onSwipeTouchStart">
       <van-button
         v-if="isDesktop && !isSingleMode"
         class="nav-btn nav-prev"
@@ -71,7 +71,11 @@
                   />
                   <span class="phon-text">/{{ w.phon }}/</span>
                 </div>
-                <div v-if="isEditMode" class="edit-float-icon word-edit" @click.stop>
+                <div
+                  v-if="isEditMode && (!isReviewMode || showAnswer || currentStatus !== 0)"
+                  class="edit-float-icon word-edit"
+                  @click.stop
+                >
                   <van-popover
                     v-model:show="popoverMap['word-' + w.id]"
                     :actions="wordActions"
@@ -109,7 +113,11 @@
                           <span class="exp-cn">{{ e.exp?.zh }}</span>
                         </div>
                         <div class="exp-en" v-if="e.exp?.en">{{ e.exp.en }}</div>
-                        <div v-if="isEditMode" class="edit-float-icon exp-edit" @click.stop>
+                        <div
+                          v-if="isEditMode && (!isReviewMode || showAnswer || currentStatus !== 0)"
+                          class="edit-float-icon exp-edit"
+                          @click.stop
+                        >
                           <van-popover
                             v-model:show="popoverMap['exp-' + e.id]"
                             :actions="getExpActions(e, w)"
@@ -132,7 +140,13 @@
                               <div class="sen-ch" v-if="s.sen?.zh">{{ s.sen.zh }}</div>
                               <div class="sen-memo" v-if="s.smemo">[{{ s.smemo }}]</div>
                             </div>
-                            <div v-if="isEditMode" class="edit-float-icon sen-edit" @click.stop>
+                            <div
+                              v-if="
+                                isEditMode && (!isReviewMode || showAnswer || currentStatus !== 0)
+                              "
+                              class="edit-float-icon sen-edit"
+                              @click.stop
+                            >
                               <van-popover
                                 v-model:show="popoverMap['sen-' + s.id]"
                                 :actions="getSenActions(s, e)"
@@ -371,11 +385,11 @@ const refreshing = ref(false)
 const showMasteredAnimation = ref(false)
 const { popoverMap, onOpen: onPopoverOpen, closeAll: closeAllPopovers } = usePopoverMap()
 
-const wid = Number(route.params.wid)
-const bid = Number(route.params.bid)
+const wid = computed(() => Number(route.params.wid))
+const bid = computed(() => Number(route.params.bid))
 const isReviewMode = computed(() => {
   // 必须是复习本
-  if (bid !== -1) return false
+  if (bid.value !== -1) return false
   // 如果是单页模式（无论是否处于编辑状态），都视为普通视图（非复习模式）
   if (route.query.single === 'true') return false
   // 其它情况（包括复习过程中的临时编辑）均保持复习模式逻辑
@@ -417,19 +431,19 @@ onMounted(async () => {
   // 1. Store 中的书 ID 必须与当前路由匹配
   // 2. 如果不是空列表，必须包含当前查看的单词（防止数据过时）
   // 3. 列表不能为空（除非本来就没数据，但 loadWords 会处理）
-  const isBookMismatch = wordsStore.currentBookId !== bid
+  const isBookMismatch = wordsStore.currentBookId !== bid.value
   const isWordMissing =
     !isSingleMode.value &&
     wordsStore.words.length > 0 &&
-    !wordsStore.words.some((w) => w.id === wid)
+    !wordsStore.words.some((w) => w.id === wid.value)
   const isEmpty = wordsStore.words.length === 0
 
-  if ((isBookMismatch || isWordMissing || isEmpty) && !isNaN(bid)) {
-    await wordsStore.loadWords(bid)
+  if ((isBookMismatch || isWordMissing || isEmpty) && !isNaN(bid.value)) {
+    await wordsStore.loadWords(bid.value)
   }
 
   // 确保在复习本且有内容时，若进入时 store 为空被刷新了，需要重新检查
-  if (bid > 0 && booksStore.books.length === 0) {
+  if (bid.value > 0 && booksStore.books.length === 0) {
     await booksStore.loadBooks()
   }
   if (autoEdit.value) {
@@ -438,7 +452,7 @@ onMounted(async () => {
 
   // 初始化更新断点：如果当前进入的单词是有效的待复习词，则记录为断点
   if (isReviewMode.value) {
-    const w = wordsStore.words.find((w) => w.id === wid)
+    const w = wordsStore.words.find((w) => w.id === wid.value)
     // 仅当单词存在、未掌握且状态为“待复习”时更新断点
     // 允许用户查看已复习的单词而不丢失进度
     if (w && !isMastered(w) && (w.last_status || 0) === 0) {
@@ -446,6 +460,25 @@ onMounted(async () => {
     }
   }
 })
+
+// 监听路由参数变化，处理同级跳转（如复习模式下一个单词）
+watch(
+  () => [route.params.bid, route.params.wid],
+  async ([newBid, newWid], [oldBid, oldWid]) => {
+    if (route.name === 'WordCard' && (newBid !== oldBid || newWid !== oldWid)) {
+      // 如果 ID 变化，重新加载数据
+      // 注意：WordCardView 内部已经有 watch(initialIndex) 和 onChange 来处理大部分逻辑
+      // 这里主要是为了确保从外部直接跳转或刷新时数据同步
+      if (wordsStore.words.length === 0 || wordsStore.currentBookId !== Number(newBid)) {
+        await wordsStore.loadWords(Number(newBid))
+      }
+      // 更新 currentIndex 以触发视图更新
+      // 注意：这里不需要手动设置 currentIndex，因为 initialIndex 计算属性依赖于 route.params.wid
+      // 当路由变化时，initialIndex 会自动更新，触发下方的 watch(initialIndex)
+      // 从而调用 swipeTo。保留此 watcher 主要是为了处理数据加载 (loadWords)。
+    }
+  },
+)
 
 // 检测是否为纯桌面设备（无触摸屏）
 const isDesktop = computed(() => {
@@ -457,7 +490,7 @@ const isDesktop = computed(() => {
 
 const cardList = computed(() => {
   if (isSingleMode.value) {
-    const w = wordsStore.words.find((w) => w.id === wid)
+    const w = wordsStore.words.find((w) => w.id === wid.value)
     return w ? [w] : []
   }
   return wordsStore.words
@@ -465,7 +498,7 @@ const cardList = computed(() => {
 
 const initialIndex = computed(() => {
   if (isSingleMode.value) return 0
-  const idx = wordsStore.words.findIndex((w) => w.id === wid)
+  const idx = wordsStore.words.findIndex((w) => w.id === wid.value)
   return idx >= 0 ? idx : 0
 })
 
@@ -473,6 +506,10 @@ const currentIndex = ref(initialIndex.value)
 
 watch(initialIndex, (val) => {
   currentIndex.value = val
+  // 核心修复：当初始索引变化时（例如路由跳转或数据加载完成），强制 Swipe 组件滚动到对应位置
+  nextTick(() => {
+    swipeRef.value?.swipeTo(val, { immediate: true })
+  })
 })
 
 const currentWord = computed(() => cardList.value[currentIndex.value])
@@ -480,12 +517,12 @@ const targetStreak = computed(() => Number(authStore.userInfo?.cfg?.targetStreak
 
 const title = computed(() => {
   let baseTitle = '单词卡片'
-  if (bid === 0) {
+  if (bid.value === 0) {
     baseTitle = wordsStore.orphanFilter ? '未入本单词' : '全部单词'
-  } else if (bid === -1) {
+  } else if (bid.value === -1) {
     baseTitle = '复习本'
   } else {
-    const book = booksStore.books.find((b) => b.id === bid)
+    const book = booksStore.books.find((b) => b.id === bid.value)
     if (book) baseTitle = book.title
   }
 
@@ -505,18 +542,12 @@ const onChange = (index: number) => {
     // Prepare new query
     const newQuery = { ...route.query }
     // 如果在复习本中滑动，且不是单页模式
-    // 且即将进入的单词有遮罩（未掌握且状态为0），则强制退出编辑模式
-    if (bid === -1 && !isSingleMode.value && newQuery.edit) {
-      const willHaveMask = !isMastered(w) && (w.last_status || 0) === 0
-      if (willHaveMask) {
-        delete newQuery.edit
-        isEditMode.value = false
-      }
-    }
+    // 之前：如果即将进入的单词有遮罩，则强制退出编辑模式。
+    // 现在：不再退出编辑模式，而是通过 v-if 控制编辑按钮的可见性，保持编辑状态。
 
     // Update URL
     router.replace({
-      path: `/books/${bid}/words/${w.id}`,
+      path: `/books/${bid.value}/words/${w.id}`,
       query: newQuery,
     })
     // Update Review Progress (Breakpoint)
@@ -529,7 +560,7 @@ const onChange = (index: number) => {
 
 const onRefresh = async () => {
   const currentId = wordsStore.currentWord?.id
-  await wordsStore.loadWords(bid)
+  await wordsStore.loadWords(bid.value)
   refreshing.value = false
 
   if (currentId && !isSingleMode.value) {
@@ -544,6 +575,12 @@ const isEditMode = ref(false)
 const showWordEditor = ref(false)
 const editingWord = ref<Word | null>(null)
 const wordEditorMode = ref<'full' | 'phon'>('full')
+
+// 监听 URL 参数变化，确保编辑模式状态与 URL 保持一致
+// 解决从编辑模式退回列表再进入时，状态未重置的问题
+watch(autoEdit, (val) => {
+  isEditMode.value = val
+})
 
 const toggleEditMode = () => {
   if (isReviewMode.value && !showAnswer.value && currentStatus.value === 0) return
@@ -762,16 +799,23 @@ const swipeNextReview = async () => {
 const goBack = () => router.back()
 const swipePrev = () => swipeRef.value?.prev()
 const swipeNext = () => swipeRef.value?.next()
+
+const onSwipeTouchStart = (e: TouchEvent) => {
+  // 拦截左侧边缘触摸（< 40px），防止与 iOS 系统后退手势冲突
+  // 当用户从边缘滑动时，只允许系统后退，阻止 van-swipe 响应
+  if (e.touches.length === 1 && e.touches[0]!.clientX < 40) {
+    e.stopPropagation()
+  }
+}
 </script>
 
 <style scoped>
 .word-card-view {
-  position: fixed;
+  position: absolute; /* 修复：在 Stack 容器中应使用 absolute 填满父容器 */
   top: 0;
   left: 0;
   width: 100%;
-  height: 100vh;
-  height: 100dvh;
+  height: 100%; /* 适应 Stack 容器 */
   display: flex;
   flex-direction: column;
   background-color: var(--van-background);
@@ -782,7 +826,7 @@ const swipeNext = () => swipeRef.value?.next()
 
 /* 顶部导航栏增加空白 */
 :deep(.van-nav-bar) {
-  padding-top: var(--vnb-pad-top);
+  padding-top: calc(var(--vnb-pad-top) + env(safe-area-inset-top));
   box-sizing: content-box;
   background-color: var(--vnb-nav-background);
 }

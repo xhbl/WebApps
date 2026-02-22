@@ -1,6 +1,6 @@
 <template>
   <div class="words-manage-view" @click="closeAllPopovers">
-    <!-- 顶部区域：搜索栏 或 导航栏 -->
+    <!-- 1. 顶部区域：作为 Flex 头部 (静态) -->
     <div class="top-bar-container">
       <van-search
         v-if="isSearchActive"
@@ -9,12 +9,12 @@
         show-action
         placeholder="搜索单词"
         shape="round"
-        class="fixed-search"
+        class="static-search"
         @update:model-value="onSearchUpdate"
         @cancel="exitSearchMode"
         @search="onSearchConfirm"
       />
-      <van-nav-bar v-else :title="pageTitle" fixed :placeholder="false" z-index="100">
+      <van-nav-bar v-else :title="pageTitle" :fixed="false" :placeholder="false" z-index="100">
         <template #left>
           <van-icon name="arrow-left" class="nav-bar-icon" @click="onClickLeft" />
         </template>
@@ -30,15 +30,16 @@
       </van-nav-bar>
     </div>
 
-    <div class="content">
-      <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
+    <!-- 2. 滚动内容区域：flex: 1 -->
+    <div class="content" ref="contentRef">
+      <van-pull-refresh v-model="refreshing" @refresh="onRefresh" class="full-height-refresh">
         <div v-if="loading" class="loading">加载中...</div>
         <div v-else>
           <div v-if="wordsStore.filteredWords.length > 0">
             <van-index-bar
               v-if="wordsStore.sortMode === 'alpha'"
               :index-list="indexList"
-              :sticky-offset-top="stickyOffsetTop"
+              :sticky="false"
             >
               <van-checkbox-group v-model="checkedIds">
                 <div v-for="group in wordsStore.groupedWords" :key="group.key">
@@ -101,6 +102,7 @@
       </van-pull-refresh>
     </div>
 
+    <!-- 3. 底部工具栏：作为 Flex 底部 (静态) -->
     <div class="bottom-bar van-hairline--top">
       <template v-if="isSelectMode">
         <div class="bottom-bar-left select-mode-left">
@@ -272,8 +274,8 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { computed, ref, onActivated, nextTick, onMounted } from 'vue'
-import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
+import { computed, ref, nextTick, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
 import { useWordsStore, type WordsStore } from '@/stores/words'
@@ -328,26 +330,19 @@ const mode = ref<ListMode>(defaultMode)
 const isSelectMode = ref(route.query.select === 'true')
 const checkedIds = ref<number[]>([])
 
-const scrollTop = ref(0)
+// 监听 URL 参数变化，确保选择模式状态与 URL 保持一致
+watch(
+  () => route.query.select,
+  (val) => {
+    isSelectMode.value = val === 'true'
+  },
+)
+
 const currentBid = ref<number | null>(null)
 const searchText = ref('')
 const isSearchActive = ref(false)
 const searchRef = ref<SearchInstance | null>(null)
-
-const stickyOffsetTop = ref(56)
-
-onMounted(() => {
-  // 动态读取 CSS 变量并计算数值，既保持了配置的统一性，又满足了组件的类型要求
-  const rootStyle = getComputedStyle(document.documentElement)
-  const navHeight = parseInt(rootStyle.getPropertyValue('--van-nav-bar-height'), 10) || 46
-  const padTop = parseInt(rootStyle.getPropertyValue('--vnb-pad-top'), 10) || 0
-  stickyOffsetTop.value = navHeight + padTop
-})
-
-onBeforeRouteLeave((to, from, next) => {
-  scrollTop.value = window.scrollY
-  next()
-})
+const contentRef = ref<HTMLElement | null>(null)
 
 const {
   popoverMap: showWordPopover,
@@ -452,60 +447,62 @@ const indexList = computed(() =>
   wordsStore.sortMode === 'alpha' ? wordsStore.groupedWords.map((g) => g.key) : [],
 )
 
-onActivated(async () => {
-  if (!authStore.isLoggedIn) return
-  const newBid = bid.value
+// 核心逻辑：监听路由参数 bid 的变化
+// 当 bid 变化时（说明切换了单词本），重置数据并滚动到顶部
+// 当 bid 不变时（说明是从详情页返回），不做任何操作，保留 DOM 和滚动位置
+const loadData = async (newBid: number) => {
+  currentBid.value = newBid
 
-  if (currentBid.value !== newBid) {
-    currentBid.value = newBid
+  // 重置状态
+  isSelectMode.value = route.query.select === 'true'
+  isSearchActive.value = false
+  checkedIds.value = []
+  loading.value = true
+  wordsStore.clearWords()
 
-    // 根据 URL 初始化选择模式（处理带查询参数的刷新）
-    isSelectMode.value = route.query.select === 'true'
-    // 切换单词本时重置搜索状态
-    isSearchActive.value = false
-    checkedIds.value = []
+  // 滚动到顶部 (因为是新页面)
+  // 修复：直接使用 contentRef 滚动内部容器，而不是查找 DOM
+  contentRef.value?.scrollTo(0, 0)
 
-    loading.value = true
-    wordsStore.clearWords()
-    window.scrollTo(0, 0)
-
-    // 从 URL 同步未入本过滤器状态（必须在 clearWords 之后）
-    if (newBid === 0) {
-      wordsStore.orphanFilter = route.query.orphan === 'true'
-    } else {
-      wordsStore.orphanFilter = false
-    }
-
-    if (booksStore.books.length === 0) {
-      await booksStore.loadBooks()
-    }
-    if (newBid > 0) {
-      const b = booksStore.books.find((b) => b.id === newBid)
-      if (b) booksStore.setCurrentBook(b)
-    } else {
-      booksStore.setCurrentBook(null)
-    }
-    await wordsStore.loadWords(newBid)
-    loading.value = false
+  // 同步过滤器
+  if (newBid === 0) {
+    wordsStore.orphanFilter = route.query.orphan === 'true'
   } else {
-    // 从 URL 同步未入本过滤器状态
-    if (newBid === 0) {
-      wordsStore.orphanFilter = route.query.orphan === 'true'
-    } else {
-      wordsStore.orphanFilter = false
-    }
+    wordsStore.orphanFilter = false
+  }
 
-    // 从 URL 同步选择模式
-    const qSelect = route.query.select === 'true'
-    if (isSelectMode.value !== qSelect) {
-      isSelectMode.value = qSelect
-      if (qSelect) checkedIds.value = []
-    }
+  // 加载数据
+  if (booksStore.books.length === 0) {
+    await booksStore.loadBooks()
+  }
+  if (newBid > 0) {
+    const b = booksStore.books.find((b) => b.id === newBid)
+    if (b) booksStore.setCurrentBook(b)
+  } else {
+    booksStore.setCurrentBook(null)
+  }
+  await wordsStore.loadWords(newBid)
+  loading.value = false
+}
 
-    if (scrollTop.value > 0) window.scrollTo(0, scrollTop.value)
-    // 保持本地状态，避免复习后达标单词立即消失，如需同步最新数据可手动刷新
-    // await wordsStore.loadWords(newBid)
-    loading.value = false
+// 监听路由参数变化
+watch(
+  () => [route.name, route.params.bid],
+  ([newName, newBid]) => {
+    // 当路由切换回 WordsList 时，如果 bid 发生了变化，或者当前从未加载过数据（currentBid 为 null，对应刷新后回退的场景），则执行加载
+    if (newName === 'WordsList' && newBid) {
+      const bidNum = Number(newBid)
+      if (bidNum !== currentBid.value) {
+        loadData(bidNum)
+      }
+    }
+  },
+)
+
+// 首次挂载时加载
+onMounted(() => {
+  if (route.name === 'WordsList' && !isNaN(bid.value)) {
+    loadData(bid.value)
   }
 })
 
@@ -759,16 +756,18 @@ const { openMenu, AppMenu } = useAppMenu({
 
 <style scoped>
 .words-manage-view {
-  min-height: 100vh;
-  padding-top: calc(var(--van-nav-bar-height) + var(--vnb-pad-top));
+  height: 100%; /* 占满父容器 */
+  display: flex;
+  flex-direction: column;
+  padding-top: 0;
   background-color: var(--van-background);
   box-sizing: border-box;
 }
 
 .content {
-  padding-top: 0px;
-  padding-bottom: calc(var(--van-nav-bar-height) + var(--vnb-pad-bottom) + env(safe-area-inset-bottom, 0));
-  box-sizing: border-box;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .loading {
@@ -777,14 +776,14 @@ const { openMenu, AppMenu } = useAppMenu({
   color: var(--van-text-color-3);
 }
 
-/* 顶部搜索栏固定样式 */
-.fixed-search {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+.top-bar-container {
+  flex-shrink: 0; /* 关键：防止顶部栏被压缩 */
+}
+
+/* 顶部搜索栏样式 */
+.static-search {
   z-index: 100;
-  padding-top: var(--vnb-pad-top);
+  padding-top: calc(var(--vnb-pad-top) + env(safe-area-inset-top));
   box-sizing: content-box;
 }
 
@@ -798,9 +797,9 @@ const { openMenu, AppMenu } = useAppMenu({
   font-size: 22px;
 }
 
-/* 顶部导航栏增加空白 */
-:deep(.van-nav-bar--fixed) {
-  padding-top: var(--vnb-pad-top);
+/* 顶部导航栏样式 */
+:deep(.van-nav-bar) {
+  padding-top: calc(var(--vnb-pad-top) + env(safe-area-inset-top));
   box-sizing: content-box;
   background-color: var(--vnb-nav-background);
 }
@@ -840,10 +839,9 @@ const { openMenu, AppMenu } = useAppMenu({
 }
 
 .bottom-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  /* 移除 fixed，改为 Flex 布局的自然底部 */
+  position: relative;
+  flex-shrink: 0;
   height: var(--van-nav-bar-height);
   background: var(--vnb-nav-background);
   display: flex;
@@ -852,11 +850,6 @@ const { openMenu, AppMenu } = useAppMenu({
   padding: 0 16px;
   padding-bottom: calc(var(--vnb-pad-bottom) + env(safe-area-inset-bottom, 0));
   box-sizing: border-box;
-  /* 修复 Safari 移动端 fixed 定位抖动 */
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
 }
 
 .bottom-bar-left {
@@ -970,15 +963,15 @@ const { openMenu, AppMenu } = useAppMenu({
   color: var(--van-warning-color);
 }
 
-/* 修复索引栏吸顶时覆盖导航栏的问题 */
-:deep(.van-nav-bar--fixed) {
-  z-index: 101;
-}
-
 /* 调整索引栏样式 */
 :deep(.van-index-anchor) {
-  color: var(--van-gray-6);
-  line-height: 24px;
+  /* 隐藏索引锚点条，只保留右侧索引功能 */
+  height: 0 !important;
+  padding: 0 !important;
+  overflow: hidden;
+  line-height: 0 !important;
+  border: none !important;
+  background: transparent !important;
 }
 
 :deep(.van-index-bar__sidebar) {
@@ -1023,5 +1016,9 @@ const { openMenu, AppMenu } = useAppMenu({
 
 .belonging-books-content :deep(.van-cell-group)::after {
   border-bottom-width: 0;
+}
+
+.full-height-refresh {
+  min-height: 100%;
 }
 </style>

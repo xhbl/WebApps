@@ -103,13 +103,14 @@ const onSubmit = async () => {
 
 <style scoped>
 .login-view {
-  min-height: 100vh;
+  height: 100%; /* 适应新的全局布局 */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
   background: rgb(238, 235, 238);
   padding: 20px;
+  overflow-y: auto; /* 允许内部滚动 */
 }
 
 .login-container {

@@ -1,6 +1,7 @@
 <template>
   <div class="books-manage-view" @click="closeAllPopovers">
-    <van-nav-bar :title="userBookTitle" fixed :placeholder="false" z-index="100">
+    <!-- 1. 顶部导航：移除 fixed，作为 Flex 头部 -->
+    <van-nav-bar :title="userBookTitle" :fixed="false" :placeholder="false" z-index="100">
       <template #left>
         <van-icon name="plus" class="nav-bar-icon" @click="openAddBook" />
       </template>
@@ -9,40 +10,39 @@
       </template>
     </van-nav-bar>
 
-    <!-- 置顶区域 (全部单词 + 复习本) -->
-    <div class="sticky-header">
-      <div v-if="showReviewBook" class="van-hairline--bottom">
-        <van-cell
-          title="复习本"
-          :label="`单词数:${booksStore.reviewCount}`"
-          is-link
-          @click="enterReviewBook"
-          class="all-words-cell"
-        >
-          <template #icon>
-            <div class="icon-wrapper" @click.stop>
-              <van-popover
-                v-model:show="popoverMap['review']"
-                :actions="reviewBookPopoverActions"
-                placement="bottom-start"
-                @select="onReviewBookAction"
-                @open="onPopoverOpen('review')"
-              >
-                <template #reference>
-                  <van-icon name="bookmark" class="list-leading-icon" />
-                </template>
-              </van-popover>
-            </div>
-          </template>
-          <template #right-icon>
-            <img src="/resources/icons/vnb-review.png" class="right-more-icon" />
-          </template>
-        </van-cell>
-      </div>
+    <!-- 置顶区域 (复习本) - 固定在导航栏下方，不参与滚动 -->
+    <div v-if="showReviewBook" class="fixed-header van-hairline--bottom">
+      <van-cell
+        title="复习本"
+        :label="`单词数:${booksStore.reviewCount}`"
+        is-link
+        @click="enterReviewBook"
+        class="all-words-cell"
+      >
+        <template #icon>
+          <div class="icon-wrapper" @click.stop>
+            <van-popover
+              v-model:show="popoverMap['review']"
+              :actions="reviewBookPopoverActions"
+              placement="bottom-start"
+              @select="onReviewBookAction"
+              @open="onPopoverOpen('review')"
+            >
+              <template #reference>
+                <van-icon name="bookmark" class="list-leading-icon" />
+              </template>
+            </van-popover>
+          </div>
+        </template>
+        <template #right-icon>
+          <img src="/resources/icons/vnb-review.png" class="right-more-icon" />
+        </template>
+      </van-cell>
     </div>
 
+    <!-- 2. 滚动内容区域：flex: 1 -->
     <div class="content">
-      <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
+      <van-pull-refresh v-model="refreshing" @refresh="onRefresh" class="full-height-refresh">
         <div v-if="loading" class="loading">加载中...</div>
         <div v-else>
           <van-cell
@@ -126,8 +126,8 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { computed, ref, onActivated } from 'vue'
-import { useRouter, onBeforeRouteLeave } from 'vue-router'
+import { computed, ref, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { useAuthStore } from '@/stores/auth'
 import { useAppMenu } from '@/composables/useAppMenu'
@@ -175,26 +175,49 @@ const totalWords = computed(() => {
   return booksStore.totalWordCount || 0
 })
 
-const scrollTop = ref(0)
+// 跟踪当前用户ID，用于检测用户切换
+const currentUserId = ref<number | null>(null)
 
-onBeforeRouteLeave((to, from, next) => {
-  scrollTop.value = window.scrollY
-  next()
-})
-
-onActivated(async () => {
+const loadData = async () => {
   if (!authStore.isLoggedIn) return
-  if (scrollTop.value > 0) window.scrollTo(0, scrollTop.value)
 
-  if (booksStore.books.length === 0) loading.value = true
-  try {
-    await booksStore.loadBooks()
-  } catch (error) {
-    console.error('Failed to load books:', error)
-  } finally {
+  // 检测用户是否变化
+  const newUserId = authStore.userInfo?.uid || null
+  const userChanged = currentUserId.value !== newUserId
+
+  if (userChanged) {
+    currentUserId.value = newUserId
+    // 用户切换时，可能需要重置滚动位置（可选）
+    // 由于现在是独立容器滚动，可以通过 ref 获取 DOM 元素来重置 scrollTop
+  }
+
+  // 仅在需要时加载数据（首次加载或用户变化）
+  if (booksStore.books.length === 0 || userChanged) {
+    loading.value = true
+    try {
+      await booksStore.loadBooks()
+    } catch (error) {
+      console.error('Failed to load books:', error)
+    } finally {
+      loading.value = false
+    }
+  } else {
+    // 如果不需要加载（数据已存在且用户未变），必须手动关闭 loading
     loading.value = false
   }
+}
+
+onMounted(() => {
+  loadData()
 })
+
+// 监听用户变化，处理重新登录的情况（因为组件实例现在是持久化的）
+watch(
+  () => authStore.userInfo?.uid,
+  () => {
+    loadData()
+  },
+)
 
 const onRefresh = async () => {
   refreshing.value = true
@@ -303,13 +326,16 @@ const { openMenu, AppMenu, UserDialog } = useAppMenu({
 
 <style scoped>
 .books-manage-view {
-  min-height: 100vh;
-  padding-top: calc(var(--van-nav-bar-height) + var(--vnb-pad-top));
+  height: 100%; /* 占满父容器 */
+  display: flex;
+  flex-direction: column;
+  padding-top: 0; /* 移除 padding，因为 Nav 不再是 fixed */
   background-color: var(--van-background);
 }
 
 .content {
-  padding-top: 0px;
+  flex: 1; /* 占据剩余空间 */
+  overflow-y: auto; /* 内部滚动 */
 }
 
 .loading {
@@ -328,9 +354,10 @@ const { openMenu, AppMenu, UserDialog } = useAppMenu({
   font-size: 22px;
 }
 
-/* 顶部导航栏增加空白 */
-:deep(.van-nav-bar--fixed) {
-  padding-top: var(--vnb-pad-top);
+/* 顶部导航栏样式调整 */
+:deep(.van-nav-bar) {
+  padding-top: calc(var(--vnb-pad-top) + env(safe-area-inset-top)); /* 适配刘海屏 */
+  flex-shrink: 0; /* 关键：防止顶部栏被压缩 */
   box-sizing: content-box;
   background-color: var(--vnb-nav-background);
 }
@@ -370,10 +397,10 @@ const { openMenu, AppMenu, UserDialog } = useAppMenu({
   align-items: center;
 }
 
-.sticky-header {
-  position: sticky;
-  top: calc(var(--van-nav-bar-height) + var(--vnb-pad-top));
+.fixed-header {
+  flex-shrink: 0; /* 防止被压缩 */
   z-index: 10;
+  background-color: var(--van-background);
 }
 
 .all-words-cell {
@@ -401,5 +428,9 @@ const { openMenu, AppMenu, UserDialog } = useAppMenu({
   width: 32px;
   height: 32px;
   object-fit: contain;
+}
+
+.full-height-refresh {
+  min-height: 100%;
 }
 </style>
