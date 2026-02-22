@@ -216,6 +216,7 @@ const loadData = async () => {
   // 仅在需要时加载数据（首次加载或用户变化）
   if (booksStore.books.length === 0 || userChanged) {
     loading.value = true
+
     try {
       await booksStore.loadBooks()
     } catch (error) {
@@ -243,6 +244,12 @@ watch(
 
 const onRefresh = async () => {
   refreshing.value = true
+  // 下拉刷新时也同步刷新用户配置
+  try {
+    await authStore.checkLogin()
+  } catch (e) {
+    /* ignore */
+  }
   await booksStore.loadBooks()
   refreshing.value = false
 }

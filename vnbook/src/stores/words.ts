@@ -370,6 +370,11 @@ function defineWordsStore() {
             if (booksStore.currentBook) {
               booksStore.updateBookNums(booksStore.currentBook.id, booksStore.currentBook.nums + 1)
             }
+
+            // 同步更新总单词数 (仅当是新创建的单词时)
+            if (word._new === 1) {
+              booksStore.totalWordCount++
+            }
           } else {
             // 如果列表里已有（例如在“全部单词”视图），则更新信息
             words.value[existingIndex] = savedWord
@@ -508,6 +513,36 @@ function defineWordsStore() {
       if (booksStore.currentBook) {
         const newCount = Math.max(0, booksStore.currentBook.nums - targetWords.length)
         booksStore.updateBookNums(booksStore.currentBook.id, newCount)
+      }
+
+      // 同步更新总单词数
+      if (bookId === 0) {
+        // 如果是在“全部单词”视图删除，肯定是物理删除
+        booksStore.totalWordCount = Math.max(0, booksStore.totalWordCount - targetWords.length)
+      } else if (deleteOrphans) {
+        // 如果是在普通单词本删除且勾选了“删除孤儿”，则统计那些只属于当前本的单词
+        const deletedCount = targetWords.filter((w) => (w.book_count || 0) <= 1).length
+        booksStore.totalWordCount = Math.max(0, booksStore.totalWordCount - deletedCount)
+      }
+
+      // 更新复习本计数逻辑优化：
+      // 只有当单词被“物理删除”时，才需要从复习本计数中减去。
+      // 如果只是从普通单词本“移除关联”（deleteOrphans=false），单词依然存在，复习状态保留。
+      if (bookId !== -1) {
+        // 物理删除的条件：
+        // 1. 在“全部单词”视图删除 (bookId === 0)
+        // 2. 在普通视图删除且勾选了删除孤儿，且该单词只属于当前本
+        const physicallyDeletedWords =
+          bookId === 0
+            ? targetWords
+            : deleteOrphans
+              ? targetWords.filter((w) => (w.book_count || 0) <= 1)
+              : []
+
+        const reviewDeletedCount = physicallyDeletedWords.filter((w) => w.in_review).length
+        if (reviewDeletedCount > 0) {
+          booksStore.reviewCount = Math.max(0, booksStore.reviewCount - reviewDeletedCount)
+        }
       }
 
       // 更新复习本计数

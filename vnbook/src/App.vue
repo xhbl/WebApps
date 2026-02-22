@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent } from 'vue'
+import { computed, defineAsyncComponent, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import GlobalDialog from '@/components/GlobalDialog.vue'
 import { isSystemBack } from '@/router'
+import { useAuthStore } from '@/stores/auth'
 
 // 异步加载组件以优化首屏，但加载后会持久驻留
 const BooksList = defineAsyncComponent(() => import('@/views/BooksListView.vue'))
@@ -10,6 +11,7 @@ const WordsList = defineAsyncComponent(() => import('@/views/WordsListView.vue')
 const WordCard = defineAsyncComponent(() => import('@/views/WordCardView.vue'))
 
 const route = useRoute()
+const authStore = useAuthStore()
 
 // 定义核心业务路由的层级深度
 const routeDepth = computed(() => {
@@ -41,6 +43,13 @@ const getLayerClass = (layer: number) => {
 // 针对非堆栈路由（如登录、用户管理）的过渡动画
 const normalTransition = computed(() => {
   return (route.meta?.transition as string) || 'fade'
+})
+
+onMounted(() => {
+  // 应用启动时，如果已登录，尝试静默刷新用户信息以同步最新配置（如 defaultBookId）
+  if (authStore.isLoggedIn) {
+    authStore.checkLogin()
+  }
 })
 </script>
 

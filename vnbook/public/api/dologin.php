@@ -6,7 +6,8 @@ try {
     $act = $_GET["act"] ?? null;
 
     if ($act == 'check') {
-        echo json_encode(vnb_checklogin($_GET["_sessid"] ?? null));
+        // 前端显式检查登录状态时，强制刷新数据库以获取最新配置(cfg)
+        echo json_encode(vnb_checklogin($_GET["_sessid"] ?? null, true));
     } elseif ($act == 'logon') {
         $uname = $_POST["uname"] ?? '';
         $response = $_POST["response"] ?? '';

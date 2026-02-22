@@ -106,13 +106,14 @@ export const useAuthStore = defineStore('auth', () => {
         updateStoredUserInfo(userInfo.value)
         return true
       } else {
-        // 会话失效，清除本地数据
+        // 会话失效 (API 明确返回失败)，清除本地数据
         clearAuth()
         return false
       }
     } catch (error) {
       console.error('Check login failed:', error)
-      clearAuth()
+      // 网络错误等不应清除会话，保持本地状态以便离线访问或重试
+      // clearAuth()
       return false
     }
   }
@@ -199,6 +200,9 @@ export const useAuthStore = defineStore('auth', () => {
       } else {
         // Fallback: 仅更新本地 cfg
         userInfo.value.cfg = newCfg
+        if (newCfg.defaultBookId !== undefined) {
+          userInfo.value.defaultBookId = newCfg.defaultBookId as number
+        }
         updateStoredUserInfo(userInfo.value)
       }
       return true
@@ -219,6 +223,38 @@ export const useAuthStore = defineStore('auth', () => {
       sessionStorage.setItem('sessionId', info.sid) // 确保 SID 同步更新
       sessionStorage.setItem('userInfo', json)
     }
+  }
+
+  // --- 增强：自动同步与刷新 ---
+  if (typeof window !== 'undefined') {
+    // 1. 跨标签页同步：当其他标签页更新了用户信息（如修改配置），本页自动同步
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'userInfo' && e.newValue) {
+        try {
+          const newVal = JSON.parse(e.newValue)
+          // 简单校验：仅当是同一个用户时才同步配置，防止串号
+          if (userInfo.value && newVal.uid === userInfo.value.uid) {
+            userInfo.value = newVal
+          }
+        } catch (err) {
+          console.error('Sync user info failed', err)
+        }
+      } else if (e.key === 'sessionId' && !e.newValue) {
+        // 其他标签页注销了，本页同步注销
+        userInfo.value = null
+        sessionId.value = ''
+        // 可选：刷新页面以触发路由守卫跳转登录
+        // window.location.reload()
+      }
+    })
+
+    // 2. 智能刷新：当应用切回前台时，自动检查更新（实现“伪实时”同步）
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && isLoggedIn.value) {
+        // 静默刷新，不阻塞 UI
+        checkLogin().catch(() => {})
+      }
+    })
   }
 
   return {

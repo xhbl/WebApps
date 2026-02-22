@@ -6,7 +6,7 @@ function vnb_sessname()
     return 'VNBSESSID';
 }
 
-function vnb_checklogin($sid = null)
+function vnb_checklogin($sid = null, $refresh = false)
 {
     $retjo = new stdClass();
     $retjo->success = false;
@@ -21,9 +21,33 @@ function vnb_checklogin($sid = null)
 
     if (session_status() === PHP_SESSION_NONE) session_start();
 
-    if (empty($_SESSION['user_name'])) {
-        if (empty($vnbsess[2]) || $vnbsess[2] != md5($vnbsess[0] . '@' . session_id())) return $retjo;
-        $db = DB::vnb();
+    // 优化：如果不需要强制刷新，且 Session 中已有用户信息，直接使用缓存
+    // 这将显著提高普通 API (如 getWords, saveWord) 的性能
+    if (!$refresh && !empty($_SESSION['user_id']) && !empty($_SESSION['user_name'])) {
+        $cfgObj = json_decode($_SESSION['user_cfg'] ?? '', true);
+        $defaultBookId = $cfgObj['defaultBookId'] ?? 0;
+
+        $retjo->success = true;
+        $retjo->login = ['sid' => session_id(), 'uid' => $_SESSION['user_id'], 'uname' => $_SESSION['user_name'], 'dname' => $_SESSION['user_dispname'], 'cfg' => $cfgObj, 'defaultBookId' => $defaultBookId];
+        return $retjo;
+    }
+
+    $db = DB::vnb();
+
+    if (!empty($_SESSION['user_id'])) {
+        // Session 有效，通过 ID 刷新配置
+        $stmt = $db->prepare("SELECT cfg, dispname FROM vnb_users WHERE id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        if ($row = $stmt->fetch()) {
+            $_SESSION['user_cfg'] = $row['cfg'];
+            $_SESSION['user_dispname'] = $row['dispname'];
+        } else {
+            // 数据库中用户可能已被删除，清除无效 Session
+            session_destroy();
+            return $retjo;
+        }
+    } elseif (!empty($vnbsess[0]) && !empty($vnbsess[2]) && $vnbsess[2] == md5($vnbsess[0] . '@' . session_id())) {
+        // Session 为空但 Cookie 有效，通过用户名恢复
         $stmt = $db->prepare("SELECT id, name, dispname, cfg FROM vnb_users WHERE name = ?");
         $stmt->execute([$vnbsess[0]]);
         if ($row = $stmt->fetch()) {
@@ -31,13 +55,17 @@ function vnb_checklogin($sid = null)
             $_SESSION['user_name'] = $row['name'];
             $_SESSION['user_dispname'] = $row['dispname'];
             $_SESSION['user_cfg'] = $row['cfg'];
-        } else {
-            return $retjo;
         }
+    } else {
+        // 无有效 Session 且无有效 Cookie
+        return $retjo;
     }
 
+    $cfgObj = json_decode($_SESSION['user_cfg'] ?? '', true);
+    $defaultBookId = $cfgObj['defaultBookId'] ?? 0;
+
     $retjo->success = true;
-    $retjo->login = ['sid' => session_id(), 'uid' => $_SESSION['user_id'], 'uname' => $_SESSION['user_name'], 'dname' => $_SESSION['user_dispname'], 'cfg' => json_decode($_SESSION['user_cfg'] ?? '')];
+    $retjo->login = ['sid' => session_id(), 'uid' => $_SESSION['user_id'], 'uname' => $_SESSION['user_name'], 'dname' => $_SESSION['user_dispname'], 'cfg' => $cfgObj, 'defaultBookId' => $defaultBookId];
     return $retjo;
 }
 
@@ -118,8 +146,12 @@ function vnb_dologin($uname, $response_hash, $keepme)
             $cookie_str = $row['name'] . '@' . $sid . '@' . md5($row['name'] . '@' . $sid);
             $expiry = $keepme ? time() + 3600 * 24 * 365 : 0;
             setcookie(vnb_sessname(), $cookie_str, $expiry, '/');
+
+            $cfgObj = json_decode($row['cfg'] ?? '', true);
+            $defaultBookId = $cfgObj['defaultBookId'] ?? 0;
+
             $retjo->success = true;
-            $retjo->login = ['sid' => $sid, 'uid' => $row['id'], 'uname' => $row['name'], 'dname' => $row['dispname'], 'cfg' => json_decode($row['cfg'] ?? '')];
+            $retjo->login = ['sid' => $sid, 'uid' => $row['id'], 'uname' => $row['name'], 'dname' => $row['dispname'], 'cfg' => $cfgObj, 'defaultBookId' => $defaultBookId];
         }
     } catch (Exception $e) {
         unset($_SESSION['login_nonce'], $_SESSION['nonce_username'], $_SESSION['nonce_expire']);
