@@ -302,6 +302,7 @@
     </div>
 
     <word-editor-dialog
+      v-if="authStore.isLoggedIn"
       v-model="showWordEditor"
       :bid="bid"
       :word="editingWord"
@@ -309,12 +310,14 @@
       @update:word="editingWord = $event"
     />
     <exp-editor-dialog
+      v-if="authStore.isLoggedIn"
       v-model="showExpEditor"
       :wid="editingExp?.word_id || 0"
       :explanation="editingExp"
       @update:explanation="editingExp = $event"
     />
     <sen-editor-dialog
+      v-if="authStore.isLoggedIn"
       v-model="showSenEditor"
       :eid="editingSen?.exp_id || 0"
       :sentence="editingSen"
@@ -427,6 +430,8 @@ watch(showDict, (val) => {
 
 // 页面加载时确保数据已加载
 onMounted(async () => {
+  if (!authStore.isLoggedIn) return
+
   // 检查数据有效性：
   // 1. Store 中的书 ID 必须与当前路由匹配
   // 2. 如果不是空列表，必须包含当前查看的单词（防止数据过时）

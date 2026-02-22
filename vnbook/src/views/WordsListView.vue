@@ -514,6 +514,7 @@ watch(
 
 // 首次挂载时加载
 onMounted(() => {
+  if (!authStore.isLoggedIn) return
   if (route.name === 'WordsList' && !isNaN(bid.value)) {
     loadData(bid.value)
   }

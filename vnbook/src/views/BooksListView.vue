@@ -231,6 +231,7 @@ const loadData = async () => {
 }
 
 onMounted(() => {
+  if (!authStore.isLoggedIn) return
   loadData()
 })
 
