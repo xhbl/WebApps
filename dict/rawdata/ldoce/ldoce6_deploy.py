@@ -334,7 +334,7 @@ def create_search_php():
     common_lookup = build_php_common_lookup(
         param_name=['q', 'word'],
         empty_response_php="echo json_encode(['found' => false]);",
-        update_word_on_redirect=False,
+        update_word_on_redirect=True,
         status_key='found'
     )
 
@@ -426,7 +426,7 @@ def create_search_audio_php():
     common_lookup = build_php_common_lookup(
         param_name=['q', 'word'],
         empty_response_php="echo json_encode(['success' => false, 'error' => 'Query parameter is missing.']);",
-        update_word_on_redirect=False,
+        update_word_on_redirect=True,
         status_key='success'
     )
     php_content = """<?php

@@ -57,7 +57,7 @@ try {
             $result2 = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($result2) {
                 $html = $result2['content'];
-                
+                $word = $target;
             }
         }
     }

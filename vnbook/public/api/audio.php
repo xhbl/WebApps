@@ -6,18 +6,35 @@
 
 require_once __DIR__ . '/utils.php';
 
+/**
+ * Checks if two words match, ignoring case, hyphens, and spaces
+ * 
+ * @param string $word1 First word to compare
+ * @param string $word2 Second word to compare
+ * @return bool True if words match, false otherwise
+ */
+function wordsMatch($word1, $word2)
+{
+    // Normalize both words: convert to lowercase, remove hyphens and spaces
+    $normalized_word1 = strtolower(preg_replace('/[\s-]+/', '', trim($word1)));
+    $normalized_word2 = strtolower(preg_replace('/[\s-]+/', '', trim($word2)));
+
+    // Compare normalized words
+    return $normalized_word1 === $normalized_word2;
+}
+
 function getAudio($word, $cached = false)
 {
     // Normalize word: trim whitespace to ensure cache filename matches audioq.php (API)
-    $word = trim($word);
+    $target_word = trim($word);
 
     // --- 1. Cache Directory Configuration ---
     if (!ensure_writable_directory(ABS_PATH_AUDIO)) {
-        return ['success' => false, 'word' => $word, 'message' => 'Cache directory not writable'];
+        return ['success' => false, 'word' => $target_word, 'message' => 'Cache directory not writable'];
     }
 
     // --- 2. Generate Cache Filename ---
-    $cache_filename_base = generateAudioCacheFilenameBase($word);
+    $cache_filename_base = generateAudioCacheFilenameBase($target_word);
 
     // --- 3. Cache Hit Check ---
     $cache_pattern = ABS_PATH_AUDIO . DIRECTORY_SEPARATOR . $cache_filename_base . '.*';
@@ -27,7 +44,7 @@ function getAudio($word, $cached = false)
 
         return [
             'success' => true,
-            'word' => $word,
+            'word' => $target_word,
             'url' => REL_URL_AUDIO . '/' . $cache_filename,
             'cached' => true
         ];
@@ -36,7 +53,7 @@ function getAudio($word, $cached = false)
     // --- 3.1 Cache-Only Mode Check ---
     if ($cached) {
         // In cache-only mode, also check TTS cache
-        return getOrGenerateTTSAudio($word, $cache_filename_base, true);
+        return getOrGenerateTTSAudio($target_word, $cache_filename_base, true);
     }
 
     // --- 4. Dictionary Lookup ---
@@ -45,7 +62,7 @@ function getAudio($word, $cached = false)
 
     if (file_exists($dict_search_script)) {
         $original_get = $_GET;
-        $_GET['q'] = $word;
+        $_GET['q'] = $target_word;
         ob_start();
         include $dict_search_script;
         $output = ob_get_clean();
@@ -59,6 +76,13 @@ function getAudio($word, $cached = false)
 
     // --- 5. Process Dictionary Result ---
     if ($source_result['success']) {
+        // Check if the returned word matches the queried word (case-insensitive, ignoring hyphens and spaces)
+        $dict_word = isset($source_result['word']) ? $source_result['word'] : '';
+        if (!wordsMatch($target_word, $dict_word)) {
+            // Words don't match, fall back to TTS
+            return getOrGenerateTTSAudio($target_word, $cache_filename_base);
+        }
+
         $full_dict_url = $source_result['url'];
 
         // Attempt to resolve local file path for caching
@@ -84,7 +108,7 @@ function getAudio($word, $cached = false)
             if (@copy($source_filepath, $cache_filepath)) {
                 return [
                     'success' => true,
-                    'word' => $word,
+                    'word' => $target_word,
                     'url' => REL_URL_AUDIO . '/' . $cache_filename,
                     'cached' => false
                 ];
@@ -94,14 +118,14 @@ function getAudio($word, $cached = false)
         // Cache failed, return the original URL provided by the dictionary directly
         return [
             'success' => true,
-            'word' => $word,
+            'word' => $target_word,
             'url' => $url_path,
             'cached' => false
         ];
     }
 
     // --- 6. TTS Fallback ---
-    return getOrGenerateTTSAudio($word, $cache_filename_base);
+    return getOrGenerateTTSAudio($target_word, $cache_filename_base);
 }
 
 /**
