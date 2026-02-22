@@ -137,6 +137,7 @@ export const useBooksStore = defineStore('books', () => {
       if (currentBook.value?.id === book.id) {
         currentBook.value = null
       }
+      await loadBooks()
       toast.showSuccess('删除成功')
       return true
     } catch (error) {
