@@ -41,7 +41,7 @@
         </div>
 
         <div class="footer-info">
-          <p>单词记录本 网页应用程序 v2.1</p>
+          <p>单词记录本 网页应用程序 v{{ appVersion }}</p>
           <p>著左权所有 (C) 2026 XHBL</p>
           <p class="apply-link">
             <a
@@ -59,6 +59,8 @@
 import { reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+
+const appVersion = import.meta.env.VITE_APP_VERSION || '2.1'
 
 const router = useRouter()
 const route = useRoute()

@@ -1,4 +1,6 @@
 import { fileURLToPath, URL } from 'node:url'
+import { readFileSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
@@ -17,7 +19,15 @@ export default defineConfig(() => {
   // 检测是否为 PWA 打包模式
   const isPwaBuild = process.env.VITE_BUILD_PWA === 'true'
 
+  // 读取版本号
+  const pkgPath = resolve(dirname(fileURLToPath(import.meta.url)), 'package.json')
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
+  const version = pkg.version || '0.0.0'
+
   return {
+    define: {
+      'import.meta.env.VITE_APP_VERSION': JSON.stringify(version),
+    },
     /**
      * 1. 基础路径配置
      * 如果是 PWA 打包模式，为了 Service Worker 稳定性使用固定的 '/vnb/'
