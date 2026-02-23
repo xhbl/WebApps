@@ -153,9 +153,11 @@ const actions = computed(() => {
 })
 
 const definition = computed(() => {
-  // 1. 优先显示单词本内的中文释义
+  // 1. 优先显示单词本内的中文释义（带词性）
   if (props.word.explanations && props.word.explanations.length > 0) {
-    const parts = props.word.explanations.map((e) => e.exp.zh).filter(Boolean)
+    const parts = props.word.explanations
+      .map((e) => (e.exp.zh ? `${e.pos} ${e.exp.zh}`.trim() : null))
+      .filter(Boolean)
     if (parts.length > 0) return parts.join('; ')
   }
   // 2. 其次显示基本词典的中文释义
