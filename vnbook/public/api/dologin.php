@@ -59,6 +59,24 @@ try {
                 echo json_encode(['success' => false, 'message' => 'Database initialization failed.']);
                 exit;
             }
+
+            // Initialize base dictionary database (only if it doesn't exist)
+            try {
+                $tmpPdo = new PDO("mysql:host=" . C_VNB_DB_HOST, C_VNB_DB_USER, C_VNB_DB_PASS);
+                $stmt = $tmpPdo->query("SHOW DATABASES LIKE '" . C_DB_BASE . "'");
+                $dbExists = $stmt->fetch() !== false;
+                
+                if (!$dbExists) {
+                    $baseDictRes = createBaseDictInitData();
+                    if (!$baseDictRes->v) {
+                        echo json_encode(['success' => false, 'message' => 'Base dictionary initialization failed: ' . ($baseDictRes->e ?? 'Unknown error')]);
+                        exit;
+                    }
+                }
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'message' => 'Failed to check base dictionary database status: ' . $e->getMessage()]);
+                exit;
+            }
         }
         // If database connection failed, return immediately
         else if ($dbStatus === 'connect_fail') {

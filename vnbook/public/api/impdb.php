@@ -264,3 +264,64 @@ function resetVnbInitData()
     }
     return $ret;
 }
+
+/**
+ * Initialize base dictionary database structure
+ * 
+ * Creates the va_basedict database and its tables based on the schema defined
+ * in va_basedict_init.sql. This function is called during admin's first login
+ * when the base dictionary database does not exist.
+ * 
+ * @return stdClass Object with v (boolean success) and optional e (error message)
+ */
+function createBaseDictInitData()
+{
+    $ret = new stdClass();
+    $ret->v = false;
+    try {
+        // Create database if it doesn't exist
+        $tmpPdo = new PDO("mysql:host=" . C_VNB_DB_HOST, C_VNB_DB_USER, C_VNB_DB_PASS);
+        $tmpPdo->exec("CREATE DATABASE IF NOT EXISTS `" . C_DB_BASE . "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+        // Get connection to the base dictionary database
+        $db = DB::base();
+        if ($db === null) {
+            throw new Exception("Failed to connect to base dictionary database after creation");
+        }
+
+        // Create tables
+        $queries = [
+            // 1. Words table
+            "CREATE TABLE IF NOT EXISTS `words` (
+                `id` INT(11) NOT NULL AUTO_INCREMENT,
+                `word` VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+                `word_search` VARCHAR(100) GENERATED ALWAYS AS (LCASE(`word`)) STORED,
+                `ipas` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (JSON_VALID(`ipas`)),
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `idx_word_unique` (`word`),
+                KEY `idx_word_search` (`word_search`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // 2. Definitions table
+            "CREATE TABLE IF NOT EXISTS `definitions` (
+                `id` INT(11) NOT NULL AUTO_INCREMENT,
+                `word_id` INT(11) NOT NULL,
+                `pos` VARCHAR(10) NOT NULL,
+                `ipa_idx` TINYINT(4) DEFAULT 0,
+                `meanings` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (JSON_VALID(`meanings`)),
+                PRIMARY KEY (`id`),
+                KEY `fk_word_ref` (`word_id`),
+                CONSTRAINT `fk_word_ref` FOREIGN KEY (`word_id`) REFERENCES `words` (`id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        ];
+
+        foreach ($queries as $sql) {
+            $db->exec($sql);
+        }
+
+        $ret->v = true;
+    } catch (Exception $e) {
+        $ret->e = $e->getMessage();
+    }
+    return $ret;
+}
