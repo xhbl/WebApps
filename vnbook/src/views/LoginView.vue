@@ -41,8 +41,8 @@
         </div>
 
         <div class="footer-info">
-          <p>单词记录本 网页应用程序 v{{ appVersion }}</p>
-          <p>著左权所有 (C) 2026 XHBL</p>
+          <p>{{ APP_NAME }} 网页应用程序 v{{ appVersion }}</p>
+          <p>{{ APP_COPYRIGHT }}</p>
           <p class="apply-link">
             <a
               href="mailto:newxhbl@hotmail.com?subject=申请单词本帐号&body=请提供你的用户名和初始密码: "
@@ -59,8 +59,9 @@
 import { reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { APP_NAME, APP_COPYRIGHT, getAppVersion } from '@/constants/appInfo'
 
-const appVersion = import.meta.env.VITE_APP_VERSION || '2.1'
+const appVersion = getAppVersion()
 
 const router = useRouter()
 const route = useRoute()

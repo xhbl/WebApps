@@ -2,6 +2,7 @@ import { ref, computed, defineComponent, h, unref, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ActionSheet } from 'vant'
 import { showGlobalDialog } from '@/composables/useGlobalDialog'
+import { getAppAboutText } from '@/constants/appInfo'
 import { useAuthStore } from '@/stores/auth'
 import UserModDialog from '@/components/UserModDialog.vue'
 import { toast } from '@/utils/toast'
@@ -23,6 +24,8 @@ export interface UseAppMenuOptions {
   userIcon?: string
   showLogout?: boolean
   logoutIcon?: string
+  showAbout?: boolean
+  aboutIcon?: string
 }
 
 export function useAppMenu(options: UseAppMenuOptions = {}) {
@@ -70,6 +73,15 @@ export function useAppMenu(options: UseAppMenuOptions = {}) {
       })
     }
 
+    // 4. 关于 (默认显示)
+    if (options.showAbout !== false) {
+      list.push({
+        name: '关于',
+        key: 'about',
+        icon: options.aboutIcon || 'info-o',
+      })
+    }
+
     return list
   })
 
@@ -100,6 +112,15 @@ export function useAppMenu(options: UseAppMenuOptions = {}) {
         } catch {
           // Cancelled
         }
+        break
+      case 'about':
+        showGlobalDialog({
+          title: '关于',
+          message: getAppAboutText(),
+          confirmButtonText: '确定',
+          showConfirmButton: false,
+          closeOnClickOverlay: true,
+        })
         break
     }
   }

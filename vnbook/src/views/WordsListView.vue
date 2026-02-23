@@ -182,7 +182,7 @@
                 :class="{ breathing: hasActiveReview }"
               />
             </div>
-            <van-icon name="info-o" class="bottom-bar-icon" @click="showReviewInfo" />
+            <van-icon name="question-o" class="bottom-bar-icon" @click="showReviewInfo" />
           </div>
           <van-icon
             v-else-if="bid > 0"
@@ -728,7 +728,7 @@ const menuItems = computed<AppMenuItem[]>(() => {
     items.push({ name: '添加单词', icon: 'plus', handler: openAddWord })
   }
   if (isReviewMode.value) {
-    items.push({ name: '复习指导', icon: 'info-o', handler: showReviewInfo })
+    items.push({ name: '复习指导', icon: 'question-o', handler: showReviewInfo })
   }
   if (bid.value === 0) {
     items.push({
