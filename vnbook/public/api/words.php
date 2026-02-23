@@ -808,6 +808,15 @@ try {
                 }
 
                 $response = ['success' => true, 'word' => $rows];
+                
+                // Return current review book count if this is the review book
+                if ($bid == -1) {
+                    $db = DB::vnb();
+                    $uid = $_SESSION['user_id'];
+                    $stmt = $db->prepare("SELECT COUNT(*) FROM vnu_review WHERE user_id = ?");
+                    $stmt->execute([$uid]);
+                    $response['reviewCount'] = (int)$stmt->fetchColumn();
+                }
             } else {
                 $response['message'] = 'Error fetching words';
             }

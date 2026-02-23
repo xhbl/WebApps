@@ -158,6 +158,12 @@ function defineWordsStore() {
           }
         })
 
+        // 如果是复习本，同步更新 reviewCount
+        if (bookId === -1 && typeof response.data.reviewCount === 'number') {
+          const booksStore = useBooksStore()
+          booksStore.reviewCount = response.data.reviewCount
+        }
+
         // 按排序模式排序
         sortWords()
 
