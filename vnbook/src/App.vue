@@ -2,7 +2,6 @@
 import { computed, defineAsyncComponent, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import GlobalDialog from '@/components/GlobalDialog.vue'
-import { isSystemBack } from '@/router'
 import { useAuthStore } from '@/stores/auth'
 
 // 异步加载组件以优化首屏，但加载后会持久驻留
@@ -67,17 +66,17 @@ onMounted(() => {
     <!-- 始终存在于 DOM 中，通过 CSS Transform 切换，实现极致的保留位置体验 -->
     <div v-show="isStackRoute" class="stack-container">
       <!-- Level 1: 单词本列表 -->
-      <div class="page-layer" :class="[getLayerClass(1), { 'no-transition': isSystemBack }]">
+      <div class="page-layer" :class="getLayerClass(1)">
         <BooksList />
       </div>
 
       <!-- Level 2: 单词列表 -->
-      <div class="page-layer" :class="[getLayerClass(2), { 'no-transition': isSystemBack }]">
+      <div class="page-layer" :class="getLayerClass(2)">
         <WordsList />
       </div>
 
       <!-- Level 3: 单词卡片 -->
-      <div class="page-layer" :class="[getLayerClass(3), { 'no-transition': isSystemBack }]">
+      <div class="page-layer" :class="getLayerClass(3)">
         <WordCard />
       </div>
     </div>
@@ -127,10 +126,6 @@ onMounted(() => {
 .layer-background {
   transform: translate3d(-25%, 0, 0); /* 视差效果：轻微左移 */
   z-index: 1;
-}
-
-.no-transition {
-  transition: none !important;
 }
 
 .fade-enter-active,

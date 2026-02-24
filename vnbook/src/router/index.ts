@@ -1,14 +1,5 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
-import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-
-// 计算路径深度（简单根据斜杠分割）
-const getPathDepth = (path: string): number => {
-  return path.split('/').filter(Boolean).length
-}
-
-// 导出系统后退状态，供 App.vue 使用
-export const isSystemBack = ref(false)
 
 const routes: RouteRecordRaw[] = [
   {
@@ -52,11 +43,6 @@ const router = createRouter({
   history: createWebHashHistory(),
   routes,
   scrollBehavior(to, from, savedPosition) {
-    // 如果路由元信息要求禁用滚动恢复，则返回空
-    if (to.meta?.noScrollRestore || from.meta?.noScrollRestore) {
-      return { left: 0, top: 0 }
-    }
-
     // 如果有保存的位置（浏览器前进/后退），恢复该位置
     if (savedPosition) {
       // 使用 requestAnimationFrame 确保在下一帧恢复，避免与动画冲突
@@ -72,8 +58,10 @@ const router = createRouter({
     // 对于同一路由的不同路由参数（如 /books/1/words → /books/2/words），视为新页面，滚动到顶部
     // 查询参数变化（如 ?select=true）保持当前位置
     if (to.path === from.path) {
-      // 比较路由参数是否变化
-      const paramsChanged = JSON.stringify(to.params) !== JSON.stringify(from.params)
+      // 比较路由参数是否变化（更高效的方式）
+      const paramsChanged = Object.keys(to.params).some(
+        (key) => String(to.params[key]) !== String(from.params[key])
+      )
       if (paramsChanged) {
         // 路由参数变化（如切换单词本），滚动到顶部
         return { left: 0, top: 0, behavior: 'auto' }
@@ -96,27 +84,6 @@ if (window.history && 'scrollRestoration' in window.history) {
 // 路由守卫
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
-
-  // 设置页面切换动画方向（基于路由深度变化）
-  if (from) {
-    const fromDepth = getPathDepth(from.path)
-    const toDepth = getPathDepth(to.path)
-
-    if (!to.meta) {
-      to.meta = {}
-    }
-
-    if (toDepth > fromDepth) {
-      // 前进：新页面从右侧滑入
-      to.meta.transition = 'slide-left'
-    } else if (toDepth < fromDepth) {
-      // 后退：新页面从左侧滑入
-      to.meta.transition = 'slide-right'
-    } else {
-      // 深度相同，使用默认动画或无动画
-      to.meta.transition = 'slide'
-    }
-  }
 
   // 检查是否需要登录
   if (to.meta.requiresAuth) {
