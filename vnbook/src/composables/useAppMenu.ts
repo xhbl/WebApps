@@ -73,8 +73,8 @@ export function useAppMenu(options: UseAppMenuOptions = {}) {
       })
     }
 
-    // 4. 关于 (默认显示)
-    if (options.showAbout !== false) {
+    // 4. 关于 (默认不显示)
+    if (options.showAbout === true) {
       list.push({
         name: '关于',
         key: 'about',

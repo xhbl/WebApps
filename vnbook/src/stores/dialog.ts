@@ -60,7 +60,7 @@ export const useDialogStore = defineStore('dialog', () => {
     isSettled = true
     show.value = false
     setTimeout(() => {
-      if (rejectFn) rejectFn(new Error('cancel'))
+      if (resolveFn) resolveFn(false)
     }, 100)
   }
 

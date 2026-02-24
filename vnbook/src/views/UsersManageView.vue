@@ -95,6 +95,7 @@ const openNewUser = () => {
 const { openMenu, AppMenu, UserDialog } = useAppMenu({
   items: [{ name: '新建用户', icon: 'plus', handler: openNewUser }],
   userIcon: 'manager-o',
+  showAbout: true,
 })
 
 const editUser = (u: User) => {

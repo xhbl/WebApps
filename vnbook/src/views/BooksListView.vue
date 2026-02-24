@@ -351,6 +351,7 @@ const { openMenu, AppMenu, UserDialog } = useAppMenu({
       },
     ]
   },
+  showAbout: true,
 })
 </script>
 
