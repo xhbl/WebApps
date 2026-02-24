@@ -27,10 +27,31 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/users',
-    name: 'UsersManage',
-    component: () => import('@/views/UsersManageView.vue'),
+    path: '/admin',
+    component: () => import('@/views/AdminLayout.vue'),
     meta: { requiresAuth: true, requiresAdmin: true },
+    children: [
+      {
+        path: '',
+        redirect: '/admin/users',
+      },
+      {
+        path: 'users',
+        name: 'UsersManage',
+        component: () => import('@/views/UsersManageView.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true },
+      },
+      {
+        path: 'system',
+        name: 'SystemManage',
+        component: () => import('@/views/SystemManageView.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true },
+      },
+    ],
+  },
+  {
+    path: '/users',
+    redirect: '/admin/users',
   },
   {
     path: '/',

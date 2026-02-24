@@ -91,7 +91,7 @@ const onSubmit = async () => {
 
       // 修正：如果是管理员，且重定向是首页或单词本列表（通常是默认路由产生的），则优先跳转到用户管理
       if (authStore.isAdmin && (!redirect || redirect === '/' || redirect === '/books')) {
-        router.replace('/users')
+        router.replace('/admin')
       } else if (redirect) {
         router.replace(redirect)
       } else {

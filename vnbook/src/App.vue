@@ -54,10 +54,9 @@ onMounted(() => {
 
 <template>
   <div class="app-root">
-    <!-- 1. 普通路由视图 (Login, UsersManage 等) -->
-    <!-- 当不在核心堆栈时显示，使用传统的销毁/重建模式 -->
+    <!-- 1. 普通路由视图 (Login, AdminLayout 等) -->
     <router-view v-if="!isStackRoute" v-slot="{ Component }">
-      <transition :name="normalTransition" mode="out-in">
+      <transition :name="normalTransition" mode="out-in" appear>
         <component :is="Component" />
       </transition>
     </router-view>

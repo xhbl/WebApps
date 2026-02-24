@@ -9,7 +9,7 @@
       </template>
     </van-nav-bar>
 
-    <div class="content">
+    <div class="content" ref="contentRef" @scroll="onScroll">
       <van-pull-refresh v-model="refreshing" @refresh="onRefresh" class="full-height-refresh">
         <div v-if="loading" class="loading">加载中...</div>
         <div v-else>
@@ -49,17 +49,21 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-
+import { ref, onMounted, onActivated } from 'vue'
 import { showGlobalDialog } from '@/composables/useGlobalDialog'
 import { useUsersStore } from '@/stores/users'
 import { useAuthStore } from '@/stores/auth'
 import { useAppMenu } from '@/composables/useAppMenu'
+import { useScrollPosition } from '@/composables/useScrollPosition'
 import UserEditorDialog from '@/components/UserEditorDialog.vue'
 import type { User } from '@/types'
 
 const usersStore = useUsersStore()
 const authStore = useAuthStore()
+
+// 使用可复用的滚动位置管理
+// contentRef 在 template 的 ref 和 @scroll 中使用（这是正常的 Vue 用法）
+const { contentRef, onScroll, restoreScroll } = useScrollPosition('UsersManage')
 
 const showEditor = ref(false)
 const editorUser = ref<User | null>(null)
@@ -69,9 +73,6 @@ const loading = ref(true)
 onMounted(async () => {
   if (!authStore.isLoggedIn) return
 
-  // 滚动位置由 Vue Router 的 keep-alive 和 scrollBehavior 自动管理
-  // 无需手动恢复
-
   if (usersStore.users.length === 0) loading.value = true
   try {
     await usersStore.loadUsers()
@@ -80,6 +81,11 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+})
+
+// KeepAlive 恢复时恢复滚动位置
+onActivated(() => {
+  restoreScroll()
 })
 
 const onRefresh = async () => {
