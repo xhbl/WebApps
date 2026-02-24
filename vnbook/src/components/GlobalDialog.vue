@@ -2,7 +2,7 @@
   <van-dialog
     v-model:show="show"
     :title="store.options.title"
-    :message="store.options.showCheckbox ? undefined : store.options.message"
+    :message="store.options.showCheckbox || store.options.showInput ? undefined : store.options.message"
     :show-cancel-button="store.options.showCancelButton"
     :show-confirm-button="store.options.showConfirmButton !== false"
     :confirm-button-text="store.options.confirmButtonText || '确认'"
@@ -16,7 +16,7 @@
     @confirm="store.confirm"
     @cancel="store.cancel"
   >
-    <template #default v-if="store.options.showCheckbox">
+    <template #default v-if="store.options.showCheckbox || store.options.showInput">
       <div class="global-dialog-content">
         <div
           v-if="store.options.message"
@@ -27,7 +27,16 @@
           <div v-if="store.options.allowHtml" v-html="store.options.message"></div>
           <div v-else>{{ store.options.message }}</div>
         </div>
-        <div class="global-dialog-checkbox">
+        <div v-if="store.options.showInput" class="global-dialog-input">
+          <van-field
+            v-model="store.inputValue"
+            :type="(store.options.inputType as 'text' | 'password') || 'text'"
+            :placeholder="store.options.inputPlaceholder"
+            clearable
+            @keyup.enter="store.confirm"
+          />
+        </div>
+        <div v-if="store.options.showCheckbox" class="global-dialog-checkbox">
           <van-checkbox v-model="store.checked" icon-size="18px">{{
             store.options.checkboxLabel
           }}</van-checkbox>
@@ -85,5 +94,13 @@ watch(show, (val) => {
   font-size: 14px;
   color: var(--van-text-color-2);
   text-align: left;
+}
+
+.global-dialog-input {
+  margin-bottom: 16px;
+}
+
+.global-dialog-input :deep(.van-cell) {
+  padding: 8px 0;
 }
 </style>

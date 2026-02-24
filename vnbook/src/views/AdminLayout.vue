@@ -5,7 +5,13 @@
         <component :is="Component" />
       </KeepAlive>
     </router-view>
-    <van-tabbar v-model="activeTab" active-color="var(--van-primary-color)" inactive-color="#999" route>
+    <van-tabbar
+      v-if="!route.meta.hideTabbar"
+      v-model="activeTab"
+      active-color="var(--van-primary-color)"
+      inactive-color="#999"
+      route
+    >
       <van-tabbar-item replace to="/admin/users" name="users">
         <template #icon="{ active }">
           <van-icon :name="active ? 'friends' : 'friends-o'" size="20" />

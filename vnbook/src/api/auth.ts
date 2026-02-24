@@ -203,3 +203,35 @@ export const updateUserInfo = (data: {
     },
   })
 }
+
+/**
+ * 验证管理员密码
+ */
+export const verifyAdminPassword = async (password: string) => {
+  // 使用 admin 用户登录验证
+  const nonceResp = await getNonce('admin')
+  if (nonceResp.data.success !== true || !nonceResp.data.nonce) {
+    return false
+  }
+
+  const nonce = nonceResp.data.nonce
+  const hash1 = await sha256(password)
+  const hash2 = await sha256(hash1 + nonce)
+
+  const params = new URLSearchParams()
+  params.append('uname', 'admin')
+  params.append('response', hash2)
+  params.append('keepme', '0')
+
+  try {
+    const response = await request.post<LoginResponse>('/dologin.php', params, {
+      params: { act: 'verify' }, // 使用 verify 动作，只验证不登录
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    })
+    return response.data.success === true
+  } catch {
+    return false
+  }
+}

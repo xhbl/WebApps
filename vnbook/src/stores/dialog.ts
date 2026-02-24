@@ -16,13 +16,17 @@ export interface DialogOptions {
   showCheckbox?: boolean
   checkboxLabel?: string
   checkboxChecked?: boolean
+  showInput?: boolean
+  inputPlaceholder?: string
+  inputType?: string
 }
 
 export const useDialogStore = defineStore('dialog', () => {
   const show = ref(false)
   const checked = ref(false)
+  const inputValue = ref('')
   const options = ref<DialogOptions>({})
-  let resolveFn: ((value: boolean | { checked: boolean }) => void) | null = null
+  let resolveFn: ((value: boolean | { checked: boolean } | string) => void) | null = null
   let rejectFn: ((reason?: unknown) => void) | null = null
   let isSettled = false
 
@@ -34,10 +38,11 @@ export const useDialogStore = defineStore('dialog', () => {
 
     options.value = opts
     checked.value = !!opts.checkboxChecked
+    inputValue.value = ''
     show.value = true
     isSettled = false
 
-    return new Promise<boolean | { checked: boolean }>((resolve, reject) => {
+    return new Promise<boolean | { checked: boolean } | string>((resolve, reject) => {
       resolveFn = resolve
       rejectFn = reject
     })
@@ -49,7 +54,8 @@ export const useDialogStore = defineStore('dialog', () => {
     show.value = false
     setTimeout(() => {
       if (resolveFn) {
-        if (options.value.showCheckbox) resolveFn({ checked: checked.value })
+        if (options.value.showInput) resolveFn(inputValue.value)
+        else if (options.value.showCheckbox) resolveFn({ checked: checked.value })
         else resolveFn(true)
       }
     }, 100)
@@ -60,14 +66,24 @@ export const useDialogStore = defineStore('dialog', () => {
     isSettled = true
     show.value = false
     setTimeout(() => {
-      if (resolveFn) resolveFn(false)
+      if (rejectFn) rejectFn(new Error('cancel'))
     }, 100)
   }
 
   // 当弹窗通过其他方式（如返回键、点击遮罩）关闭时调用
   const close = () => {
-    if (!isSettled) cancel()
+    if (isSettled) return
+    isSettled = true
+    show.value = false
+    setTimeout(() => {
+      // 纯提示对话框（无确认按钮）关闭时 resolve，否则 reject
+      if (options.value.showConfirmButton === false) {
+        if (resolveFn) resolveFn(true)
+      } else {
+        if (rejectFn) rejectFn(new Error('cancel'))
+      }
+    }, 100)
   }
 
-  return { show, checked, options, open, confirm, cancel, close }
+  return { show, checked, inputValue, options, open, confirm, cancel, close }
 })

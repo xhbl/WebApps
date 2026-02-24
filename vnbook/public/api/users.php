@@ -19,6 +19,34 @@ function getUsers($uname = null)
     return $rows;
 }
 
+function getUserStats($uid)
+{
+    $db = DB::vnb();
+
+    // Get book count
+    $stmt = $db->prepare("SELECT COUNT(*) as book_count FROM vnu_books WHERE user_id = ?");
+    $stmt->execute([$uid]);
+    $bookCount = $stmt->fetch()['book_count'] ?? 0;
+
+    // Get word count (unique words for this user)
+    $stmt = $db->prepare("SELECT COUNT(*) as word_count FROM vnu_words WHERE user_id = ?");
+    $stmt->execute([$uid]);
+    $wordCount = $stmt->fetch()['word_count'] ?? 0;
+
+    // Get last_active from cfg
+    $stmt = $db->prepare("SELECT cfg FROM vnb_users WHERE id = ?");
+    $stmt->execute([$uid]);
+    $row = $stmt->fetch();
+    $cfg = json_decode($row['cfg'] ?? '', true);
+    $lastActive = $cfg['last_active'] ?? '-';
+
+    return [
+        'bookCount' => (int)$bookCount,
+        'wordCount' => (int)$wordCount,
+        'lastActive' => $lastActive,
+    ];
+}
+
 function updateUsers($items)
 {
     $db = DB::vnb();
@@ -33,7 +61,7 @@ function updateUsers($items)
                 $hashedPass = hash('sha256', $item->pass);
                 $stmt = $db->prepare("INSERT INTO vnb_users (name, pass, dispname) VALUES (?, ?, ?)");
                 $stmt->execute([$item->name, $hashedPass, $item->dispname]);
-                $item->Id = $db->lastInsertId();
+                $item->id = $db->lastInsertId();
                 $item->_new = 0;
             } else {
                 $sql = "UPDATE vnb_users SET dispname = ?";
@@ -85,6 +113,33 @@ function deleteUsers($items)
     return true;
 }
 
+function clearUserData($uid)
+{
+    $db = DB::vnb();
+    if (!$db) {
+        error_log('clearUserData: Database connection failed');
+        return false;
+    }
+    try {
+        $db->beginTransaction();
+        // 删除用户的所有单词
+        $stmt = $db->prepare("DELETE FROM vnu_words WHERE user_id = ?");
+        $stmt->execute([$uid]);
+        // 删除用户的所有单词本
+        $stmt = $db->prepare("DELETE FROM vnu_books WHERE user_id = ?");
+        $stmt->execute([$uid]);
+        // 清空用户的配置
+        $stmt = $db->prepare("UPDATE vnb_users SET cfg = NULL WHERE id = ?");
+        $stmt->execute([$uid]);
+        $db->commit();
+        return true;
+    } catch (Exception $e) {
+        if ($db) $db->rollBack();
+        error_log('clearUserData error: ' . $e->getMessage());
+        return false;
+    }
+}
+
 header('Content-Type: application/json; charset=utf-8');
 
 $logsess = vnb_checklogin($_GET["_sessid"] ?? null);
@@ -98,7 +153,31 @@ if ($input && !is_array($input)) $input = [$input];
 $response = ['success' => false];
 
 if ($method == 'GET') {
-    $response = ['success' => true, 'user' => getUsers()];
+    // Check if requesting user stats
+    $uid = $_GET['stats'] ?? null;
+    if ($uid) {
+        $response = ['success' => true, 'stats' => getUserStats((int)$uid)];
+    } else {
+        $response = ['success' => true, 'user' => getUsers()];
+    }
+} elseif ($method == 'POST') {
+    // 清空用户数据
+    $action = $_GET['action'] ?? null;
+    if ($action === 'clear') {
+        $uid = $_GET['uid'] ?? null;
+        if (!$uid) {
+            $response['message'] = 'Missing user ID';
+        } else {
+            $result = clearUserData((int)$uid);
+            if ($result) {
+                $response = ['success' => true];
+            } else {
+                $response['message'] = 'Failed to clear user data';
+            }
+        }
+    } else {
+        $response['message'] = 'Invalid action';
+    }
 } elseif ($method == 'PUT' && $input) {
     $res = updateUsers($input);
     if ($res->v) {

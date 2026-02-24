@@ -119,6 +119,7 @@ export interface ApiResponse<T = unknown> {
   sentence?: Sentence[]
   login?: LoginInfo
   data?: T
+  stats?: T
   reviewCount?: number
   totalWordCount?: number
   orphanCount?: number

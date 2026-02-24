@@ -110,7 +110,7 @@ export function useAppMenu(options: UseAppMenuOptions = {}) {
           })
           await onLogoutConfirm()
         } catch {
-          // Cancelled
+          // 取消
         }
         break
       case 'about':

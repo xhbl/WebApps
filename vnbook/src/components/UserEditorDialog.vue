@@ -35,7 +35,6 @@
         <div class="actions">
           <van-button round type="primary" native-type="submit" :loading="loading">保存</van-button>
           <van-button round @click="onCancel">取消</van-button>
-          <van-button v-if="!isNew" round type="danger" @click="onDelete">删除</van-button>
         </div>
       </van-form>
     </div>
@@ -57,7 +56,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
-  (e: 'delete', user: User): void
 }>()
 
 const show = ref(props.modelValue)
@@ -128,11 +126,6 @@ const onSubmit = async () => {
 }
 
 const onCancel = () => (show.value = false)
-
-const onDelete = async () => {
-  await close()
-  emit('delete', edit.value)
-}
 </script>
 
 <style scoped>

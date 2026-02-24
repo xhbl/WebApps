@@ -42,6 +42,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, requiresAdmin: true },
       },
       {
+        path: 'users/:uid',
+        name: 'UserInfo',
+        component: () => import('@/views/UserInfoView.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true, hideTabbar: true },
+      },
+      {
         path: 'system',
         name: 'SystemManage',
         component: () => import('@/views/SystemManageView.vue'),

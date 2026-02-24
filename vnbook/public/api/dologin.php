@@ -90,6 +90,55 @@ try {
         }
 
         echo json_encode(vnb_dologin($uname, $response, isset($_POST["keepme"])));
+    } elseif ($act == 'verify') {
+        // 验证密码但不登录（用于管理员二次验证）
+        $uname = $_POST["uname"] ?? '';
+        $response = $_POST["response"] ?? '';
+
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        // 验证 nonce
+        if (empty($_SESSION['login_nonce']) || empty($_SESSION['nonce_expire'])) {
+            echo json_encode(['success' => false, 'message' => 'Nonce required.']);
+            exit;
+        }
+        if ($_SESSION['nonce_expire'] < time()) {
+            echo json_encode(['success' => false, 'message' => 'Nonce expired.']);
+            exit;
+        }
+        if ($_SESSION['nonce_username'] !== $uname) {
+            echo json_encode(['success' => false, 'message' => 'Nonce username mismatch.']);
+            exit;
+        }
+
+        $nonce = $_SESSION['login_nonce'];
+        unset($_SESSION['login_nonce'], $_SESSION['nonce_username'], $_SESSION['nonce_expire']);
+
+        // 获取用户密码哈希
+        $db = DB::vnb();
+        if (!$db) {
+            echo json_encode(['success' => false, 'message' => 'Database error.']);
+            exit;
+        }
+
+        $stmt = $db->prepare("SELECT pass FROM vnb_users WHERE name = ?");
+        $stmt->execute([trim($uname)]);
+        $row = $stmt->fetch();
+
+        if (!$row) {
+            echo json_encode(['success' => false, 'message' => 'User not found.']);
+            exit;
+        }
+
+        // 验证密码
+        $expected = hash('sha256', $row['pass'] . $nonce);
+        if ($expected !== $response) {
+            echo json_encode(['success' => false, 'message' => 'Invalid password.']);
+            exit;
+        }
+
+        // 验证成功，不创建 session
+        echo json_encode(['success' => true]);
     } elseif ($act == 'logout') {
         vnb_dologout();
         echo json_encode(['success' => true]);

@@ -27,6 +27,9 @@ function vnb_checklogin($sid = null, $refresh = false)
         $cfgObj = json_decode($_SESSION['user_cfg'] ?? '', true);
         $defaultBookId = $cfgObj['defaultBookId'] ?? 0;
 
+        // 更新活跃时间（间隔 5 分钟）
+        updateLastActive($_SESSION['user_id']);
+
         $retjo->success = true;
         $retjo->login = ['sid' => session_id(), 'uid' => $_SESSION['user_id'], 'uname' => $_SESSION['user_name'], 'dname' => $_SESSION['user_dispname'], 'cfg' => $cfgObj, 'defaultBookId' => $defaultBookId];
         return $retjo;
@@ -64,9 +67,38 @@ function vnb_checklogin($sid = null, $refresh = false)
     $cfgObj = json_decode($_SESSION['user_cfg'] ?? '', true);
     $defaultBookId = $cfgObj['defaultBookId'] ?? 0;
 
+    // 更新活跃时间（间隔 5 分钟）
+    updateLastActive($_SESSION['user_id']);
+
     $retjo->success = true;
     $retjo->login = ['sid' => session_id(), 'uid' => $_SESSION['user_id'], 'uname' => $_SESSION['user_name'], 'dname' => $_SESSION['user_dispname'], 'cfg' => $cfgObj, 'defaultBookId' => $defaultBookId];
     return $retjo;
+}
+
+/**
+ * 更新用户活跃时间（间隔 5 分钟更新一次数据库）
+ */
+function updateLastActive($uid)
+{
+    $now = time();
+    $lastUpdate = $_SESSION['last_active_update'] ?? 0;
+
+    // 距离上次更新超过 5 分钟才写入数据库
+    if ($now - $lastUpdate > 300) {
+        $db = DB::vnb();
+        if ($db) {
+            $stmt = $db->prepare("SELECT cfg FROM vnb_users WHERE id = ?");
+            $stmt->execute([$uid]);
+            $row = $stmt->fetch();
+            if ($row) {
+                $cfgObj = json_decode($row['cfg'] ?? '', true);
+                $cfgObj['last_active'] = gmdate('Y/m/d H:i');
+                $cfgJson = json_encode($cfgObj);
+                $db->prepare("UPDATE vnb_users SET cfg = ? WHERE id = ?")->execute([$cfgJson, $uid]);
+                $_SESSION['last_active_update'] = $now;
+            }
+        }
+    }
 }
 
 function vnb_dologin($uname, $response_hash, $keepme)
@@ -138,16 +170,22 @@ function vnb_dologin($uname, $response_hash, $keepme)
             $retjo->success = true;
             $retjo->login = ['sid' => $sid, 'uid' => 1, 'uname' => 'admin', 'dname' => 'Administrator'];
         } else {
+            // Update last_active in cfg
+            $cfgObj = json_decode($row['cfg'] ?? '', true);
+            $cfgObj['last_active'] = gmdate('Y/m/d H:i');
+            $cfgJson = json_encode($cfgObj);
+            $db->prepare("UPDATE vnb_users SET cfg = ? WHERE id = ?")->execute([$cfgJson, $row['id']]);
+
             $_SESSION['user_id'] = $row['id'];
             $_SESSION['user_name'] = $row['name'];
             $_SESSION['user_dispname'] = $row['dispname'];
-            $_SESSION['user_cfg'] = $row['cfg'];
+            $_SESSION['user_cfg'] = $cfgJson;
+            $_SESSION['last_active_update'] = time();
             $sid = session_id();
             $cookie_str = $row['name'] . '@' . $sid . '@' . md5($row['name'] . '@' . $sid);
             $expiry = $keepme ? time() + 3600 * 24 * 365 : 0;
             setcookie(vnb_sessname(), $cookie_str, $expiry, '/');
 
-            $cfgObj = json_decode($row['cfg'] ?? '', true);
             $defaultBookId = $cfgObj['defaultBookId'] ?? 0;
 
             $retjo->success = true;

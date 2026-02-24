@@ -19,10 +19,10 @@
             :title="u.dispname?.trim() || u.name"
             :label="u.name"
             is-link
-            @click="editUser(u)"
+            @click="enterUserDetail(u)"
           >
             <template #icon>
-              <div class="icon-wrapper">
+              <div class="icon-wrapper" @click.stop="openEditUser(u)">
                 <van-icon name="user-o" class="list-leading-icon" />
               </div>
             </template>
@@ -38,7 +38,7 @@
     <AppMenu />
     <UserDialog />
 
-    <user-editor-dialog v-model="showEditor" :user="editorUser" @delete="deleteUser" />
+    <user-editor-dialog v-model="showEditor" :user="editorUser" />
   </div>
 </template>
 
@@ -50,23 +50,26 @@ export default {
 
 <script setup lang="ts">
 import { ref, onMounted, onActivated } from 'vue'
-import { showGlobalDialog } from '@/composables/useGlobalDialog'
+import { useRouter } from 'vue-router'
 import { useUsersStore } from '@/stores/users'
 import { useAuthStore } from '@/stores/auth'
 import { useAppMenu } from '@/composables/useAppMenu'
 import { useScrollPosition } from '@/composables/useScrollPosition'
+import { useUserOperations } from '@/composables/useUserOperations'
 import UserEditorDialog from '@/components/UserEditorDialog.vue'
 import type { User } from '@/types'
 
 const usersStore = useUsersStore()
 const authStore = useAuthStore()
+const router = useRouter()
 
 // 使用可复用的滚动位置管理
 // contentRef 在 template 的 ref 和 @scroll 中使用（这是正常的 Vue 用法）
 const { contentRef, onScroll, restoreScroll } = useScrollPosition('UsersManage')
 
-const showEditor = ref(false)
-const editorUser = ref<User | null>(null)
+// 使用可复用的用户操作逻辑
+const { showEditor, editorUser, openNewUser, openEditUser } = useUserOperations()
+
 const refreshing = ref(false)
 const loading = ref(true)
 
@@ -93,35 +96,14 @@ const onRefresh = async () => {
   refreshing.value = false
 }
 
-const openNewUser = () => {
-  editorUser.value = { id: 0, name: '', dispname: '', time_c: '', _new: 1 }
-  showEditor.value = true
-}
-
 const { openMenu, AppMenu, UserDialog } = useAppMenu({
   items: [{ name: '新建用户', icon: 'plus', handler: openNewUser }],
   userIcon: 'manager-o',
   showAbout: true,
 })
 
-const editUser = (u: User) => {
-  editorUser.value = { ...u, _new: 0 }
-  showEditor.value = true
-}
-
-const deleteUser = async (u: User) => {
-  try {
-    await showGlobalDialog({
-      title: '删除用户',
-      message: `确定要删除用户“${u.dispname?.trim() || u.name}”吗？<br><br><span style="color:var(--van-danger-color)"><b>此操作将永久删除该用户和其所有相关数据，且无法撤销。</b></span>`,
-      confirmButtonText: '删除',
-      confirmButtonColor: 'var(--van-danger-color)',
-      showCancelButton: true,
-      allowHtml: true,
-    })
-    await usersStore.deleteUser(u)
-    editorUser.value = null
-  } catch {}
+const enterUserDetail = (u: User) => {
+  router.push(`/admin/users/${u.id}`)
 }
 </script>
 
@@ -187,7 +169,7 @@ const deleteUser = async (u: User) => {
 /* 列表前导图标 */
 .list-leading-icon {
   font-size: 22px;
-  color: var(--van-text-color);
+  color: var(--van-primary-color);
   display: flex;
   align-items: center;
   height: 100%; /* 确保在 Cell 容器中垂直居中 */
