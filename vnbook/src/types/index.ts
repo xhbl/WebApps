@@ -120,6 +120,7 @@ export interface ApiResponse<T = unknown> {
   login?: LoginInfo
   data?: T
   stats?: T
+  info?: T
   reviewCount?: number
   totalWordCount?: number
   orphanCount?: number

@@ -3,6 +3,7 @@ import { useUsersStore } from '@/stores/users'
 import { showPromptDialog } from '@/composables/useGlobalDialog'
 import { verifyAdminPassword } from '@/api/auth'
 import { clearUserData } from '@/api/users'
+import { resetAllUserData } from '@/api/system'
 import { toast } from '@/utils/toast'
 import type { User } from '@/types'
 
@@ -79,7 +80,7 @@ export function useUserOperations() {
     const userName = user.dispname?.trim() || user.name
     const validPassword = await verifyWithPassword({
       title: '删除用户',
-      message: `确定要删除用户"${userName}"及其数据吗？<br><br><span style="color:var(--van-danger-color)"><b>此操作将删除该用户账号的其所有相关数据，且无法撤销。</b></span>`,
+      message: `确定要删除用户"${userName}"及其数据吗？<br><br><span style="color:var(--van-danger-color)"><b>此操作将删除该用户账号及其所有相关数据，且无法撤销。</b></span>`,
       confirmButtonText: '确认删除',
       confirmButtonColor: 'var(--van-danger-color)',
     })
@@ -108,6 +109,26 @@ export function useUserOperations() {
     }
   }
 
+  // --- 清空重置所有用户数据（带管理员密码验证） ---
+  const handleResetAllUserData = async () => {
+    const validPassword = await verifyWithPassword({
+      title: '清空重置',
+      message: `确定要清空所有用户数据吗？<br><br><span style="color:var(--van-danger-color)"><b>此操作将删除所有用户账号和数据并将重置为初始状态，且无法撤销。</b></span>`,
+      confirmButtonText: '确认重置',
+      confirmButtonColor: 'var(--van-danger-color)',
+    })
+    if (!validPassword) return false
+
+    const response = await resetAllUserData()
+    if (response.data.success) {
+      toast.showSuccess('重置成功')
+      return true
+    } else {
+      toast.showFail(response.data.message || '重置失败')
+      return false
+    }
+  }
+
   return {
     showEditor,
     editorUser,
@@ -115,5 +136,6 @@ export function useUserOperations() {
     openEditUser,
     handleDeleteUserWithVerify,
     handleClearUserData,
+    handleResetAllUserData,
   }
 }

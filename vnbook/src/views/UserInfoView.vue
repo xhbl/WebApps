@@ -192,8 +192,19 @@ const { openMenu, AppMenu } = useAppMenu({
   padding: 10px 8px;
 }
 
+:deep(.van-cell__title) {
+  flex: none;
+  width: auto;
+  margin-right: 12px;
+  font-size: var(--van-font-size-md);
+  font-weight: 600;
+}
+
 :deep(.van-cell__value) {
-  color: var(--van-text-color);
+  color: var(--van-text-color-2);
+  font-size: var(--van-font-size-sm);
+  flex: 1;
+  word-break: break-all;
 }
 
 /* 图标点击样式 */
@@ -224,11 +235,5 @@ const { openMenu, AppMenu } = useAppMenu({
 /* 调整标题字号 */
 :deep(.van-nav-bar__title) {
   font-size: var(--van-font-size-lg);
-}
-
-/* 调整列表字号 */
-:deep(.van-cell__title) {
-  font-size: var(--van-font-size-md);
-  font-weight: 600;
 }
 </style>

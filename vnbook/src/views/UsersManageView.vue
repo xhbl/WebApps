@@ -109,7 +109,8 @@ const enterUserDetail = (u: User) => {
 
 <style scoped>
 .users-manage-view {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   padding-top: 0;
@@ -118,7 +119,9 @@ const enterUserDetail = (u: User) => {
 
 .content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  padding-bottom: calc(var(--van-tabbar-height, 50px) + 24px + env(safe-area-inset-bottom));
 }
 
 .loading {
