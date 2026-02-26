@@ -115,7 +115,7 @@ body {
 .van-toast__text {
   color: #ffffff !important;
   padding: 2px 0;
-  word-break: keep-all;
+  word-break: break-all;
   overflow-wrap: break-word;
 }
 

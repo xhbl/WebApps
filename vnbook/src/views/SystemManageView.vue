@@ -58,15 +58,16 @@ export default {
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { showToast } from 'vant'
 import { getAppVersion } from '@/constants/appInfo'
 import { getSystemInfo, type SystemInfo } from '@/api/system'
 import { useUserOperations } from '@/composables/useUserOperations'
 import { useAppMenu } from '@/composables/useAppMenu'
+import { useUsersStore } from '@/stores/users'
 
 const appVersion = 'v' + getAppVersion()
 
-const { handleResetAllUserData } = useUserOperations()
+const usersStore = useUsersStore()
+const { handleResetAllUserData, handleExportUserData, handleImportUserData } = useUserOperations()
 
 const { openMenu, AppMenu, UserDialog } = useAppMenu({
   items: [],
@@ -103,18 +104,25 @@ onMounted(() => {
   loadInfo()
 })
 
-const onExportData = () => {
-  showToast('导出数据功能开发中')
+const onExportData = async () => {
+  await handleExportUserData()
 }
 
-const onImportData = () => {
-  showToast('导入数据功能开发中')
+const onImportData = async () => {
+  const success = await handleImportUserData()
+  if (success) {
+    // 刷新系统信息和用户列表（添加 await 等待完成）
+    await loadInfo()
+    await usersStore.loadUsers()
+  }
 }
 
 const onResetData = async () => {
   const success = await handleResetAllUserData()
   if (success) {
-    loadInfo()
+    // 刷新系统信息和用户列表（添加 await 等待完成）
+    await loadInfo()
+    await usersStore.loadUsers()
   }
 }
 </script>
