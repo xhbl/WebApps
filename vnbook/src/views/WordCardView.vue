@@ -173,29 +173,47 @@
                           <van-icon name="closed-eye" />
                         </div>
                         <div class="dict-header">
-                          <span class="dict-title-text">基本词典</span>
-                          <span
-                            v-for="d in visibleExternalDicts"
-                            :key="d.name"
-                            class="ext-dict-link"
-                            @click.stop="openExternalDict(d)"
-                          >
-                            {{ d.name }}
-                          </span>
-                          <span @click.stop v-if="hasVisibleOnlineDicts">
-                            <van-popover
-                              v-model:show="popoverMap.onlineDict"
-                              :actions="onlineDictActions"
-                              placement="bottom-end"
-                              :teleport="null"
-                              @select="openExternalDict"
-                              @open="onPopoverOpen('onlineDict')"
+                          <div class="dict-title-column">
+                            <span class="dict-title-text">基本词典</span>
+                          </div>
+                          <div class="dict-links-column">
+                            <span
+                              v-for="d in visibleExternalDicts"
+                              :key="d.name"
+                              class="ext-dict-link"
+                              @click.stop="openExternalDict(d)"
                             >
-                              <template #reference>
-                                <span class="ext-dict-link">网络</span>
-                              </template>
-                            </van-popover>
-                          </span>
+                              {{ d.name }}
+                            </span>
+                            <span @click.stop v-if="hasVisibleSpecializedDicts">
+                              <van-popover
+                                v-model:show="popoverMap.specializedDict"
+                                :actions="specializedDictActions"
+                                placement="bottom-end"
+                                :teleport="null"
+                                @select="openExternalDict"
+                                @open="onPopoverOpen('specializedDict')"
+                              >
+                                <template #reference>
+                                  <span class="ext-dict-link">专业</span>
+                                </template>
+                              </van-popover>
+                            </span>
+                            <span @click.stop v-if="hasVisibleOnlineDicts">
+                              <van-popover
+                                v-model:show="popoverMap.onlineDict"
+                                :actions="onlineDictActions"
+                                placement="bottom-end"
+                                :teleport="null"
+                                @select="openExternalDict"
+                                @open="onPopoverOpen('onlineDict')"
+                              >
+                                <template #reference>
+                                  <span class="ext-dict-link">网络</span>
+                                </template>
+                              </van-popover>
+                            </span>
+                          </div>
                         </div>
                         <div class="dict-content-box" v-if="w.baseInfo?.definitions?.length">
                           <div
@@ -706,7 +724,7 @@ const getDictEn = (definitions: BaseDictDefinition[]) => {
   return lines
 }
 
-import { EXTERNAL_DICTS, ONLINE_DICTS } from '@/constants/dictionaries'
+import { EXTERNAL_DICTS, ONLINE_DICTS, SPECIALIZED_DICTS } from '@/constants/dictionaries'
 
 // External Dictionary Configuration
 const showDictPopup = ref(false)
@@ -725,6 +743,16 @@ const onlineDictActions = computed(() => {
 })
 
 const hasVisibleOnlineDicts = computed(() => ONLINE_DICTS.some((d) => d.show))
+
+const specializedDictActions = computed(() => {
+  return SPECIALIZED_DICTS.filter((d) => d.show).map((d) => ({
+    ...d,
+    text: d.name,
+    className: 'specialized-dict-action',
+  }))
+})
+
+const hasVisibleSpecializedDicts = computed(() => SPECIALIZED_DICTS.some((d) => d.show))
 
 const openExternalDict = (dict: { name: string; title?: string; url: string; margin?: string }) => {
   if (!currentWord.value) return
@@ -1029,12 +1057,22 @@ const onSwipeTouchStart = (e: TouchEvent) => {
 .dict-header {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 10px;
+  gap: 16px;
   font-size: var(--van-font-size-sm);
   font-weight: bold;
   margin-bottom: 8px;
   color: var(--van-text-color);
+}
+
+.dict-title-column {
+  flex-shrink: 0;
+}
+
+.dict-links-column {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
   text-align: left;
 }
 .ext-dict-link {
@@ -1044,6 +1082,11 @@ const onSwipeTouchStart = (e: TouchEvent) => {
   font-size: var(--van-font-size-sm);
 }
 :global(.online-dict-action .van-popover__action-text) {
+  color: var(--van-primary-color);
+  font-size: var(--van-font-size-sm);
+  font-weight: normal;
+}
+:global(.specialized-dict-action .van-popover__action-text) {
   color: var(--van-primary-color);
   font-size: var(--van-font-size-sm);
   font-weight: normal;

@@ -37,6 +37,16 @@ export const EXTERNAL_DICTS: ExternalDictConfig[] = [
   },
 ]
 
+export const SPECIALIZED_DICTS: ExternalDictConfig[] = [
+  {
+    name: '医学词典',
+    title: '医学英汉大词典',
+    url: '../dict/medce/?q={word}',
+    show: true,
+    margin: '0 5px',
+  },
+]
+
 export const ONLINE_DICTS: ExternalDictConfig[] = [
   {
     name: '韦氏在线',

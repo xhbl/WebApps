@@ -2,7 +2,3 @@
 - cdepe.mdd
 - cdepe.1.mdd
 - cdepe.2.mdd
-- [cdepe.css](cdepe.css)
-- [cdepe.js](cdepe.js)
-- [cdepe-jquery-3.6.0.min.js](cdepe-jquery-3.6.0.min.js)
-- [cdepe.png](cdepe.png)

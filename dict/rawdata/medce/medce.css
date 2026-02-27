@@ -1,0 +1,62 @@
+/* 基础与重置 */
+* { box-sizing: border-box; }
+body { 
+    background: #f8f9fb; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", serif; 
+    margin: 0; padding: 10px; color: #333; line-height: 1.5;
+}
+
+/* 搜索栏容器 */
+.search-box {
+    max-width: 800px; margin: 10px auto 20px; display: flex; gap: 8px;
+}
+input[type="text"] {
+    flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; /* 16px 防止 iOS 自动放大 */
+}
+button {
+    padding: 10px 20px; background: #A12641; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+}
+
+/* 卡片容器 */
+.card { 
+    background: white; max-width: 800px; margin: 0 auto; 
+    border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); overflow: hidden; 
+}
+.section { padding: 20px; }
+.divider { height: 1px; background: #eee; margin: 0 10px; }
+.tag { font-size: 10px; color: #aaa; text-transform: uppercase; margin-bottom: 8px; display: block; }
+
+/* 中文部分 */
+.zh-hw { font-size: 1.4em; font-weight: bold; color: #2c3e50; }
+.zh-phonetic { color: #888; font-size: 0.9em; font-family: "Charis SIL", serif; margin: 4px 0; }
+.zh-trans { font-size: 1.15em; color: #A12641; margin-top: 8px; font-weight: 500; }
+
+/* 英文部分 */
+.dict-en b:first-of-type { font-size: 1.3em; color: #2c3e50; display: block; margin-bottom: 6px; }
+.dorlands-def { padding-left: 15px; border-left: 3px solid #f0f0f0; margin: 15px 0; }
+.dorlands-def li { margin-bottom: 12px; text-align: justify; list-style: none; }
+
+/* 因为目前没有 MDD 资源，所以彻底隐藏图片容器和说明 */
+.dorlands-figure { display: none !important; }
+/* 兜底：隐藏所有 images/ 路径下的图片，防止出现破裂图标 */
+img[src^="images/"] { display: none !important; }
+
+/* 手机端点击优化：药丸状链接 */
+.sub-entries { background: #f1f8ff; padding: 12px; border-radius: 8px; margin: 15px 0; border: 1px solid #d0e7ff; }
+.sub-entries a, .dict-en a {
+    color: #0076ff; padding: 2px 4px; border-radius: 4px; display: inline-block; word-break: break-all;
+}
+
+/* 脚注 */
+.main-entry-ref { text-align: right; border-top: 1px dashed #eee; margin-top: 20px; padding: 10px 0; font-size: 0.8em; }
+
+/* --- 响应式调整 (手机端) --- */
+@media (max-width: 600px) {
+    body { padding: 5px; }
+    .section { padding: 16px 8px; }
+    .zh-hw { font-size: 1.25em; }
+    .zh-trans { font-size: 1.05em; }
+    /* 增加点击区域大小，方便手指操作 */
+    a { padding: 5px 0; min-height: 44px; } 
+    button { padding: 10px 15px; }
+}
