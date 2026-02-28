@@ -13,25 +13,77 @@
 
 ## 表结构
 
-### 1. 单词主表 (`words`)
+### 1. 词库注册表 (`registry`)
+
+存储词库领域信息，支持多领域词库扩展。
+
+#### 字段说明
+
+| 字段名   | 数据类型     | 属性        | 说明                                      |
+| -------- | ------------ | ----------- | ----------------------------------------- |
+| `key`    | VARCHAR(20)  | PRIMARY KEY | 领域标识。如 med, tech（对应表后缀）      |
+| `tag`    | VARCHAR(20)  | NOT NULL    | 前端标签名。如 "医学"、"技术"（UI小标签） |
+| `name`   | VARCHAR(100) | NOT NULL    | 完整名称。如 "医学词典"                   |
+| `sorder` | SMALLINT     | DEFAULT 0   | 排序权重。数字越小越靠前                  |
+| `active` | TINYINT(1)   | DEFAULT 1   | 激活状态。1启用，0禁用                    |
+| `desc`   | TEXT         | NULL        | 描述备注。词库的详细说明或来源            |
+
+#### 索引
+
+| 索引名           | 类型 | 字段           | 说明                     |
+| ---------------- | ---- | -------------- | ------------------------ |
+| PRIMARY          | 主键 | key            | 主键索引                 |
+| idx_active_order | 普通 | active, sorder | 按激活状态和排序权重查询 |
+
+#### SQL 定义
+
+```sql
+CREATE TABLE `registry` (
+    `key` VARCHAR(20) NOT NULL COMMENT '领域标识符',
+    `tag` VARCHAR(20) NOT NULL COMMENT '前端显示的短标签',
+    `name` VARCHAR(100) NOT NULL COMMENT '词库完整名称',
+    `sorder` SMALLINT DEFAULT 0 COMMENT '排序权重',
+    `active` TINYINT(1) DEFAULT 1 COMMENT '是否激活',
+    `desc` TEXT COMMENT '详细描述',
+    PRIMARY KEY (`key`),
+    INDEX `idx_active_order` (`active`, `sorder`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+#### 插入示例
+
+```sql
+-- 系统保留记录（对应 words/definitions 缺省表）
+INSERT INTO `registry` (`key`, `tag`, `name`, `sorder`, `active`, `desc`) VALUES
+('gen', '通用', '通用词库', 0, 1, '系统默认通用词库');
+
+-- 可扩展词库（对应创建 words_{key}/definitions_{key} 表）
+INSERT INTO `registry` (`key`, `tag`, `name`, `sorder`, `active`, `desc`) VALUES
+('med', '医学', '医学词库', 1, 1, '医学专业词汇'),
+('tech', '技术', '技术词库', 2, 1, '计算机与工程技术词汇');
+```
+
+---
+
+### 2. 单词主表 (`words`)
 
 存储单词及其音标信息。
 
 #### 字段说明
 
-| 字段名 | 数据类型 | 属性 | 说明 |
-|--------|---------|------|------|
-| `id` | INT | AUTO_INCREMENT PRIMARY KEY | 单词唯一标识符 |
-| `word` | VARCHAR(100) | NOT NULL, UNIQUE | 单词文本（二进制比较，区分大小写） |
-| `word_search` | VARCHAR(100) | GENERATED ALWAYS AS (lcase(`word`)) STORED | 用于不区分大小写的搜索（自动生成） |
-| `ipas` | longtext | NOT NULL, CHECK (json_valid) | 音标数组JSON，如：`["ˈrek.ɚd", "rɪˈkɔːrd"]` |
+| 字段名        | 数据类型     | 属性                                       | 说明                                        |
+| ------------- | ------------ | ------------------------------------------ | ------------------------------------------- |
+| `id`          | INT          | AUTO_INCREMENT PRIMARY KEY                 | 单词唯一标识符                              |
+| `word`        | VARCHAR(100) | NOT NULL, UNIQUE                           | 单词文本（二进制比较，区分大小写）          |
+| `word_search` | VARCHAR(100) | GENERATED ALWAYS AS (lcase(`word`)) STORED | 用于不区分大小写的搜索（自动生成）          |
+| `ipas`        | longtext     | NOT NULL, CHECK (json_valid)               | 音标数组JSON，如：`["ˈrek.ɚd", "rɪˈkɔːrd"]` |
 
 #### 索引
 
-| 索引名 | 类型 | 字段 | 说明 |
-|--------|------|------|------|
-| PRIMARY | 主键 | id | 主键索引 |
-| idx_word_unique | 唯一 | word | 保证单词唯一性 |
+| 索引名          | 类型 | 字段        | 说明                   |
+| --------------- | ---- | ----------- | ---------------------- |
+| PRIMARY         | 主键 | id          | 主键索引               |
+| idx_word_unique | 唯一 | word        | 保证单词唯一性         |
 | idx_word_search | 普通 | word_search | 加快不区分大小写的搜索 |
 
 #### SQL 定义
@@ -40,10 +92,10 @@
 CREATE TABLE `words` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `word` VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    `word_search` VARCHAR(100) GENERATED ALWAYS AS (lcase(`word`)) STORED 
+    `word_search` VARCHAR(100) GENERATED ALWAYS AS (lcase(`word`)) STORED
         COMMENT '用于不区分大小写的搜索',
-    `ipas` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL 
-        CHECK (json_valid(`ipas`)) 
+    `ipas` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL
+        CHECK (json_valid(`ipas`))
         COMMENT '音标数组JSON: ["ˈrek.ɚd", "rɪˈkɔːrd"]',
     UNIQUE INDEX `idx_word_unique` (`word`),
     INDEX `idx_word_search` (`word_search`)
@@ -54,34 +106,34 @@ CREATE TABLE `words` (
 
 ```sql
 INSERT INTO `words` (`id`, `word`, `ipas`) VALUES (
-    1, 
-    'the', 
+    1,
+    'the',
     '["ˈðə", "ðə", "ði"]'
 );
 ```
 
 ---
 
-### 2. 释义表 (`definitions`)
+### 3. 释义表 (`definitions`)
 
 存储单词的词性和释义（支持多语言）。
 
 #### 字段说明
 
-| 字段名 | 数据类型 | 属性 | 说明 |
-|--------|---------|------|------|
-| `id` | INT | AUTO_INCREMENT PRIMARY KEY | 释义记录唯一标识符 |
-| `word_id` | INT | NOT NULL, FOREIGN KEY | 引用 words 表的 id |
-| `pos` | VARCHAR(10) | NOT NULL | 词性，如：`n.`(名词)、`v.`(动词)、`adj.`(形容词) |
-| `ipa_idx` | TINYINT | DEFAULT 0 | 对应 words 表 ipas 数组的下标（0 表示第一个音标） |
-| `meanings` | longtext | NOT NULL, CHECK (json_valid) | 多语言释义JSON对象 |
+| 字段名     | 数据类型    | 属性                         | 说明                                              |
+| ---------- | ----------- | ---------------------------- | ------------------------------------------------- |
+| `id`       | INT         | AUTO_INCREMENT PRIMARY KEY   | 释义记录唯一标识符                                |
+| `word_id`  | INT         | NOT NULL, FOREIGN KEY        | 引用 words 表的 id                                |
+| `pos`      | VARCHAR(10) | NOT NULL                     | 词性，如：`n.`(名词)、`v.`(动词)、`adj.`(形容词)  |
+| `ipa_idx`  | TINYINT     | DEFAULT 0                    | 对应 words 表 ipas 数组的下标（0 表示第一个音标） |
+| `meanings` | longtext    | NOT NULL, CHECK (json_valid) | 多语言释义JSON对象                                |
 
 #### 约束
 
-| 约束名 | 类型 | 说明 |
-|--------|------|------|
-| PRIMARY KEY (id) | 主键 | 主键约束 |
-| fk_word_ref | 外键 | word_id 引用 words.id，删除级联 (ON DELETE CASCADE) |
+| 约束名           | 类型 | 说明                                                |
+| ---------------- | ---- | --------------------------------------------------- |
+| PRIMARY KEY (id) | 主键 | 主键约束                                            |
+| fk_word_ref      | 外键 | word_id 引用 words.id，删除级联 (ON DELETE CASCADE) |
 
 #### SQL 定义
 
@@ -89,14 +141,14 @@ INSERT INTO `words` (`id`, `word`, `ipas`) VALUES (
 CREATE TABLE `definitions` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `word_id` INT NOT NULL,
-    `pos` VARCHAR(10) NOT NULL 
+    `pos` VARCHAR(10) NOT NULL
         COMMENT '词性: n.(名词), v.(动词), adj.(形容词)等',
-    `ipa_idx` TINYINT DEFAULT 0 
+    `ipa_idx` TINYINT DEFAULT 0
         COMMENT '对应words表ipas数组的下标',
-    `meanings` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL 
-        CHECK (json_valid(`meanings`)) 
+    `meanings` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL
+        CHECK (json_valid(`meanings`))
         COMMENT '多语言释义JSON，格式：{"zh": ["义项1", "义项2"], "en": ["meaning1"]}',
-    CONSTRAINT `fk_word_ref` FOREIGN KEY (`word_id`) 
+    CONSTRAINT `fk_word_ref` FOREIGN KEY (`word_id`)
         REFERENCES `words` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
@@ -122,11 +174,13 @@ INSERT INTO `definitions` (`word_id`, `pos`, `ipa_idx`, `meanings`) VALUES (
 **格式**：`["音标1", "音标2", ...]`
 
 **示例**：
+
 ```json
 ["ˈrek.ɚd", "rɪˈkɔːrd"]
 ```
 
 **特点**：
+
 - 包含单词的所有音标变体
 - 通常包括美式（第一个）和英式发音
 - 索引从 0 开始
@@ -140,21 +194,24 @@ INSERT INTO `definitions` (`word_id`, `pos`, `ipa_idx`, `meanings`) VALUES (
 **格式**：`{"语言代码": ["义项1", "义项2", ...]}`
 
 **完整示例**：
+
 ```json
 {
-    "zh": ["凉爽的", "冷静的", "酷的"],
-    "en": ["moderately cold", "fashionably attractive"],
-    "jp": ["涼しい"]
+  "zh": ["凉爽的", "冷静的", "酷的"],
+  "en": ["moderately cold", "fashionably attractive"],
+  "jp": ["涼しい"]
 }
 ```
 
 **语言代码说明**：
+
 - `zh`：中文释义（必需）
 - `en`：英文释义（可选）
 - `jp`：日文释义（可选）
 - 可扩展支持其他语言
 
 **特点**：
+
 - 每个语言的值都是字符串数组
 - 同一语言可包含多个义项
 - 易于扩展新语言
@@ -165,38 +222,42 @@ INSERT INTO `definitions` (`word_id`, `pos`, `ipa_idx`, `meanings`) VALUES (
 
 ### words 表示例
 
-| id | word | word_search | ipas |
-|-------|--------|-------------|------|
-| 1 | the | the | `["ˈðə", "ðə", "ði"]` |
-| 2 | be | be | `["ˈbi", "bi"]` |
-| 500 | record | record | `["ˈrek.ɚd", "rɪˈkɔːrd"]` |
+| id  | word   | word_search | ipas                      |
+| --- | ------ | ----------- | ------------------------- |
+| 1   | the    | the         | `["ˈðə", "ðə", "ði"]`     |
+| 2   | be     | be          | `["ˈbi", "bi"]`           |
+| 500 | record | record      | `["ˈrek.ɚd", "rɪˈkɔːrd"]` |
 
 ### definitions 表示例
 
-| id | word_id | pos | ipa_idx | meanings |
-|-----|---------|-----|---------|----------|
-| 1 | 500 | n. | 0 | `{"zh": ["唱片", "记录"], "en": ["record"]}` |
-| 2 | 800 | n. | 0 | `{"zh": ["记录", "唱片"]}` |
-| 3 | 800 | v. | 1 | `{"zh": ["录音", "记录"], "en": ["record"]}` |
+| id  | word_id | pos | ipa_idx | meanings                                     |
+| --- | ------- | --- | ------- | -------------------------------------------- |
+| 1   | 500     | n.  | 0       | `{"zh": ["唱片", "记录"], "en": ["record"]}` |
+| 2   | 800     | n.  | 0       | `{"zh": ["记录", "唱片"]}`                   |
+| 3   | 800     | v.  | 1       | `{"zh": ["录音", "记录"], "en": ["record"]}` |
 
 ---
 
 ## 关键特性
 
 ✅ **数据完整性**：
+
 - 外键约束确保 `word_id` 必须存在于 words 表
 - `JSON_VALID()` 检查确保 JSON 格式有效
 - UNIQUE 约束保证单词唯一性
 
 ✅ **性能优化**：
+
 - `word_search` 自动生成字段，加快不区分大小写的搜索
 - 多个索引支持快速查询
 
 ✅ **多语言支持**：
+
 - `meanings` 字段支持任意语言释义
 - 易于扩展新语言
 
 ✅ **数据维护**：
+
 - 级联删除：删除单词时自动删除其所有释义记录
 
 ---
@@ -206,7 +267,7 @@ INSERT INTO `definitions` (`word_id`, `pos`, `ipa_idx`, `meanings`) VALUES (
 ### 查询单词及其所有释义
 
 ```sql
-SELECT 
+SELECT
     w.id,
     w.word,
     w.ipas,
@@ -221,27 +282,27 @@ WHERE w.word = 'record';
 ### 不区分大小写搜索单词
 
 ```sql
-SELECT * FROM words 
+SELECT * FROM words
 WHERE word_search = lcase('RECORD');
 ```
 
 ### 查询特定词性的单词
 
 ```sql
-SELECT 
+SELECT
     w.word,
     d.pos,
     d.meanings
 FROM definitions d
 JOIN words w ON d.word_id = w.id
-WHERE d.pos = 'v.' 
+WHERE d.pos = 'v.'
 LIMIT 10;
 ```
 
 ### 查询包含特定中文释义的单词
 
 ```sql
-SELECT 
+SELECT
     w.word,
     d.meanings
 FROM definitions d
@@ -262,11 +323,11 @@ LIMIT 10;
 
 ### 实现方式
 
-| 字段 | 排序规则 | 说明 |
-|------|---------|------|
-| `word` | utf8mb4_bin | 保持原始大小写，区分大小写 |
-| `word_search` | 表默认 | 自动生成小写版本，便于模糊搜索 |
-| 其他字段 | utf8mb4_unicode_ci | 不区分大小写 |
+| 字段          | 排序规则           | 说明                           |
+| ------------- | ------------------ | ------------------------------ |
+| `word`        | utf8mb4_bin        | 保持原始大小写，区分大小写     |
+| `word_search` | 表默认             | 自动生成小写版本，便于模糊搜索 |
+| 其他字段      | utf8mb4_unicode_ci | 不区分大小写                   |
 
 ---
 
@@ -291,8 +352,8 @@ words (id) ─────→ definitions (word_id)
 
 ```sql
 -- 创建数据库
-CREATE DATABASE `va_basedict` 
-CHARACTER SET utf8mb4 
+CREATE DATABASE `va_basedict`
+CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
 -- 切换到数据库
@@ -309,35 +370,39 @@ SOURCE va_basedict_import.sql;
 
 ## 文件说明
 
-| 文件 | 说明 |
-|------|------|
-| `va_basedict_schema.md` | 数据库设计文档 |
-| `va_basedict_init.sql` | 数据库初始化SQL |
-| `va_basedict_import.sql` | 生成的数据导入脚本 |
-| `va_basedict_md2sql.py` | Markdown词库转SQL的转换脚本 |
-| `coca_vocab_20k.md` | Markdown词库数据 |
+| 文件                     | 说明                        |
+| ------------------------ | --------------------------- |
+| `va_basedict_schema.md`  | 数据库设计文档              |
+| `va_basedict_init.sql`   | 数据库初始化SQL             |
+| `va_basedict_import.sql` | 生成的数据导入脚本          |
+| `va_basedict_md2sql.py`  | Markdown词库转SQL的转换脚本 |
+| `coca_vocab_20k.md`      | Markdown词库数据            |
 
 ---
 
 ## 版本历史
 
-| 日期 | 版本 | 描述 |
-|------|------|------|
-| 2026-02-04 | 1.0 | 初始版本，基于 MariaDB 10.11.15 |
+| 日期       | 版本 | 描述                                 |
+| ---------- | ---- | ------------------------------------ |
+| 2026-02-04 | 1.0  | 初始版本                             |
+| 2026-02-27 | 1.1  | 新增 registry 表，支持多领域词库扩展 |
 
 ---
 
 ## 注意事项
 
 ⚠️ **字符编码**：
+
 - 所有字符串字段使用 `utf8mb4` 编码
 - 确保数据库连接也设置为 `utf8mb4`
 
 ⚠️ **JSON 格式**：
+
 - meanings 字段必须包含至少一个语言（建议 `zh`）
 - JSON 格式必须有效，否则会被 CHECK 约束拒绝
 
 ⚠️ **音标格式**：
+
 - ipas 字段必须是有效的 JSON 数组
 - 通常第一个音标为美式发音，第二个为英式发音
 

@@ -152,6 +152,209 @@ function createVnbInitData()
     return $ret;
 }
 
+/**
+ * Create words_key and definitions_key tables for specific registry keys
+ * @param PDO $pdo Database connection
+ * @param string|array $keys Registry key(s) (e.g., 'med', 'tech' or ['med', 'tech'])
+ * @return stdClass Result object with 'v' (success), 'created' (array), and optional 'e' (error)
+ */
+function createBaseDictRegData($pdo, $keys)
+{
+    $ret = new stdClass();
+    $ret->v = false;
+    $ret->created = [];
+
+    // Convert single key to array
+    $keys = (array)$keys;
+
+    try {
+        foreach ($keys as $key) {
+            // Validate key format
+            if (!preg_match('/^[a-z][a-z0-9_]*$/', $key)) {
+                throw new Exception("Invalid key format for '{$key}': must start with letter and contain only letters, numbers, and underscores");
+            }
+
+            $wordsTable = "words_" . $key;
+            $defsTable = "definitions_" . $key;
+
+            // Check if tables already exist
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN (?, ?)");
+            $stmt->execute([$wordsTable, $defsTable]);
+            $count = $stmt->fetchColumn();
+
+            if ($count > 0) {
+                continue; // Skip existing tables
+            }
+
+            // Start transaction
+            $pdo->beginTransaction();
+            try {
+                // Create words_key table using LIKE
+                $pdo->exec("CREATE TABLE `{$wordsTable}` LIKE `words`");
+
+                // Create definitions_key table using LIKE
+                $pdo->exec("CREATE TABLE `{$defsTable}` LIKE `definitions`");
+
+                // Re-create foreign key constraint for definitions_key table
+                $pdo->exec("ALTER TABLE `{$defsTable}` ADD CONSTRAINT `fk_word_ref_{$key}` FOREIGN KEY (`word_id`) REFERENCES `{$wordsTable}` (`id`) ON DELETE CASCADE");
+
+                $pdo->commit();
+                $ret->created[] = $key;
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                throw $e;
+            }
+        }
+
+        $ret->v = true;
+        $ret->msg = "Created tables for " . count($ret->created) . " keys: " . implode(', ', $ret->created);
+    } catch (Exception $e) {
+        $ret->e = $e->getMessage();
+    }
+    return $ret;
+}
+
+/**
+ * Delete words_key and definitions_key tables for a specific registry key
+ * @param PDO $pdo Database connection
+ * @param string $key Registry key (e.g., 'med', 'tech')
+ * @param bool $deleteRegistry Whether to delete the registry record
+ * @return stdClass Result object with 'v' (success) and optional 'e' (error)
+ */
+function deleteBaseDictRegData($pdo, $key, $deleteRegistry = false)
+{
+    $ret = new stdClass();
+    $ret->v = false;
+    try {
+        // Validate key format
+        if (!preg_match('/^[a-z][a-z0-9_]*$/', $key)) {
+            throw new Exception("Invalid key format for '{$key}'");
+        }
+
+        $wordsTable = "words_" . $key;
+        $defsTable = "definitions_" . $key;
+
+        // Start transaction
+        $pdo->beginTransaction();
+        try {
+            // Drop definitions table first (due to foreign key)
+            $pdo->exec("DROP TABLE IF EXISTS `{$defsTable}`");
+            $pdo->exec("DROP TABLE IF EXISTS `{$wordsTable}`");
+
+            // Delete registry record if requested
+            if ($deleteRegistry) {
+                $stmt = $pdo->prepare("DELETE FROM `registry` WHERE `key` = ? AND `key` != 'gen'");
+                $stmt->execute([$key]);
+            }
+
+            $pdo->commit();
+            $ret->v = true;
+            $ret->msg = "Tables deleted successfully for key: " . $key . ($deleteRegistry ? " (including registry record)" : "");
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    } catch (Exception $e) {
+        $ret->e = $e->getMessage();
+    }
+    return $ret;
+}
+
+/**
+ * Sync table structure for all registry keys with base tables
+ * @param PDO $pdo Database connection
+ * @return stdClass Result object with 'v' (success), 'synced' (array), and optional 'e' (error)
+ */
+function syncBaseDictRegData($pdo)
+{
+    $ret = new stdClass();
+    $ret->v = false;
+    $ret->synced = [];
+    try {
+        // Get all registry keys except 'gen'
+        $stmt = $pdo->query("SELECT `key` FROM `registry` WHERE `key` != 'gen' AND `active` = 1");
+        $keys = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        foreach ($keys as $key) {
+            $wordsTable = "words_" . $key;
+            $defsTable = "definitions_" . $key;
+
+            // Check if tables exist
+            $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name IN (?, ?)");
+            $checkStmt->execute([$wordsTable, $defsTable]);
+            $count = $checkStmt->fetchColumn();
+
+            if ($count == 2) {
+                // Tables exist, sync structure
+                try {
+                    $pdo->beginTransaction();
+
+                    // Get structure from base tables
+                    $baseWordsStruct = $pdo->query("SHOW CREATE TABLE `words`")->fetchColumn(1);
+                    $baseDefsStruct = $pdo->query("SHOW CREATE TABLE `definitions`")->fetchColumn(1);
+
+                    // Modify structure for key-specific tables
+                    $wordsStruct = str_replace('CREATE TABLE `words`', "CREATE TABLE `{$wordsTable}`", $baseWordsStruct);
+                    $defsStruct = str_replace('CREATE TABLE `definitions`', "CREATE TABLE `{$defsTable}`", $baseDefsStruct);
+                    $defsStruct = str_replace('REFERENCES `words`', "REFERENCES `{$wordsTable}`", $defsStruct);
+                    $defsStruct = str_replace('fk_word_ref', "fk_word_ref_{$key}", $defsStruct);
+
+                    // Drop and re-create tables (preserving data would be more complex)
+                    $pdo->exec("DROP TABLE IF EXISTS `{$defsTable}`");
+                    $pdo->exec("DROP TABLE IF EXISTS `{$wordsTable}`");
+                    $pdo->exec($wordsStruct);
+                    $pdo->exec($defsStruct);
+
+                    $pdo->commit();
+                    $ret->synced[] = $key;
+                } catch (Exception $e) {
+                    $pdo->rollBack();
+                    throw new Exception("Failed to sync tables for key '{$key}': " . $e->getMessage());
+                }
+            }
+        }
+
+        $ret->v = true;
+        $ret->msg = "Synced table structure for " . count($ret->synced) . " keys: " . implode(', ', $ret->synced);
+    } catch (Exception $e) {
+        $ret->e = $e->getMessage();
+    }
+    return $ret;
+}
+
+/**
+ * Check and create missing tables for all registry keys (excluding 'gen')
+ * @param PDO $pdo Database connection
+ * @return stdClass Result object with 'v' (success), 'created' (array of created keys), and optional 'e' (error)
+ */
+function checkBaseDictRegData($pdo)
+{
+    $ret = new stdClass();
+    $ret->v = false;
+    $ret->created = [];
+    try {
+        // Get all registry keys except 'gen'
+        $stmt = $pdo->query("SELECT `key` FROM `registry` WHERE `key` != 'gen' AND `active` = 1");
+        $keys = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (!empty($keys)) {
+            // Use batch creation
+            $result = createBaseDictRegData($pdo, $keys);
+            if ($result->v) {
+                $ret->created = $result->created;
+            } else {
+                throw new Exception($result->e);
+            }
+        }
+
+        $ret->v = true;
+        $ret->msg = "Checked " . count($keys) . " registry keys, created " . count($ret->created) . " missing table sets";
+    } catch (Exception $e) {
+        $ret->e = $e->getMessage();
+    }
+    return $ret;
+}
+
 function initSystemPosData()
 {
     $db = DB::vnb();
@@ -291,7 +494,19 @@ function createBaseDictInitData()
 
         // Create tables
         $queries = [
-            // 1. Words table
+            // 1. Registry table
+            "CREATE TABLE IF NOT EXISTS `registry` (
+                `key` VARCHAR(20) NOT NULL,
+                `tag` VARCHAR(20) NOT NULL,
+                `name` VARCHAR(100) NOT NULL,
+                `sorder` SMALLINT DEFAULT 0,
+                `active` TINYINT(1) DEFAULT 1,
+                `desc` TEXT,
+                PRIMARY KEY (`key`),
+                INDEX `idx_active_order` (`active`, `sorder`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // 2. Words table
             "CREATE TABLE IF NOT EXISTS `words` (
                 `id` INT(11) NOT NULL AUTO_INCREMENT,
                 `word` VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
@@ -302,7 +517,7 @@ function createBaseDictInitData()
                 KEY `idx_word_search` (`word_search`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
-            // 2. Definitions table
+            // 3. Definitions table
             "CREATE TABLE IF NOT EXISTS `definitions` (
                 `id` INT(11) NOT NULL AUTO_INCREMENT,
                 `word_id` INT(11) NOT NULL,
@@ -318,6 +533,10 @@ function createBaseDictInitData()
         foreach ($queries as $sql) {
             $db->exec($sql);
         }
+
+        // Insert system reserved registry record
+        $stmt = $db->prepare("INSERT IGNORE INTO `registry` (`key`, `tag`, `name`, `sorder`, `active`, `desc`) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute(['gen', '通用', '通用词典', 0, 1, '内置基本通用词典']);
 
         $ret->v = true;
     } catch (Exception $e) {
