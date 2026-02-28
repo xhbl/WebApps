@@ -53,6 +53,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/SystemManageView.vue'),
         meta: { requiresAuth: true, requiresAdmin: true },
       },
+      {
+        path: 'base-dicts',
+        name: 'BaseDicts',
+        component: () => import('@/views/BaseDictsView.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true, hideTabbar: true },
+      },
     ],
   },
   {

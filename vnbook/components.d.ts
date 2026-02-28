@@ -12,6 +12,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     BookEditorDialog: typeof import('./src/components/BookEditorDialog.vue')['default']
+    DictEditorDialog: typeof import('./src/components/DictEditorDialog.vue')['default']
     ExpEditorDialog: typeof import('./src/components/ExpEditorDialog.vue')['default']
     ExternalDictDialog: typeof import('./src/components/ExternalDictDialog.vue')['default']
     GlobalDialog: typeof import('./src/components/GlobalDialog.vue')['default']
@@ -45,6 +46,7 @@ declare module 'vue' {
     VanSwitch: typeof import('vant/es')['Switch']
     VanTabbar: typeof import('vant/es')['Tabbar']
     VanTabbarItem: typeof import('vant/es')['TabbarItem']
+    VanTag: typeof import('vant/es')['Tag']
     WordEditorDialog: typeof import('./src/components/WordEditorDialog.vue')['default']
     WordListItem: typeof import('./src/components/WordListItem.vue')['default']
   }

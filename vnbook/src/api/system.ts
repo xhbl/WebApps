@@ -7,8 +7,7 @@ export interface SystemInfo {
   vnbDbName: string
   dbVersion: string
   baseDbName: string
-  baseWordCount: number
-  baseDefCount: number
+  baseDictCount: number
   userCount: number
 }
 

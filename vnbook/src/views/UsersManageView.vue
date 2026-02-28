@@ -161,11 +161,11 @@ const enterUserDetail = (u: User) => {
 }
 
 /* 调整列表字号 */
-:deep(.van-cell__title) {
+.content :deep(.van-cell__title) {
   font-size: var(--van-font-size-lg);
   font-weight: 500;
 }
-:deep(.van-cell__label) {
+.content :deep(.van-cell__label) {
   font-size: var(--van-font-size-md);
 }
 

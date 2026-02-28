@@ -6,43 +6,49 @@
       </template>
     </van-nav-bar>
 
-    <div class="content">
-      <!-- 系统信息 -->
-      <van-cell-group inset title="系统信息" class="info-group">
-        <van-cell title="当前版本" :value="appVersion" />
-        <van-cell title="入口地址" :value="baseUrl" class="url-cell" />
-        <van-cell title="Web服务" :value="info?.serverSoftware || '-'" />
-        <van-cell title="PHP版本" :value="info?.phpVersion || '-'" />
-        <van-cell title="数据库" :value="info?.dbVersion || '-'" />
-      </van-cell-group>
+    <div class="content" ref="contentRef" @scroll="onScroll">
+      <van-pull-refresh v-model="refreshing" @refresh="onRefresh" class="full-height-refresh">
+        <!-- 系统信息 -->
+        <van-cell-group inset title="系统信息" class="info-group">
+          <van-cell title="当前版本" :value="appVersion" />
+          <van-cell title="入口地址" :value="baseUrl" class="url-cell" />
+          <van-cell title="Web服务" :value="info?.serverSoftware || '-'" />
+          <van-cell title="PHP版本" :value="info?.phpVersion || '-'" />
+          <van-cell title="数据库" :value="info?.dbVersion || '-'" />
+        </van-cell-group>
 
-      <!-- 基本词典库 -->
-      <van-cell-group inset title="基本词典库" class="info-group">
-        <van-cell title="库名称" :value="info?.baseDbName || '-'" />
-        <van-cell title="词条数" :value="info?.baseWordCount ?? '-'" />
-        <van-cell title="释义数" :value="info?.baseDefCount ?? '-'" />
-      </van-cell-group>
+        <!-- 基本词典库 -->
+        <van-cell-group inset title="基本词典库" class="info-group">
+          <van-cell title="库名称" :value="info?.baseDbName || '-'" />
+          <van-cell
+            title="包含词典"
+            :value="info?.baseDictCount ?? '-'"
+            is-link
+            @click="onManageBaseDicts"
+          />
+        </van-cell-group>
 
-      <!-- 用户数据库 -->
-      <van-cell-group inset title="用户数据库" class="info-group">
-        <van-cell title="库名称" :value="info?.vnbDbName || '-'" />
-        <van-cell title="用户数" :value="info?.userCount ?? '-'" />
-        <van-cell title="导出数据" is-link @click="onExportData">
-          <template #right-icon>
-            <van-icon name="share-o" class="cell-icon normal-icon" />
-          </template>
-        </van-cell>
-        <van-cell title="导入数据" is-link @click="onImportData">
-          <template #right-icon>
-            <van-icon name="upgrade" class="cell-icon normal-icon" />
-          </template>
-        </van-cell>
-        <van-cell title="清空重置" is-link class="danger-cell" @click="onResetData">
-          <template #right-icon>
-            <van-icon name="replay" class="cell-icon danger-icon" />
-          </template>
-        </van-cell>
-      </van-cell-group>
+        <!-- 用户数据库 -->
+        <van-cell-group inset title="用户数据库" class="info-group">
+          <van-cell title="库名称" :value="info?.vnbDbName || '-'" />
+          <van-cell title="用户数" :value="info?.userCount ?? '-'" />
+          <van-cell title="导出数据" is-link @click="onExportData">
+            <template #right-icon>
+              <van-icon name="share-o" class="cell-icon normal-icon" />
+            </template>
+          </van-cell>
+          <van-cell title="导入数据" is-link @click="onImportData">
+            <template #right-icon>
+              <van-icon name="upgrade" class="cell-icon normal-icon" />
+            </template>
+          </van-cell>
+          <van-cell title="清空重置" is-link class="danger-cell" @click="onResetData">
+            <template #right-icon>
+              <van-icon name="replay" class="cell-icon danger-icon" />
+            </template>
+          </van-cell>
+        </van-cell-group>
+      </van-pull-refresh>
     </div>
 
     <AppMenu />
@@ -57,17 +63,22 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onActivated } from 'vue'
+import { useRouter } from 'vue-router'
 import { getAppVersion } from '@/constants/appInfo'
 import { getSystemInfo, type SystemInfo } from '@/api/system'
 import { useUserOperations } from '@/composables/useUserOperations'
 import { useAppMenu } from '@/composables/useAppMenu'
 import { useUsersStore } from '@/stores/users'
+import { useScrollPosition } from '@/composables/useScrollPosition'
 
+const router = useRouter()
 const appVersion = 'v' + getAppVersion()
 
 const usersStore = useUsersStore()
 const { handleResetAllUserData, handleExportUserData, handleImportUserData } = useUserOperations()
+
+const { contentRef, onScroll, restoreScroll } = useScrollPosition('SystemManage')
 
 const { openMenu, AppMenu, UserDialog } = useAppMenu({
   items: [],
@@ -88,6 +99,7 @@ const getAppBase = () => {
 const baseUrl = getAppBase()
 
 const info = ref<SystemInfo | null>(null)
+const refreshing = ref(false)
 
 const loadInfo = async () => {
   try {
@@ -100,7 +112,18 @@ const loadInfo = async () => {
   }
 }
 
+const onRefresh = async () => {
+  refreshing.value = true
+  await loadInfo()
+  refreshing.value = false
+}
+
 onMounted(() => {
+  loadInfo()
+})
+
+onActivated(() => {
+  restoreScroll()
   loadInfo()
 })
 
@@ -124,6 +147,10 @@ const onResetData = async () => {
     await loadInfo()
     await usersStore.loadUsers()
   }
+}
+
+const onManageBaseDicts = () => {
+  router.push({ name: 'BaseDicts' })
 }
 </script>
 
@@ -150,7 +177,7 @@ const onResetData = async () => {
 }
 
 .url-cell :deep(.van-cell__value) {
-  font-size: 12px;
+  font-size: var(--van-font-size-xs) !important;
 }
 
 .cell-icon {
@@ -178,11 +205,11 @@ const onResetData = async () => {
   cursor: pointer;
 }
 
-:deep(.van-cell) {
+.content :deep(.van-cell) {
   padding: 10px 8px;
 }
 
-:deep(.van-cell__title) {
+.content :deep(.van-cell__title) {
   flex: none;
   width: auto;
   margin-right: 12px;
@@ -190,7 +217,7 @@ const onResetData = async () => {
   font-weight: 600;
 }
 
-:deep(.van-cell__value) {
+.content :deep(.van-cell__value) {
   color: var(--van-text-color-2);
   font-size: var(--van-font-size-sm);
   flex: 1;
@@ -213,5 +240,9 @@ const onResetData = async () => {
   font-size: var(--van-font-size-sm);
   color: var(--van-text-color-2);
   padding: 16px 0 0 24px;
+}
+
+.full-height-refresh {
+  min-height: 100%;
 }
 </style>

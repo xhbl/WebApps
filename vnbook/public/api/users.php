@@ -1,6 +1,5 @@
 <?php
 require_once 'login.php';
-require_once 'impdb.php';
 
 function getUsers($uname = null)
 {

@@ -188,11 +188,11 @@ const { openMenu, AppMenu } = useAppMenu({
   color: var(--van-danger-color);
 }
 
-:deep(.van-cell) {
+.content :deep(.van-cell) {
   padding: 10px 8px;
 }
 
-:deep(.van-cell__title) {
+.content :deep(.van-cell__title) {
   flex: none;
   width: auto;
   margin-right: 12px;
@@ -200,7 +200,7 @@ const { openMenu, AppMenu } = useAppMenu({
   font-weight: 600;
 }
 
-:deep(.van-cell__value) {
+.content :deep(.van-cell__value) {
   color: var(--van-text-color-2);
   font-size: var(--van-font-size-sm);
   flex: 1;
