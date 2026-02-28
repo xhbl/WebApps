@@ -185,35 +185,79 @@ function getWordSuggestions($prefix)
     if (!$db) return [];
 
     try {
-        $stmt = $db->prepare("SELECT id, word FROM words WHERE word_search LIKE ? ORDER BY word_search LIMIT 10");
-        $stmt->execute([strtolower($prefix) . '%']);
-        $words = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // 1. Get active dictionaries
+        $stmt = $db->query("SELECT `key` FROM `registry` WHERE `active` = 1 ORDER BY `sorder` ASC");
+        $dicts = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-        if (empty($words)) return [];
+        if (empty($dicts)) return [];
 
-        $ids = array_column($words, 'id');
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        // 2. Build UNION query for suggestions
+        $queries = [];
+        $params = [];
+        $prefixParam = strtolower($prefix) . '%';
+        $idx = 0;
 
-        $stmt = $db->prepare("SELECT word_id, pos, meanings FROM definitions WHERE word_id IN ($placeholders)");
-        $stmt->execute($ids);
-        $defs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($dicts as $key) {
+            $table = ($key === 'gen') ? 'words' : "words_{$key}";
+            // Include dict_key and sort_order to handle priority and definition lookup
+            $queries[] = "SELECT id, word, '$key' as dict_key, $idx as sort_order FROM `$table` WHERE word_search LIKE ?";
+            $params[] = $prefixParam;
+            $idx++;
+        }
 
-        $defMap = [];
-        foreach ($defs as $d) {
-            $wid = $d['word_id'];
-            if (isset($defMap[$wid])) continue; // 仅取第一个释义以保持简洁
-            $meanings = json_decode($d['meanings'], true);
-            $zh = $meanings['zh'] ?? [];
-            if (!empty($zh)) {
-                $defMap[$wid] = $d['pos'] . ' ' . implode('; ', array_slice($zh, 0, 2));
+        if (empty($queries)) return [];
+
+        // Limit to 20 to allow for some duplicates that we'll filter out
+        $sql = implode(' UNION ALL ', $queries) . " ORDER BY sort_order ASC, word_search ASC LIMIT 20";
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // 3. Deduplicate and prepare for definition lookup
+        $uniqueWords = [];
+        $idsToFetch = []; // dict_key => [id1, id2...]
+
+        foreach ($rows as $row) {
+            $word = $row['word'];
+            // Keep the first occurrence (highest priority dict)
+            if (isset($uniqueWords[$word])) continue;
+
+            $uniqueWords[$word] = $row;
+            $idsToFetch[$row['dict_key']][] = $row['id'];
+
+            if (count($uniqueWords) >= 10) break;
+        }
+
+        if (empty($uniqueWords)) return [];
+
+        // 4. Fetch definitions
+        $defMap = []; // "dict_key:word_id" => definition string
+
+        foreach ($idsToFetch as $key => $ids) {
+            $table = ($key === 'gen') ? 'definitions' : "definitions_{$key}";
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+
+            $stmt = $db->prepare("SELECT word_id, pos, meanings FROM `$table` WHERE word_id IN ($placeholders)");
+            $stmt->execute($ids);
+            $defs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($defs as $d) {
+                $lookupKey = "{$key}:{$d['word_id']}";
+                if (isset($defMap[$lookupKey])) continue;
+                $meanings = json_decode($d['meanings'], true);
+                $zh = $meanings['zh'] ?? [];
+                if (!empty($zh)) {
+                    $defMap[$lookupKey] = $d['pos'] . ' ' . implode('; ', array_slice($zh, 0, 2));
+                }
             }
         }
 
         $out = [];
-        foreach ($words as $w) {
+        foreach ($uniqueWords as $row) {
+            $lookupKey = "{$row['dict_key']}:{$row['id']}";
             $out[] = [
-                'word' => $w['word'],
-                'def' => $defMap[$w['id']] ?? ''
+                'word' => $row['word'],
+                'def' => $defMap[$lookupKey] ?? ''
             ];
         }
         return $out;
@@ -234,42 +278,139 @@ function getBaseDictData($wordList)
     $db = DB::base();
     if (!$db) return []; // Base dict might not be configured
 
-    $placeholders = implode(',', array_fill(0, count($wordList), '?'));
+    // 1. Get active dictionaries from registry
+    try {
+        $stmt = $db->query("SELECT `key`, `tag`, `name` FROM `registry` WHERE `active` = 1 ORDER BY `sorder` ASC");
+        $dicts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        return [];
+    }
+
+    if (empty($dicts)) return [];
+
+    // Map dict key to info and order
+    $dictMap = [];
+    $dictOrder = [];
+    foreach ($dicts as $i => $d) {
+        $dictMap[$d['key']] = $d;
+        $dictOrder[$d['key']] = $i;
+    }
+
     $map = [];
+    // Initialize map for all requested words
+    foreach ($wordList as $w) {
+        $map[$w] = [
+            'ipas' => [],
+            'definitions' => []
+        ];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($wordList), '?'));
+    $params = [];
+    $wordQueries = [];
+
+    // 2. Build UNION query for words to get IDs from all tables
+    foreach ($dicts as $dict) {
+        $key = $dict['key'];
+        // Determine table names based on key ('gen' uses default tables)
+        $wordsTable = ($key === 'gen') ? 'words' : "words_{$key}";
+
+        // Select dict_key to identify source
+        $wordQueries[] = "SELECT ? as dict_key, id, word, ipas FROM `{$wordsTable}` WHERE word IN ($placeholders)";
+        $params[] = $key;
+        $params = array_merge($params, $wordList);
+    }
+
+    if (empty($wordQueries)) return $map;
 
     try {
-        // 1. Fetch words and IPAs
-        // Use word_search for case-insensitive matching if needed, but here we match exact word first or rely on DB collation
-        $stmt = $db->prepare("SELECT id, word, ipas FROM words WHERE word IN ($placeholders)");
-        $stmt->execute($wordList);
-        $words = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $wordIds = [];
-        foreach ($words as $w) {
-            $map[$w['word']] = [
-                'ipas' => json_decode($w['ipas']),
-                'definitions' => []
-            ];
-            $wordIds[$w['id']] = $w['word'];
-        }
-
-        if (empty($wordIds)) return $map;
-
-        // 2. Fetch definitions
-        $idPlaceholders = implode(',', array_fill(0, count($wordIds), '?'));
-        $stmt = $db->prepare("SELECT word_id, pos, ipa_idx, meanings FROM definitions WHERE word_id IN ($idPlaceholders) ORDER BY id");
-        $stmt->execute(array_keys($wordIds));
-        $defs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($defs as $d) {
-            $wordStr = $wordIds[$d['word_id']];
-            $d['meanings'] = json_decode($d['meanings']);
-            unset($d['word_id']); // Clean up
-            $map[$wordStr]['definitions'][] = $d;
-        }
+        $sql = implode(' UNION ALL ', $wordQueries);
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $allWords = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
-        // Ignore base dict errors to avoid breaking main app
+        return $map;
     }
+
+    // Group IDs by dictionary to query definitions
+    $dictWordIds = []; // key => [id1, id2...]
+    $idToWord = []; // key => [id => wordStr]
+
+    foreach ($allWords as $row) {
+        $dictKey = $row['dict_key'];
+        $wordStr = $row['word'];
+        $ipas = json_decode($row['ipas'], true);
+
+        // Merge IPAs (simple merge)
+        if (is_array($ipas)) {
+            foreach ($ipas as $ipa) {
+                if (!in_array($ipa, $map[$wordStr]['ipas'])) {
+                    $map[$wordStr]['ipas'][] = $ipa;
+                }
+            }
+        }
+
+        $dictWordIds[$dictKey][] = $row['id'];
+        $idToWord[$dictKey][$row['id']] = $wordStr;
+    }
+
+    // 3. Build UNION query for definitions
+    $defQueries = [];
+    $defParams = [];
+
+    foreach ($dictWordIds as $key => $ids) {
+        if (empty($ids)) continue;
+        $defsTable = ($key === 'gen') ? 'definitions' : "definitions_{$key}";
+        $idPlaceholders = implode(',', array_fill(0, count($ids), '?'));
+
+        $defQueries[] = "SELECT ? as dict_key, word_id, pos, ipa_idx, meanings FROM `{$defsTable}` WHERE word_id IN ($idPlaceholders)";
+        $defParams[] = $key;
+        $defParams = array_merge($defParams, $ids);
+    }
+
+    if (empty($defQueries)) return $map;
+
+    try {
+        $defSql = implode(' UNION ALL ', $defQueries);
+        $stmt = $db->prepare($defSql);
+        $stmt->execute($defParams);
+        $allDefs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        return $map;
+    }
+
+    // Process definitions
+    foreach ($allDefs as $row) {
+        $dictKey = $row['dict_key'];
+        $wordId = $row['word_id'];
+        if (!isset($idToWord[$dictKey][$wordId])) continue;
+
+        $wordStr = $idToWord[$dictKey][$wordId];
+        $dictInfo = $dictMap[$dictKey];
+
+        $def = [
+            'pos' => $row['pos'],
+            'ipa_idx' => $row['ipa_idx'],
+            'meanings' => json_decode($row['meanings'], true),
+            'dict' => [
+                'key' => $dictKey,
+                'tag' => $dictInfo['tag'],
+                'name' => $dictInfo['name']
+            ]
+        ];
+
+        $map[$wordStr]['definitions'][] = $def;
+    }
+
+    // Sort definitions by dict sorder
+    foreach ($map as &$wordData) {
+        usort($wordData['definitions'], function ($a, $b) use ($dictOrder) {
+            $oa = $dictOrder[$a['dict']['key']] ?? 999;
+            $ob = $dictOrder[$b['dict']['key']] ?? 999;
+            return $oa - $ob;
+        });
+    }
+
     return $map;
 }
 
@@ -808,7 +949,7 @@ try {
                 }
 
                 $response = ['success' => true, 'word' => $rows];
-                
+
                 // Return current review book count if this is the review book
                 if ($bid == -1) {
                     $db = DB::vnb();

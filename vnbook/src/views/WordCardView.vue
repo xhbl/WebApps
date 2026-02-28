@@ -222,6 +222,7 @@
                             class="dict-item"
                           >
                             <span class="dict-pos">{{ item.pos }}</span>
+                            <span v-if="item.tag" class="dict-source">[{{ item.tag }}]</span>
                             <span class="dict-text-zh">{{ item.text }}</span>
                           </div>
                           <div
@@ -230,6 +231,7 @@
                             class="dict-item"
                           >
                             <span class="dict-pos">{{ item.pos }}</span>
+                            <span v-if="item.tag" class="dict-source">[{{ item.tag }}]</span>
                             <span class="dict-text-en">{{ item.text }}</span>
                           </div>
                         </div>
@@ -706,19 +708,30 @@ const getPopoverPlacement = (index: number, total: number) => {
 }
 
 const getDictZh = (definitions: BaseDictDefinition[]) => {
-  return definitions
-    .map((d) => {
-      const meanings = d.meanings?.zh?.join('; ')
-      return meanings ? { pos: d.pos, text: meanings } : null
-    })
-    .filter((item): item is { pos: string; text: string } => item !== null)
+  const lines: { pos: string; text: string; tag?: string }[] = []
+  definitions.forEach((d) => {
+    const meanings = d.meanings?.zh?.join('; ')
+    if (meanings) {
+      lines.push({
+        pos: d.pos,
+        text: meanings,
+        tag: d.dict.key !== 'gen' ? d.dict.tag : undefined,
+      })
+    }
+  })
+  return lines
 }
 
 const getDictEn = (definitions: BaseDictDefinition[]) => {
-  const lines: { pos: string; text: string }[] = []
+  const lines: { pos: string; text: string; tag?: string }[] = []
   definitions.forEach((d) => {
     d.meanings?.en?.forEach((m) => {
-      if (m) lines.push({ pos: d.pos, text: m })
+      if (m)
+        lines.push({
+          pos: d.pos,
+          text: m,
+          tag: d.dict.key !== 'gen' ? d.dict.tag : undefined,
+        })
     })
   })
   return lines
@@ -1102,6 +1115,12 @@ const onSwipeTouchStart = (e: TouchEvent) => {
 .dict-pos {
   font-weight: bold;
   margin-right: 8px;
+}
+.dict-source {
+  font-size: 12px;
+  color: var(--van-primary-color);
+  margin-right: 6px;
+  opacity: 0.8;
 }
 .dict-text-zh {
   color: var(--van-text-color);

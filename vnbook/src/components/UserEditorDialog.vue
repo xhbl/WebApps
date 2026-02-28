@@ -81,7 +81,7 @@ watch(
     }
   },
 )
-const { close } = usePopupHistory(show)
+usePopupHistory(show)
 
 const isNew = computed(() => !props.user || props.user._new === 1)
 const password = ref('')

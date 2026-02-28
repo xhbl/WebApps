@@ -162,13 +162,24 @@ const definition = computed(() => {
   }
   // 2. 其次显示基本词典的中文释义
   if (props.word.baseInfo?.definitions?.length) {
-    const parts = props.word.baseInfo.definitions
+    const defs = props.word.baseInfo.definitions
+    // 找到第一组有释义的词典（已按 sorder 排序，gen 在前）
+    const firstDef = defs[0]
+    if (!firstDef) return ''
+
+    const firstKey = firstDef.dict.key
+    const groupDefs = defs.filter((d) => d.dict.key === firstKey)
+
+    const parts = groupDefs
       .map((d) => {
         const meanings = d.meanings?.zh?.join('; ') || ''
         return meanings ? `${d.pos} ${meanings}`.trim() : null
       })
       .filter(Boolean)
-    if (parts.length > 0) return (parts as string[]).join('; ')
+    if (parts.length > 0) {
+      const text = (parts as string[]).join('; ')
+      return firstKey === 'gen' ? text : `[${firstDef.dict.tag}] ${text}`
+    }
   }
   return ''
 })

@@ -76,7 +76,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
-  (e: 'delete', dict: any): void
+  (e: 'delete', dict: BaseDict): void
 }>()
 
 const show = ref(props.modelValue)
@@ -142,7 +142,9 @@ const onCancel = () => (show.value = false)
 
 const onDelete = async () => {
   await close()
-  emit('delete', edit.value)
+  if (props.dict) {
+    emit('delete', props.dict)
+  }
 }
 </script>
 

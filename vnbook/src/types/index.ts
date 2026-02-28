@@ -68,10 +68,15 @@ export interface Sentence {
 
 export interface BaseDictDefinition {
   pos: string
-  ipa_idx: number
+  ipa_idx?: number
   meanings: {
     zh?: string[]
     en?: string[]
+  }
+  dict: {
+    key: string
+    tag: string
+    name: string
   }
 }
 

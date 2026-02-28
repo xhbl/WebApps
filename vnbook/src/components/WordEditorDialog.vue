@@ -279,14 +279,16 @@ const formatDefinitions = (definitions: BaseDictDefinition[]) => {
   const zhLines = definitions
     .map((d) => {
       const meanings = d.meanings?.zh?.join('; ')
-      return meanings ? `${d.pos} ${meanings}` : null
+      const sourcePrefix = d.dict.key !== 'gen' ? `[${d.dict.tag}] ` : ''
+      return meanings ? `${sourcePrefix}${d.pos} ${meanings}` : null
     })
     .filter((line): line is string => line !== null)
 
   const enLines: string[] = []
   definitions.forEach((d) => {
     d.meanings?.en?.forEach((m) => {
-      if (m) enLines.push(`${d.pos} ${m}`)
+      const sourcePrefix = d.dict.key !== 'gen' ? `[${d.dict.tag}] ` : ''
+      if (m) enLines.push(`${sourcePrefix}${d.pos} ${m}`)
     })
   })
 

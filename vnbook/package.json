@@ -1,6 +1,6 @@
 {
   "name": "vnbook",
-  "version": "2.1.40",
+  "version": "2.1.45",
   "private": true,
   "type": "module",
   "scripts": {

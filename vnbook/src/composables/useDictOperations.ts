@@ -123,7 +123,7 @@ export function useDictOperations() {
     }
 
     // 2. 重新计算所有受影响的 sorder
-    const updates: Promise<any>[] = []
+    const updates: Promise<unknown>[] = []
     dicts.forEach((d, i) => {
       const expectedSorder = d.key === GEN_DICT_KEY ? 0 : i
       if (d.sorder !== expectedSorder) {
