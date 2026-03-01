@@ -110,6 +110,7 @@ import { showGlobalDialog } from '@/composables/useGlobalDialog'
 import { usePopupHistory } from '@/composables/usePopupHistory'
 
 import { useWordOperations } from '@/composables/useWordOperations'
+import { GEN_DICT_KEY } from '@/api/basedicts'
 
 const props = defineProps<{
   modelValue: boolean
@@ -280,7 +281,7 @@ const formatDefinitions = (definitions: BaseDictDefinition[]) => {
   const zhLines = definitions
     .map((d) => {
       const meanings = d.meanings?.zh?.join('; ')
-      const sourcePrefix = d.dict.key !== 'gen' ? `[${d.dict.tag}] ` : ''
+      const sourcePrefix = d.dict.key !== GEN_DICT_KEY ? `[${d.dict.tag}] ` : ''
       return meanings ? `${sourcePrefix}${d.pos} ${meanings}` : null
     })
     .filter((line): line is string => line !== null)
@@ -288,7 +289,7 @@ const formatDefinitions = (definitions: BaseDictDefinition[]) => {
   const enLines: string[] = []
   definitions.forEach((d) => {
     d.meanings?.en?.forEach((m) => {
-      const sourcePrefix = d.dict.key !== 'gen' ? `[${d.dict.tag}] ` : ''
+      const sourcePrefix = d.dict.key !== GEN_DICT_KEY ? `[${d.dict.tag}] ` : ''
       if (m) enLines.push(`${sourcePrefix}${d.pos} ${m}`)
     })
   })

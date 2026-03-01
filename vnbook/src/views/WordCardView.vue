@@ -379,6 +379,7 @@ import ExternalDictDialog from '@/components/ExternalDictDialog.vue'
 import { usePopoverMap } from '@/composables/usePopoverMap'
 import { useWordOperations } from '@/composables/useWordOperations'
 import { usePronunciation } from '@/composables/usePronunciation'
+import { GEN_DICT_KEY } from '@/api/basedicts'
 
 const route = useRoute()
 const router = useRouter()
@@ -715,7 +716,7 @@ const getDictZh = (definitions: BaseDictDefinition[]) => {
       lines.push({
         pos: d.pos,
         text: meanings,
-        tag: d.dict.key !== 'gen' ? d.dict.tag : undefined,
+        tag: d.dict.key !== GEN_DICT_KEY ? d.dict.tag : undefined,
       })
     }
   })
@@ -730,7 +731,7 @@ const getDictEn = (definitions: BaseDictDefinition[]) => {
         lines.push({
           pos: d.pos,
           text: m,
-          tag: d.dict.key !== 'gen' ? d.dict.tag : undefined,
+          tag: d.dict.key !== GEN_DICT_KEY ? d.dict.tag : undefined,
         })
     })
   })

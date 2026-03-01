@@ -1,4 +1,5 @@
 <?php
+
 /** Database host */
 define('C_VNB_DB_HOST', 'db');
 
@@ -22,4 +23,6 @@ define('C_ADMIN_NAME', 'admin');
 
 /** Admin initialization password */
 define('C_ADMIN_PASSINIT', 'initvnb');
-?>
+
+/** Default general dictionary key */
+define('C_DICT_GEN_KEY', 'gen');

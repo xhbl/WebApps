@@ -250,7 +250,7 @@ function createBaseDictInitData()
 
         // Insert system reserved registry record
         $stmt = $db->prepare("INSERT IGNORE INTO `registry` (`key`, `tag`, `name`, `sorder`, `active`, `desc`) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute(['gen', '通用', '通用词典', 0, 1, '内置基本通用词典']);
+        $stmt->execute([C_DICT_GEN_KEY, '通用', '通用词典', 0, 1, '内置基本通用词典']);
 
         $ret->v = true;
     } catch (Exception $e) {

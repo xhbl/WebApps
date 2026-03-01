@@ -77,6 +77,7 @@ import { useAuthStore } from '@/stores/auth'
 import { usePronunciation } from '@/composables/usePronunciation'
 import type { Word } from '@/types'
 import type { PopoverPlacement } from 'vant'
+import { GEN_DICT_KEY } from '@/api/basedicts'
 
 const { play, loadingWord } = usePronunciation()
 
@@ -173,13 +174,13 @@ const definition = computed(() => {
     const parts = groupDefs
       .map((d) => {
         const meanings = d.meanings?.zh?.join('; ') || ''
-        return meanings ? `${d.pos} ${meanings}`.trim() : null
+        if (!meanings) return null
+        return firstKey === GEN_DICT_KEY
+          ? `${d.pos} ${meanings}`.trim()
+          : `${d.pos} [${d.dict.tag}] ${meanings}`.trim()
       })
       .filter(Boolean)
-    if (parts.length > 0) {
-      const text = (parts as string[]).join('; ')
-      return firstKey === 'gen' ? text : `[${firstDef.dict.tag}] ${text}`
-    }
+    if (parts.length > 0) return (parts as string[]).join('; ')
   }
   return ''
 })

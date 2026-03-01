@@ -110,7 +110,7 @@ function handleStats()
             throw new Exception('Failed to connect to base dictionary database');
         }
 
-        if ($key === 'gen') {
+        if ($key === C_DICT_GEN_KEY) {
             $wordsTable = 'words';
             $defsTable = 'definitions';
         } else {
@@ -274,7 +274,7 @@ function handleDelete()
             throw new Exception('Key is required');
         }
 
-        if ($key === 'gen') {
+        if ($key === C_DICT_GEN_KEY) {
             throw new Exception('Cannot delete system reserved dictionary');
         }
 
@@ -444,7 +444,7 @@ function deleteBaseDictRegData($pdo, $key, $deleteRegistry = false)
 
             // Delete registry record if requested
             if ($deleteRegistry) {
-                $stmt = $pdo->prepare("DELETE FROM `registry` WHERE `key` = ? AND `key` != 'gen'");
+                $stmt = $pdo->prepare("DELETE FROM `registry` WHERE `key` = ? AND `key` != '" . C_DICT_GEN_KEY . "'");
                 $stmt->execute([$key]);
             }
 
@@ -471,7 +471,7 @@ function syncBaseDictRegData($pdo)
     $ret->synced = [];
     try {
         // Get all registry keys except 'gen'
-        $stmt = $pdo->query("SELECT `key` FROM `registry` WHERE `key` != 'gen' AND `active` = 1");
+        $stmt = $pdo->query("SELECT `key` FROM `registry` WHERE `key` != '" . C_DICT_GEN_KEY . "' AND `active` = 1");
         $keys = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
         foreach ($keys as $key) {
@@ -530,7 +530,7 @@ function checkBaseDictRegData($pdo)
     $ret->created = [];
     try {
         // Get all registry keys except 'gen'
-        $stmt = $pdo->query("SELECT `key` FROM `registry` WHERE `key` != 'gen' AND `active` = 1");
+        $stmt = $pdo->query("SELECT `key` FROM `registry` WHERE `key` != '" . C_DICT_GEN_KEY . "' AND `active` = 1");
         $keys = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
         if (!empty($keys)) {

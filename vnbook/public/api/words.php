@@ -201,7 +201,7 @@ function getWordSuggestions($prefix)
         foreach ($dicts as $d) {
             $key = $d['key'];
             $dictTags[$key] = $d['tag'];
-            $table = ($key === 'gen') ? 'words' : "words_{$key}";
+            $table = ($key === C_DICT_GEN_KEY) ? 'words' : "words_{$key}";
             // Include dict_key and sort_order to handle priority and definition lookup
             // FIX: Must select word_search column to allow ORDER BY word_search in UNION query
             $queries[] = "SELECT id, word, word_search, '$key' as dict_key, $idx as sort_order FROM `$table` WHERE word_search LIKE ?";
@@ -238,7 +238,7 @@ function getWordSuggestions($prefix)
         $defMap = []; // "dict_key:word_id" => definition string
 
         foreach ($idsToFetch as $key => $ids) {
-            $table = ($key === 'gen') ? 'definitions' : "definitions_{$key}";
+            $table = ($key === C_DICT_GEN_KEY) ? 'definitions' : "definitions_{$key}";
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
 
             $stmt = $db->prepare("SELECT word_id, pos, meanings FROM `$table` WHERE word_id IN ($placeholders) ORDER BY id");
@@ -251,7 +251,7 @@ function getWordSuggestions($prefix)
                 $meanings = json_decode($d['meanings'], true);
                 $zh = $meanings['zh'] ?? [];
                 if (!empty($zh)) {
-                    $tagPrefix = ($key !== 'gen') ? "[{$dictTags[$key]}] " : "";
+                    $tagPrefix = ($key !== C_DICT_GEN_KEY) ? "[{$dictTags[$key]}] " : "";
                     $defMap[$lookupKey] = $tagPrefix . $d['pos'] . ' ' . implode('; ', array_slice($zh, 0, 2));
                 }
             }
@@ -318,7 +318,7 @@ function getBaseDictData($wordList)
     foreach ($dicts as $dict) {
         $key = $dict['key'];
         // Determine table names based on key ('gen' uses default tables)
-        $wordsTable = ($key === 'gen') ? 'words' : "words_{$key}";
+        $wordsTable = ($key === C_DICT_GEN_KEY) ? 'words' : "words_{$key}";
 
         // Select dict_key to identify source
         $wordQueries[] = "SELECT ? as dict_key, id, word, ipas FROM `{$wordsTable}` WHERE word IN ($placeholders)";
@@ -365,7 +365,7 @@ function getBaseDictData($wordList)
 
     foreach ($dictWordIds as $key => $ids) {
         if (empty($ids)) continue;
-        $defsTable = ($key === 'gen') ? 'definitions' : "definitions_{$key}";
+        $defsTable = ($key === C_DICT_GEN_KEY) ? 'definitions' : "definitions_{$key}";
         $idPlaceholders = implode(',', array_fill(0, count($ids), '?'));
 
         $defQueries[] = "SELECT id, ? as dict_key, word_id, pos, ipa_idx, meanings FROM `{$defsTable}` WHERE word_id IN ($idPlaceholders)";
