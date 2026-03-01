@@ -1,13 +1,13 @@
 {
   "name": "vnbook",
-  "version": "2.1.49",
+  "version": "2.1.58",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "run-p type-check \"build-only {@}\" --",
+    "build": "npm run bump:version && run-p type-check \"build-only {@}\" --",
     "build:pwa": "cross-env VITE_BUILD_PWA=true npm run build",
-    "release:pwa": "npm run bump:version && npm run build:pwa",
+    "release:pwa": "npm run build:pwa",
     "bump:version": "node -e \"const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json'));const v=p.version.split('.');v[2]=parseInt(v[2])+1;p.version=v.join('.');fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Version bumped to:',p.version)\"",
     "preview": "vite preview",
     "build-only": "vite build",
