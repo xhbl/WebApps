@@ -1,39 +1,30 @@
 import pymysql
 import sys
 import json
+import argparse
+import getpass
 
-def get_db_config(db_address='127.0.0.1:3306', user_credentials='root:_dbpassword'):
-    """解析数据库地址和用户凭证并返回配置"""
-    # 解析数据库地址
-    if ':' in db_address:
-        host, port = db_address.split(':', 1)
-        port = int(port)
-    else:
-        host = db_address
-        port = 3306
+def get_db_config(args):
+    """从 argparse 参数构建数据库配置"""
+    password = args.password
     
-    # 解析用户名和密码
-    if ':' in user_credentials:
-        user, password = user_credentials.split(':', 1)
-    else:
-        user = user_credentials
-        password = '_dbpassword'
+    if not password:
+        password = getpass.getpass('请输入数据库密码: ')
     
     return {
-        'host': host,
-        'port': port,
-        'user': user,
+        'host': args.host,
+        'port': args.port,
+        'user': args.user,
         'password': password,
         'database': 'va_basedict',
         'charset': 'utf8mb4',
         'cursorclass': pymysql.cursors.DictCursor
     }
 
-def import_json_file(db_config):
+def import_json_file(db_config, json_file, domain_key=''):
     """导入 JSON 文件并显示进度"""
-    # json_file = 'coca_vocab_20k_ce.json'
-    # json_file = 'va_basedict_r01.json'
-    json_file = 'va_basedict_r02.json'
+    words_table = f"words_{domain_key}" if domain_key else "words"
+    definitions_table = f"definitions_{domain_key}" if domain_key else "definitions"
 
     connection = None
     try:
@@ -57,8 +48,8 @@ def import_json_file(db_config):
             # 清空表（可选）
             print("清理旧数据...")
             cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
-            cursor.execute("TRUNCATE TABLE `definitions`;")
-            cursor.execute("TRUNCATE TABLE `words`;")
+            cursor.execute(f"TRUNCATE TABLE `{definitions_table}`;")
+            cursor.execute(f"TRUNCATE TABLE `{words_table}`;")
             cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
             
             print(f"开始导入数据...\n")
@@ -77,7 +68,7 @@ def import_json_file(db_config):
                     
                     # 插入words表
                     insert_word_sql = (
-                        f"INSERT INTO `words` (`id`, `word`, `ipas`) "
+                        f"INSERT INTO `{words_table}` (`id`, `word`, `ipas`) "
                         f"VALUES ({word_id}, '{word}', '{ipas_json}');"
                     )
                     cursor.execute(insert_word_sql)
@@ -101,7 +92,7 @@ def import_json_file(db_config):
                         
                         # 插入definitions表
                         insert_def_sql = (
-                            f"INSERT INTO `definitions` (`word_id`, `pos`, `ipa_idx`, `meanings`) "
+                            f"INSERT INTO `{definitions_table}` (`word_id`, `pos`, `ipa_idx`, `meanings`) "
                             f"VALUES ({word_id}, '{pos}', 0, '{meanings_json}');"
                         )
                         cursor.execute(insert_def_sql)
@@ -132,15 +123,15 @@ def import_json_file(db_config):
                 print(f"⚠️  失败: {failed} 条")
             
             # 验证数据
-            cursor.execute("SELECT COUNT(*) as count FROM words;")
+            cursor.execute(f"SELECT COUNT(*) as count FROM `{words_table}`;")
             words_count = cursor.fetchone()['count']
             
-            cursor.execute("SELECT COUNT(*) as count FROM definitions;")
+            cursor.execute(f"SELECT COUNT(*) as count FROM `{definitions_table}`;")
             definitions_count = cursor.fetchone()['count']
             
             print(f"\n📊 数据库状态:")
-            print(f"   words 表: {words_count} 条记录")
-            print(f"   definitions 表: {definitions_count} 条记录")
+            print(f"   {words_table} 表: {words_count} 条记录")
+            print(f"   {definitions_table} 表: {definitions_count} 条记录")
 
     except FileNotFoundError:
         print(f"❌ 文件未找到: {json_file}")
@@ -156,10 +147,22 @@ def import_json_file(db_config):
             print("\n✅ 连接已关闭")
 
 if __name__ == "__main__":
-    # 支持命令行参数: ip:port user:password
-    # 默认: 127.0.0.1:3306 root:_dbpassword
-    # 密码可不输，只输入用户名则使用默认密码
-    db_address = sys.argv[1] if len(sys.argv) > 1 else '127.0.0.1:3306'
-    user_credentials = sys.argv[2] if len(sys.argv) > 2 else 'root:_dbpassword'
-    db_config = get_db_config(db_address, user_credentials)
-    import_json_file(db_config)
+    parser = argparse.ArgumentParser(
+        description='VA BaseDict 数据导入工具',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    
+    # 数据库连接参数
+    parser.add_argument('--host', default='127.0.0.1', help='数据库主机地址 (默认: 127.0.0.1)')
+    parser.add_argument('--port', type=int, default=3306, help='数据库端口 (默认: 3306)')
+    parser.add_argument('-u', '--user', default='root', help='用户名 (默认: root)')
+    parser.add_argument('-p', '--password', default='_dbpassword', help='数据库密码 (默认: _dbpassword)')
+    
+    # 业务参数
+    parser.add_argument('-f', '--file', default='va_basedict.json', help='要导入的 JSON 文件路径')
+    parser.add_argument('-k', '--key', default='', help='目标数据库领域键名')
+    
+    args = parser.parse_args()
+    
+    db_config = get_db_config(args)
+    import_json_file(db_config, args.file, args.key)

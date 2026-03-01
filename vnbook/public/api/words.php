@@ -186,8 +186,8 @@ function getWordSuggestions($prefix)
 
     try {
         // 1. Get active dictionaries
-        $stmt = $db->query("SELECT `key` FROM `registry` WHERE `active` = 1 ORDER BY `sorder` ASC");
-        $dicts = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $stmt = $db->query("SELECT `key`, `tag` FROM `registry` WHERE `active` = 1 ORDER BY `sorder` ASC");
+        $dicts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         if (empty($dicts)) return [];
 
@@ -196,19 +196,23 @@ function getWordSuggestions($prefix)
         $params = [];
         $prefixParam = strtolower($prefix) . '%';
         $idx = 0;
+        $dictTags = [];
 
-        foreach ($dicts as $key) {
+        foreach ($dicts as $d) {
+            $key = $d['key'];
+            $dictTags[$key] = $d['tag'];
             $table = ($key === 'gen') ? 'words' : "words_{$key}";
             // Include dict_key and sort_order to handle priority and definition lookup
-            $queries[] = "SELECT id, word, '$key' as dict_key, $idx as sort_order FROM `$table` WHERE word_search LIKE ?";
+            // FIX: Must select word_search column to allow ORDER BY word_search in UNION query
+            $queries[] = "SELECT id, word, word_search, '$key' as dict_key, $idx as sort_order FROM `$table` WHERE word_search LIKE ?";
             $params[] = $prefixParam;
             $idx++;
         }
 
         if (empty($queries)) return [];
 
-        // Limit to 20 to allow for some duplicates that we'll filter out
-        $sql = implode(' UNION ALL ', $queries) . " ORDER BY sort_order ASC, word_search ASC LIMIT 20";
+        // Limit to 50 to allow for duplicates and ensure mix of results from different dicts
+        $sql = implode(' UNION ALL ', $queries) . " ORDER BY word_search ASC, sort_order ASC LIMIT 50";
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -237,7 +241,7 @@ function getWordSuggestions($prefix)
             $table = ($key === 'gen') ? 'definitions' : "definitions_{$key}";
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
 
-            $stmt = $db->prepare("SELECT word_id, pos, meanings FROM `$table` WHERE word_id IN ($placeholders)");
+            $stmt = $db->prepare("SELECT word_id, pos, meanings FROM `$table` WHERE word_id IN ($placeholders) ORDER BY id");
             $stmt->execute($ids);
             $defs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -247,7 +251,8 @@ function getWordSuggestions($prefix)
                 $meanings = json_decode($d['meanings'], true);
                 $zh = $meanings['zh'] ?? [];
                 if (!empty($zh)) {
-                    $defMap[$lookupKey] = $d['pos'] . ' ' . implode('; ', array_slice($zh, 0, 2));
+                    $tagPrefix = ($key !== 'gen') ? "[{$dictTags[$key]}] " : "";
+                    $defMap[$lookupKey] = $tagPrefix . $d['pos'] . ' ' . implode('; ', array_slice($zh, 0, 2));
                 }
             }
         }
@@ -363,7 +368,7 @@ function getBaseDictData($wordList)
         $defsTable = ($key === 'gen') ? 'definitions' : "definitions_{$key}";
         $idPlaceholders = implode(',', array_fill(0, count($ids), '?'));
 
-        $defQueries[] = "SELECT ? as dict_key, word_id, pos, ipa_idx, meanings FROM `{$defsTable}` WHERE word_id IN ($idPlaceholders)";
+        $defQueries[] = "SELECT id, ? as dict_key, word_id, pos, ipa_idx, meanings FROM `{$defsTable}` WHERE word_id IN ($idPlaceholders)";
         $defParams[] = $key;
         $defParams = array_merge($defParams, $ids);
     }
@@ -389,6 +394,7 @@ function getBaseDictData($wordList)
         $dictInfo = $dictMap[$dictKey];
 
         $def = [
+            'id' => $row['id'],
             'pos' => $row['pos'],
             'ipa_idx' => $row['ipa_idx'],
             'meanings' => json_decode($row['meanings'], true),
@@ -407,7 +413,11 @@ function getBaseDictData($wordList)
         usort($wordData['definitions'], function ($a, $b) use ($dictOrder) {
             $oa = $dictOrder[$a['dict']['key']] ?? 999;
             $ob = $dictOrder[$b['dict']['key']] ?? 999;
-            return $oa - $ob;
+            if ($oa !== $ob) {
+                return $oa - $ob;
+            }
+            // Secondary sort by definition ID to ensure stability within the same dictionary
+            return $a['id'] - $b['id'];
         });
     }
 

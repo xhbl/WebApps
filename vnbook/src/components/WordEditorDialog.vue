@@ -206,8 +206,9 @@ const onWordInput = (val: string) => {
 
     try {
       const res = await suggestWords(keyword)
-      // 再次检查输入框是否有值，防止请求返回时用户已清空输入框
-      if (!formData.value.word.trim()) return
+      // 严格检查当前输入框的值是否仍等于请求时的关键词
+      // 如果用户在请求期间继续输入或删除了内容，则丢弃该次结果
+      if (formData.value.word.trim() !== keyword) return
       if (res.data.success && res.data.data) {
         suggestions.value = res.data.data
         suggestionCache.set(keyword, res.data.data)
