@@ -18,12 +18,7 @@
             :readonly="!isNew"
             :class="{ 'readonly-field': !isNew }"
           />
-          <van-field
-            v-model="edit.tag"
-            label="标签"
-            placeholder="如: 医学, 技术"
-            :rules="[{ required: true, message: '请输入标签' }]"
-          />
+          <van-field v-model="edit.tag" label="标签" placeholder="如: 医学, 技术" />
           <van-field
             v-model="edit.name"
             label="名称"

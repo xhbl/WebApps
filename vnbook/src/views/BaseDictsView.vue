@@ -43,9 +43,12 @@
             </template>
             <template #label>
               <div class="dict-label">
-                <van-tag :type="dict.active ? 'success' : 'default'" class="dict-tag">{{
-                  dict.tag
-                }}</van-tag>
+                <van-tag
+                  v-if="dict.tag"
+                  :type="dict.active ? 'success' : 'default'"
+                  class="dict-tag"
+                  >{{ dict.tag }}</van-tag
+                >
                 <span v-if="store.stats[dict.key]" class="dict-stats">
                   词条: {{ store.stats[dict.key]?.wordCount }} 释义:
                   {{ store.stats[dict.key]?.defCount }}

@@ -189,6 +189,17 @@ function getWordSuggestions($prefix)
         $stmt = $db->query("SELECT `key`, `tag` FROM `registry` WHERE `active` = 1 ORDER BY `sorder` ASC");
         $dicts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // Filter by user config (excludeDicts)
+        if (isset($_SESSION['user_cfg'])) {
+            $cfg = json_decode($_SESSION['user_cfg'], true);
+            if (isset($cfg['excludeDicts']) && is_array($cfg['excludeDicts'])) {
+                $excludeDicts = $cfg['excludeDicts'];
+                $dicts = array_filter($dicts, function ($d) use ($excludeDicts) {
+                    return !in_array($d['key'], $excludeDicts);
+                });
+            }
+        }
+
         if (empty($dicts)) return [];
 
         // 2. Build UNION query for suggestions
@@ -251,7 +262,8 @@ function getWordSuggestions($prefix)
                 $meanings = json_decode($d['meanings'], true);
                 $zh = $meanings['zh'] ?? [];
                 if (!empty($zh)) {
-                    $tagPrefix = ($key !== C_DICT_GEN_KEY) ? "[{$dictTags[$key]}] " : "";
+                    $tag = $dictTags[$key];
+                    $tagPrefix = ($key !== C_DICT_GEN_KEY && $tag !== '') ? "[{$tag}] " : "";
                     $defMap[$lookupKey] = $tagPrefix . $d['pos'] . ' ' . implode('; ', array_slice($zh, 0, 2));
                 }
             }
@@ -289,6 +301,17 @@ function getBaseDictData($wordList)
         $dicts = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
         return [];
+    }
+
+    // Filter by user config (excludeDicts)
+    if (isset($_SESSION['user_cfg'])) {
+        $cfg = json_decode($_SESSION['user_cfg'], true);
+        if (isset($cfg['excludeDicts']) && is_array($cfg['excludeDicts'])) {
+            $excludeDicts = $cfg['excludeDicts'];
+            $dicts = array_filter($dicts, function ($d) use ($excludeDicts) {
+                return !in_array($d['key'], $excludeDicts);
+            });
+        }
     }
 
     if (empty($dicts)) return [];

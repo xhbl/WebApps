@@ -7,11 +7,16 @@ header('Content-Type: application/json; charset=utf-8');
 
 // 验证登录和管理员权限
 $logsess = vnb_checklogin($_GET["_sessid"] ?? null);
-if ($logsess->success !== true || $logsess->login['uname'] !== 'admin') {
+if ($logsess->success !== true) {
     die(json_encode(['success' => false, 'message' => 'Unauthorized']));
 }
 
 $action = $_GET['action'] ?? '';
+
+// 验证管理员权限 (仅针对修改操作)
+if ($logsess->login['uname'] !== 'admin' && in_array($action, ['create', 'update', 'delete', 'sync', 'check'])) {
+    die(json_encode(['success' => false, 'message' => 'Unauthorized']));
+}
 
 switch ($action) {
     case 'list':
@@ -157,8 +162,8 @@ function handleCreate()
         $active = $input['active'] ?? 1;
         $desc = $input['desc'] ?? null;
 
-        if (empty($key) || empty($tag) || empty($name)) {
-            throw new Exception('Key, tag, and name are required');
+        if (empty($key) || empty($name)) {
+            throw new Exception('Key and name are required');
         }
 
         if (!preg_match('/^[a-z][a-z0-9_]*$/', $key)) {

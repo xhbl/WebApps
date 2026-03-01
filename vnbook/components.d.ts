@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     BookEditorDialog: typeof import('./src/components/BookEditorDialog.vue')['default']
     DictEditorDialog: typeof import('./src/components/DictEditorDialog.vue')['default']
+    DictOptionDialog: typeof import('./src/components/DictOptionDialog.vue')['default']
     ExpEditorDialog: typeof import('./src/components/ExpEditorDialog.vue')['default']
     ExternalDictDialog: typeof import('./src/components/ExternalDictDialog.vue')['default']
     GlobalDialog: typeof import('./src/components/GlobalDialog.vue')['default']

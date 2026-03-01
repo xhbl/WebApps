@@ -175,9 +175,10 @@ const definition = computed(() => {
       .map((d) => {
         const meanings = d.meanings?.zh?.join('; ') || ''
         if (!meanings) return null
+        const tagPart = d.dict.tag ? `[${d.dict.tag}] ` : ''
         return firstKey === GEN_DICT_KEY
           ? `${d.pos} ${meanings}`.trim()
-          : `${d.pos} [${d.dict.tag}] ${meanings}`.trim()
+          : `${d.pos} ${tagPart}${meanings}`.trim()
       })
       .filter(Boolean)
     if (parts.length > 0) return (parts as string[]).join('; ')

@@ -173,7 +173,7 @@
                           <van-icon name="closed-eye" />
                         </div>
                         <div class="dict-header">
-                          <div class="dict-title-column">
+                          <div class="dict-title-column" @click.stop="openDictOptions">
                             <span class="dict-title-text">基本词典</span>
                           </div>
                           <div class="dict-links-column">
@@ -361,6 +361,7 @@
       :url="currentDictUrl"
       :margin="currentDictMargin"
     />
+    <dict-option-dialog v-model="showDictOption" @change="onDictOptionChange" />
   </div>
 </template>
 
@@ -377,6 +378,7 @@ import ExpEditorDialog from '@/components/ExpEditorDialog.vue'
 import SenEditorDialog from '@/components/SenEditorDialog.vue'
 import ExternalDictDialog from '@/components/ExternalDictDialog.vue'
 import { usePopoverMap } from '@/composables/usePopoverMap'
+import DictOptionDialog from '@/components/DictOptionDialog.vue'
 import { useWordOperations } from '@/composables/useWordOperations'
 import { usePronunciation } from '@/composables/usePronunciation'
 import { GEN_DICT_KEY } from '@/api/basedicts'
@@ -595,6 +597,15 @@ const onRefresh = async () => {
       nextTick(() => swipeRef.value?.swipeTo(newIndex, { immediate: true }))
     }
   }
+}
+
+const showDictOption = ref(false)
+const openDictOptions = () => {
+  showDictOption.value = true
+}
+
+const onDictOptionChange = () => {
+  onRefresh()
 }
 
 const isEditMode = ref(false)
@@ -1080,6 +1091,7 @@ const onSwipeTouchStart = (e: TouchEvent) => {
 
 .dict-title-column {
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .dict-links-column {
