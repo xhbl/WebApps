@@ -361,7 +361,11 @@
       :url="currentDictUrl"
       :margin="currentDictMargin"
     />
-    <dict-option-dialog v-model="showDictOption" @change="onDictOptionChange" />
+    <dict-option-dialog
+      v-if="authStore.isLoggedIn"
+      v-model="showDictOption"
+      @change="onDictOptionChange"
+    />
   </div>
 </template>
 
