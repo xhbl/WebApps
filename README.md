@@ -11,6 +11,7 @@ All applications in this project are designed to be cross-platform and accessibl
 | App Name | Description | Tech Stack |
 |-----------|-------------|----------------|
 | [vnbook](vnbook) | A vocabulary notebook for word logging and review | Vue3 / PHP |
+| [xjswpr](games/xjswpr) | A JavaScript-based classic Minesweeper game | JavaScript |
 
 ---
 
