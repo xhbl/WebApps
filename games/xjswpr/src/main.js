@@ -78,7 +78,7 @@ const CONSTANTS = {
     BEST_TIMES_KEY: 'xjswpr_best_times',
     LAST_DIFFICULTY_KEY: 'xjswpr_last_difficulty',
     LANG_KEY: 'xjswpr_language',
-    LONG_PRESS_MS: 500,
+    LONG_PRESS_MS: 300,
     DOUBLE_CLICK_MS: 300,
     TOUCH_MOVE_TOLERANCE: 10
 };
@@ -115,7 +115,8 @@ let inputState = {
     touchStartX: 0,
     touchStartY: 0,
     lastClickTime: 0,
-    lastClickCell: null // {row, col}
+    lastClickCell: null, // {row, col}
+    lastTouchEndTime: 0
 };
 
 let bestTimes = { beginner: null, intermediate: null, expert: null };
@@ -526,9 +527,17 @@ function toggleFlag(row, col) {
     }
     
     gameState.board[row][col].flagged = !gameState.board[row][col].flagged;
+    const isFlagged = gameState.board[row][col].flagged;
+
+    // 优化：直接更新DOM而不是重绘整个棋盘，防止iOS下因元素销毁导致的事件穿透（Ghost Click）
+    const cellEl = DOM.board.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+    if (cellEl) {
+        cellEl.classList.toggle('flagged', isFlagged);
+        cellEl.classList.remove('active-press'); // 状态改变后移除按下效果
+    }
     
     // 更新剩余雷数
-    if (gameState.board[row][col].flagged) {
+    if (isFlagged) {
         gameState.minesRemaining--;
     } else {
         gameState.minesRemaining++;
@@ -538,7 +547,11 @@ function toggleFlag(row, col) {
     
     // 检查胜利（所有雷都被正确标记）
     checkWinByFlags();
-    renderBoard();
+    
+    // 只有在胜利时才重绘（为了显示被自动挖开的剩余安全格子），平时只更新单个DOM以保持事件链完整
+    if (gameState.gameWin) {
+        renderBoard();
+    }
 }
 
 // 通过旗子标记判断胜利
@@ -863,6 +876,8 @@ DOM.diffBtns.forEach(btn => {
 DOM.board.addEventListener('contextmenu', e => e.preventDefault());
 
 DOM.board.addEventListener('mousedown', e => {
+    if (Date.now() - inputState.lastTouchEndTime < 500) return;
+
     e.preventDefault();
     const cellEl = e.target.closest('.cell');
     if (!cellEl || gameState.gameOver || gameState.gameWin) return;
@@ -1004,6 +1019,12 @@ DOM.board.addEventListener('touchstart', e => {
     inputState.touchStartX = e.touches[0].clientX;
     inputState.touchStartY = e.touches[0].clientY;
 
+    // 为触摸操作添加按下效果，确保在iOS上也有视觉反馈
+    const cell = gameState.board[row][col];
+    if (!cell.revealed) {
+        cellEl.classList.add('active-press');
+    }
+
     inputState.longPressTimer = setTimeout(() => {
         inputState.isLongPress = true;
         toggleFlag(row, col);
@@ -1017,7 +1038,12 @@ DOM.board.addEventListener('touchstart', e => {
 
 DOM.board.addEventListener('touchend', e => {
     e.preventDefault();
+    inputState.lastTouchEndTime = Date.now();
     cancelLongPress();
+
+    // 移除所有按下的视觉效果
+    const pressedCells = DOM.board.querySelectorAll('.active-press');
+    pressedCells.forEach(el => el.classList.remove('active-press'));
 
     if (inputState.isLongPress) {
         inputState.isLongPress = false;
@@ -1035,14 +1061,7 @@ DOM.board.addEventListener('touchend', e => {
         if (!cell.revealed) {
             revealCell(endRow, endCol);
         } else {
-            const now = Date.now();
-            if (inputState.lastClickCell && inputState.lastClickCell.row === endRow && inputState.lastClickCell.col === endCol && (now - inputState.lastClickTime < CONSTANTS.DOUBLE_CLICK_MS)) {
-                chord(endRow, endCol);
-                inputState.lastClickCell = null;
-            } else {
-                inputState.lastClickCell = { row: endRow, col: endCol };
-                inputState.lastClickTime = now;
-            }
+            chord(endRow, endCol);
         }
     }
     inputState.touchStartCell = null;
@@ -1057,12 +1076,20 @@ DOM.board.addEventListener('touchmove', e => {
     // 允许 10px 的移动误差，超过则取消长按和点击
     if (dx > CONSTANTS.TOUCH_MOVE_TOLERANCE || dy > CONSTANTS.TOUCH_MOVE_TOLERANCE) {
         cancelLongPress();
+        // 拖动超出范围时，也移除按下效果
+        const pressedCells = DOM.board.querySelectorAll('.active-press');
+        pressedCells.forEach(el => el.classList.remove('active-press'));
         inputState.touchStartCell = null;
     }
 }, { passive: false });
 
 DOM.board.addEventListener('touchcancel', () => {
     cancelLongPress();
+
+    // 触摸取消时，移除按下效果
+    const pressedCells = DOM.board.querySelectorAll('.active-press');
+    pressedCells.forEach(el => el.classList.remove('active-press'));
+
     inputState.touchStartCell = null;
 });
 
