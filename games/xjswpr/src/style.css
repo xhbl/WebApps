@@ -1,0 +1,359 @@
+* {
+            box-sizing: border-box;
+            user-select: none;
+        }
+        
+        body {
+            background: #3a6ea5;
+            display: flex;
+            min-height: 100vh;
+            font-family: 'Tahoma', 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        
+        #app {
+            display: contents;
+        }
+
+        /* 主窗口 - Windows XP经典灰色 */
+        .mine-window {
+            background: #ece9d8;
+            border: 2px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            padding: 4px;
+            box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+            display: inline-block;
+            margin: auto;
+        }
+        
+        /* 标题栏模拟 */
+        .title-bar {
+            background: #0a246a;
+            color: white;
+            padding: 6px 8px;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .title-bar .title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .title-icon {
+            width: 16px;
+            height: 16px;
+            background: #ece9d8;
+            border: 1px solid #fff;
+        }
+        
+        .window-controls {
+            display: flex;
+            gap: 2px;
+        }
+        
+        .win-btn {
+            width: 20px;
+            height: 20px;
+            background: #ece9d8;
+            border: 2px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            font-size: 12px;
+            line-height: 16px;
+            text-align: center;
+            color: #000;
+            cursor: default;
+        }
+        
+        /* 游戏主面板 */
+        .game-panel {
+            border: 2px solid;
+            border-color: #808080 #ffffff #ffffff #808080;
+            background: #c0c0c0;
+            padding: 5px;
+        }
+        
+        /* 顶部信息栏 - 经典布局 */
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 3px 5px;
+            background: #c0c0c0;
+            border: 1px solid;
+            border-color: #808080 #ffffff #ffffff #808080;
+            margin-bottom: 5px;
+        }
+        
+        /* 数字显示器 - 经典的红色LED风格 */
+        .counter {
+            background: #000;
+            padding: 2px 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 28px;
+            font-weight: bold;
+            color: #ff0000;
+            line-height: 1;
+            letter-spacing: 2px;
+            border: 1px solid;
+            border-color: #808080 #ffffff #ffffff #808080;
+            min-width: 80px;
+            text-align: center;
+            text-shadow: 0 0 5px #f00;
+        }
+        
+        /* 经典笑脸按钮 */
+        .face-button {
+            width: 40px;
+            height: 40px;
+            background: #c0c0c0;
+            border: 2px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.1s;
+        }
+        
+        .face-button:active {
+            border-color: #808080 #ffffff #ffffff #808080;
+            transform: translateY(1px);
+        }
+        
+        /* 雷区网格容器 */
+        .board-container {
+            border: 2px solid;
+            border-color: #808080 #ffffff #ffffff #808080;
+            padding: 2px;
+            background: #c0c0c0;
+            overflow: auto; /* 关键：允许雷区内容溢出时滚动 */
+        }
+        
+        .board {
+            display: grid;
+            gap: 0;
+            background: #c0c0c0;
+        }
+        
+        /* 经典单元格样式 - 3D凸起效果 */
+        .cell {
+            width: 32px;
+            height: 32px;
+            background: #c0c0c0;
+            border: 3px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Courier New', 'Arial', sans-serif;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            box-sizing: border-box;
+            line-height: 1;
+        }
+        
+        /* 翻开后的样式 - 凹陷效果 */
+        .cell.revealed {
+            border: 1px solid #7b7b7b;
+            background: #c0c0c0;
+            border-color: #7b7b7b;
+            font-weight: bold;
+        }
+        
+        /* 组合点击预览效果 */
+        .cell.pressed {
+            border: 1px solid #7b7b7b;
+        }
+        
+        /* 鼠标按下时的扁平效果 */
+        .cell.active-press {
+            border: 1px solid #7b7b7b;
+        }
+
+        /* 数字颜色 - 经典配色 */
+        .num1 { color: #0100fe; }  /* 蓝色 */
+        .num2 { color: #017f00; }  /* 绿色 */
+        .num3 { color: #fe0000; }  /* 红色 */
+        .num4 { color: #010080; }  /* 深蓝 */
+        .num5 { color: #7f0100; }  /* 棕色 */
+        .num6 { color: #008080; }  /* 青色 */
+        .num7 { color: #000000; }  /* 黑色 */
+        .num8 { color: #808080; }  /* 灰色 */
+        
+        /* 旗子标记 */
+        .cell.flagged::after {
+            content: "🚩";
+            font-size: 18px;
+            line-height: 1;
+        }
+        
+        /* 地雷样式 */
+        .cell.mine.revealed {
+            background: #c0c0c0;
+        }
+        
+        .cell.mine.revealed::after {
+            content: "💣";
+            font-size: 18px;
+        }
+        
+        /* 踩雷标记 */
+        .cell.mine.red-cross {
+            background: #fe0000;
+        }
+        .cell.mine.red-cross::after {
+            content: "💥";
+        }
+        
+        /* 难度选择栏 */
+        .difficulty-bar {
+            margin-top: 5px;
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+        }
+        
+        .diff-btn {
+            background: #c0c0c0;
+            border: 2px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            padding: 3px 4px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: 'Tahoma', sans-serif;
+            min-width: 80px;
+            height: 30px;
+            text-align: center;
+        }
+        
+        .diff-btn.active {
+            border-color: #808080 #ffffff #ffffff #808080;
+            background: #d4d0c8;
+        }
+        
+        .diff-btn:active {
+            border-color: #808080 #ffffff #ffffff #808080;
+        }
+        
+        /* 状态栏 */
+        .status-bar {
+            margin-top: 5px;
+            border: 1px solid;
+            border-color: #808080 #ffffff #ffffff #808080;
+            padding: 2px 4px;
+            font-size: 12px;
+            background: #c0c0c0;
+            display: flex;
+            justify-content: space-between;
+            height: 20px;
+            align-items: center;
+        }
+        .status-bar a {
+            text-decoration: none;
+            color: #0000EE;
+        }
+        
+        /* 语言切换按钮 */
+        .lang-btn {
+            background: #c0c0c0;
+            border: 1px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            padding: 1px 4px;
+            font-size: 10px;
+            cursor: pointer;
+            margin-left: 5px;
+            font-family: 'Tahoma', sans-serif;
+        }
+        
+        .lang-btn:active {
+            border-color: #808080 #ffffff #ffffff #808080;
+            background: #d4d0c8;
+        }
+
+        /* 移动端适配：限制窗口最大宽度 */
+        @media (max-width: 600px) {
+            .mine-window {
+                max-width: 100%;
+            }
+        }
+
+        /* --- 自定义 Windows XP 风格 MsgBox --- */
+        .msgbox-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4); /* 半透明遮罩 */
+            z-index: 9999;
+        }
+
+        .msgbox-window {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #ece9d8;
+            border: 2px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            box-shadow: 4px 4px 12px rgba(0,0,0,0.5);
+            min-width: 280px;
+            max-width: 90%;
+        }
+
+        .msgbox-window .title-bar {
+            padding: 4px 8px;
+            margin-bottom: 6px;
+        }
+
+        .msgbox-content {
+            padding: 20px 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .msgbox-icon {
+            font-size: 32px;
+            line-height: 1;
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.2));
+        }
+
+        .msgbox-text {
+            font-size: 12px;
+            line-height: 1.5;
+            color: #000;
+            flex: 1;
+            white-space: pre-wrap; /* 支持换行 */
+            padding-top: 4px;
+        }
+
+        .msgbox-buttons {
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .msgbox-btn {
+            min-width: 70px;
+            padding: 2px 10px;
+            background: #ece9d8;
+            border: 2px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            font-family: 'Tahoma', sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .msgbox-btn:active { border-color: #808080 #ffffff #ffffff #808080; }
+        .msgbox-btn:focus { outline: 1px dotted #000; outline-offset: -4px; }
