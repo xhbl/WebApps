@@ -518,7 +518,8 @@
                 minesRemaining: DIFFICULTY.beginner.mines,
                 timer: 0,
                 timerInterval: null,
-                firstClick: true
+                firstClick: true,
+                minesPlaced: false
             };
 
             // 输入交互状态
@@ -713,7 +714,8 @@
                     gameStarted: false,
                     minesRemaining: gameState.config.mines,
                     timer: 0,
-                    firstClick: true
+                    firstClick: true,
+                    minesPlaced: false
                 });
 
                 createEmptyBoard();
@@ -844,12 +846,17 @@
                 if (gameState.board[row][col].revealed) return;
                 if (gameState.board[row][col].flagged) return; // 旗子标记的不能点开
                 
-                // 第一次点击：布雷
+                // 第一次交互：启动游戏
                 if (gameState.firstClick) {
                     startGame();
                     gameState.firstClick = false;
                     gameState.gameStarted = true;
+                }
+                
+                // 如果是首次翻开格子，则布雷
+                if (!gameState.minesPlaced) {
                     placeMines(row, col);
+                    gameState.minesPlaced = true;
                 }
                 
                 gameState.board[row][col].revealed = true;

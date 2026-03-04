@@ -1,59 +1,5 @@
 import './style.css'
-
-document.querySelector('#app').innerHTML = `
-    <div class="mine-window">
-        <!-- 游戏主区域 -->
-        <div class="game-panel">
-            <!-- 信息栏：雷数计数器 + 笑脸 + 计时器 -->
-            <div class="info-panel">
-                <div class="counter" id="mineCounter">010</div>
-                <div class="face-button" id="faceButton">😊</div>
-                <div class="counter" id="timerCounter">000</div>
-            </div>
-            
-            <!-- 雷区容器 -->
-            <div class="board-container">
-                <div class="board" id="board"></div>
-            </div>
-            
-            <!-- 难度选择 -->
-            <div class="difficulty-bar">
-                <button class="diff-btn active" data-diff="beginner">初级</button>
-                <button class="diff-btn" data-diff="intermediate">中级</button>
-                <button class="diff-btn" data-diff="expert">高级</button>
-            </div>
-            
-            <!-- 状态栏 -->
-            <div class="status-bar">
-                <span><a href="#" id="aboutLink">XHBL</a> © 2026</span>
-                <span id="bestTimeDisplay"></span>
-                <div>
-                    <span id="gameStatus">就绪</span>
-                    <button class="lang-btn" id="langToggle">中/EN</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 自定义 MsgBox 结构 -->
-    <div id="msgbox-overlay" class="msgbox-overlay" style="display: none;">
-        <div class="msgbox-window">
-            <div class="title-bar">
-                <div class="title">
-                    <span>扫雷</span>
-                </div>
-                <div class="window-controls">
-                    <div class="win-btn" id="msgbox-close">✕</div>
-                </div>
-            </div>
-            <div class="msgbox-content">
-                <div class="msgbox-icon" id="msgbox-icon"></div>
-                <div class="msgbox-text" id="msgbox-text"></div>
-            </div>
-            <div class="msgbox-buttons" id="msgbox-buttons"></div>
-        </div>
-    </div>
-`
+import packageJson from '../package.json'
 
 // 语言配置
 const LANG = {
@@ -87,7 +33,7 @@ const LANG = {
         about: {
             title: "关于",
             header: "一款基于JavaScript的经典扫雷游戏",
-            version: "v1.0.0 by XHBL",
+            version: `v${packageJson.version} by XHBL`,
             email: "newxhbl@hotmail.com"
         }
     },
@@ -121,7 +67,7 @@ const LANG = {
         about: {
             title: "About",
             header: "A JavaScript-based classic Minesweeper game",
-            version: "v1.0.0 by XHBL",
+            version: `v${packageJson.version} by XHBL`,
             email: "newxhbl@hotmail.com"
         }
     }
@@ -154,7 +100,8 @@ let gameState = {
     minesRemaining: DIFFICULTY.beginner.mines,
     timer: 0,
     timerInterval: null,
-    firstClick: true
+    firstClick: true,
+    minesPlaced: false
 };
 
 // 输入交互状态
@@ -236,6 +183,13 @@ function t(key, params = {}) {
 function setLanguage(lang) {
     currentLang = lang;
     localStorage.setItem(CONSTANTS.LANG_KEY, lang);
+    
+    // 更新manifest链接
+    const existingManifest = document.querySelector('link[rel="manifest"]');
+    if (existingManifest) {
+        existingManifest.href = `./manifest.${lang}.webmanifest`;
+    }
+    
     updateUI();
 }
 
@@ -349,7 +303,8 @@ function initGame() {
         gameStarted: false,
         minesRemaining: gameState.config.mines,
         timer: 0,
-        firstClick: true
+        firstClick: true,
+        minesPlaced: false
     });
 
     createEmptyBoard();
@@ -480,12 +435,17 @@ function revealCell(row, col) {
     if (gameState.board[row][col].revealed) return;
     if (gameState.board[row][col].flagged) return; // 旗子标记的不能点开
     
-    // 第一次点击：布雷
+    // 第一次交互：启动游戏
     if (gameState.firstClick) {
         startGame();
         gameState.firstClick = false;
         gameState.gameStarted = true;
+    }
+    
+    // 如果是首次翻开格子，则布雷
+    if (!gameState.minesPlaced) {
         placeMines(row, col);
+        gameState.minesPlaced = true;
     }
     
     gameState.board[row][col].revealed = true;

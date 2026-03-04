@@ -2,12 +2,88 @@
 <html lang="zh">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/xjswpr.svg" />
+    <link rel="icon" type="image/svg+xml" href="./xjswpr.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ece9d8" />
+    <meta name="description" content="一款基于JavaScript的经典扫雷游戏" />
+    <link rel="apple-touch-icon" href="./xjswpr.svg" />
+    <!-- Windows PWA 配置 -->
+    <meta name="msapplication-TileImage" content="./xjswpr.svg" />
+    <meta name="msapplication-TileColor" content="#ece9d8" />
     <title>扫雷 - 经典JS版</title>
+    <!-- 动态加载manifest -->
+    <script>
+      // 检测浏览器语言，有中文匹配则使用中文，否则使用英文
+      function detectBrowserLanguage() {
+        const storedLang = localStorage.getItem('xjswpr_language');
+        if (storedLang) return storedLang;
+        
+        const browserLang = navigator.language || navigator.userLanguage;
+        return browserLang.includes('zh') ? 'zh' : 'en';
+      }
+      
+      const lang = detectBrowserLanguage();
+      const manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      manifestLink.href = `./manifest.${lang}.webmanifest`;
+      document.head.appendChild(manifestLink);
+    </script>
+    <script type="module" src="/src/main.js"></script>
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
+    <div id="app">
+      <div class="mine-window">
+        <!-- 游戏主区域 -->
+        <div class="game-panel">
+            <!-- 信息栏：雷数计数器 + 笑脸 + 计时器 -->
+            <div class="info-panel">
+                <div class="counter" id="mineCounter">010</div>
+                <div class="face-button" id="faceButton">😊</div>
+                <div class="counter" id="timerCounter">000</div>
+            </div>
+            
+            <!-- 雷区容器 -->
+            <div class="board-container">
+                <div class="board" id="board"></div>
+            </div>
+            
+            <!-- 难度选择 -->
+            <div class="difficulty-bar">
+                <button class="diff-btn active" data-diff="beginner">初级</button>
+                <button class="diff-btn" data-diff="intermediate">中级</button>
+                <button class="diff-btn" data-diff="expert">高级</button>
+            </div>
+            
+            <!-- 状态栏 -->
+            <div class="status-bar">
+                <span><a href="#" id="aboutLink">XHBL</a> © 2026</span>
+                <span id="bestTimeDisplay"></span>
+                <div>
+                    <span id="gameStatus">就绪</span>
+                    <button class="lang-btn" id="langToggle">中/EN</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自定义 MsgBox 结构 -->
+    <div id="msgbox-overlay" class="msgbox-overlay" style="display: none;">
+        <div class="msgbox-window">
+            <div class="title-bar">
+                <div class="title">
+                    <span>扫雷</span>
+                </div>
+                <div class="window-controls">
+                    <div class="win-btn" id="msgbox-close">✕</div>
+                </div>
+            </div>
+            <div class="msgbox-content">
+                <div class="msgbox-icon" id="msgbox-icon"></div>
+                <div class="msgbox-text" id="msgbox-text"></div>
+            </div>
+            <div class="msgbox-buttons" id="msgbox-buttons"></div>
+        </div>
+    </div>
+    </div>
   </body>
 </html>
