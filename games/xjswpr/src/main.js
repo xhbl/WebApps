@@ -78,7 +78,7 @@ const CONSTANTS = {
     BEST_TIMES_KEY: 'xjswpr_best_times',
     LAST_DIFFICULTY_KEY: 'xjswpr_last_difficulty',
     LANG_KEY: 'xjswpr_language',
-    LONG_PRESS_MS: 300,
+    LONG_PRESS_MS: 350, // 稍微延长一点，避免由于惯性滚动导致的误判
     DOUBLE_CLICK_MS: 300,
     TOUCH_MOVE_TOLERANCE: 10
 };
@@ -534,6 +534,8 @@ function toggleFlag(row, col) {
     if (cellEl) {
         cellEl.classList.toggle('flagged', isFlagged);
         cellEl.classList.remove('active-press'); // 状态改变后移除按下效果
+        // 强制 iOS 重绘
+        cellEl.style.zIndex = cellEl.style.zIndex === '1' ? '0' : '1';
     }
     
     // 更新剩余雷数
@@ -1005,13 +1007,15 @@ function cancelLongPress() {
 }
 
 DOM.board.addEventListener('touchstart', e => {
-    // 移除 e.preventDefault()，允许用户在棋盘上拖动进行滚动
-    // e.preventDefault();
     const cellEl = e.target.closest('.cell');
     if (!cellEl || gameState.gameOver || gameState.gameWin) return;
 
+    // 强制重绘，保证 iOS 滚动后的同步
+    cellEl.style.opacity = '0.99'; 
+    setTimeout(() => { cellEl.style.opacity = '1'; }, 0);
+
     inputState.isLongPress = false;
-    cancelLongPress(); // 清除任何旧的定时器
+    if (inputState.longPressTimer) clearTimeout(inputState.longPressTimer);
 
     const row = parseInt(cellEl.dataset.row);
     const col = parseInt(cellEl.dataset.col);
@@ -1028,24 +1032,21 @@ DOM.board.addEventListener('touchstart', e => {
     inputState.longPressTimer = setTimeout(() => {
         inputState.isLongPress = true;
         toggleFlag(row, col);
-        // 提供震动反馈以提升移动端体验
-        if (navigator.vibrate) {
-            navigator.vibrate(50); // 震动50毫秒
-        }
-        inputState.touchStartCell = null; // 操作已执行，重置起始点
+        if (navigator.vibrate) navigator.vibrate(50);
+        cellEl.classList.remove('active-press');
     }, CONSTANTS.LONG_PRESS_MS); // 500毫秒判定为长按
-}, { passive: false }); // 必须设置 passive: false 才能调用 preventDefault
+}, { passive: true });
 
 DOM.board.addEventListener('touchend', e => {
-    e.preventDefault();
     inputState.lastTouchEndTime = Date.now();
-    cancelLongPress();
+    if (inputState.longPressTimer) clearTimeout(inputState.longPressTimer);
 
     // 移除所有按下的视觉效果
     const pressedCells = DOM.board.querySelectorAll('.active-press');
     pressedCells.forEach(el => el.classList.remove('active-press'));
 
     if (inputState.isLongPress) {
+        e.preventDefault();
         inputState.isLongPress = false;
         return; // 长按已处理，直接返回
     }
@@ -1053,16 +1054,13 @@ DOM.board.addEventListener('touchend', e => {
     const cellEl = e.target.closest('.cell');
     if (!cellEl || !inputState.touchStartCell || gameState.gameOver || gameState.gameWin) return;
     
-    const endRow = parseInt(cellEl.dataset.row);
-    const endCol = parseInt(cellEl.dataset.col);
+    const row = parseInt(cellEl.dataset.row);
+    const col = parseInt(cellEl.dataset.col);
     
-    if (inputState.touchStartCell.row === endRow && inputState.touchStartCell.col === endCol) {
-        const cell = gameState.board[endRow][endCol];
-        if (!cell.revealed) {
-            revealCell(endRow, endCol);
-        } else {
-            chord(endRow, endCol);
-        }
+    if (inputState.touchStartCell.row === row && inputState.touchStartCell.col === col) {
+        e.preventDefault();
+        if (!gameState.board[row][col].revealed) revealCell(row, col);
+        else chord(row, col);
     }
     inputState.touchStartCell = null;
 }, { passive: false });
@@ -1075,16 +1073,16 @@ DOM.board.addEventListener('touchmove', e => {
     
     // 允许 10px 的移动误差，超过则取消长按和点击
     if (dx > CONSTANTS.TOUCH_MOVE_TOLERANCE || dy > CONSTANTS.TOUCH_MOVE_TOLERANCE) {
-        cancelLongPress();
+        if (inputState.longPressTimer) clearTimeout(inputState.longPressTimer);
         // 拖动超出范围时，也移除按下效果
         const pressedCells = DOM.board.querySelectorAll('.active-press');
         pressedCells.forEach(el => el.classList.remove('active-press'));
         inputState.touchStartCell = null;
     }
-}, { passive: false });
+}, { passive: true });
 
 DOM.board.addEventListener('touchcancel', () => {
-    cancelLongPress();
+    if (inputState.longPressTimer) clearTimeout(inputState.longPressTimer);
 
     // 触摸取消时，移除按下效果
     const pressedCells = DOM.board.querySelectorAll('.active-press');
@@ -1111,3 +1109,6 @@ loadBestTimes();
 const lastDifficulty = localStorage.getItem(CONSTANTS.LAST_DIFFICULTY_KEY) || 'beginner';
 setDifficulty(lastDifficulty);
 updateUI();
+
+// 解决iOS下 :active 伪类无效的问题
+document.body.addEventListener('touchstart', () => {}, { passive: true });

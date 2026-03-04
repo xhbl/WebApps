@@ -1,7 +1,9 @@
 * {
             box-sizing: border-box;
             user-select: none;
+            -webkit-user-select: none; /* 兼容Safari：禁止文本选择 */
             -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none; /* 禁用iOS系统长按菜单 */
         }
         
         body {
@@ -136,6 +138,8 @@
             padding: 2px;
             background: #c0c0c0;
             overflow: auto; /* 关键：允许雷区内容溢出时滚动 */
+            -webkit-overflow-scrolling: touch; /* 启用平滑滚动 */
+            transform: translateZ(0); /* 强制开启硬件加速 */
         }
         
         .board {
@@ -160,6 +164,7 @@
             cursor: pointer;
             box-sizing: border-box;
             line-height: 1;
+            transform: translateZ(0); /* 保证每一格在独立渲染层 */
         }
         
         /* 翻开后的样式 - 凹陷效果 */

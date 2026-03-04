@@ -9,7 +9,9 @@
         * {
             box-sizing: border-box;
             user-select: none;
+            -webkit-user-select: none; /* 兼容Safari：禁止文本选择 */
             -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none; /* 禁用iOS系统长按菜单 */
         }
         
         body {
@@ -140,6 +142,8 @@
             padding: 2px;
             background: #c0c0c0;
             overflow: auto; /* 关键：允许雷区内容溢出时滚动 */
+            -webkit-overflow-scrolling: touch; /* 启用平滑滚动 */
+            transform: translateZ(0); /* 强制开启硬件加速 */
         }
         
         .board {
@@ -164,6 +168,7 @@
             cursor: pointer;
             box-sizing: border-box;
             line-height: 1;
+            transform: translateZ(0); /* 保证每一格在独立渲染层 */
         }
         
         /* 翻开后的样式 - 凹陷效果 */
@@ -497,7 +502,7 @@
                 BEST_TIMES_KEY: 'xjswpr_best_times',
                 LAST_DIFFICULTY_KEY: 'xjswpr_last_difficulty',
                 LANG_KEY: 'xjswpr_language',
-                LONG_PRESS_MS: 300,
+                LONG_PRESS_MS: 350,
                 DOUBLE_CLICK_MS: 300,
                 TOUCH_MOVE_TOLERANCE: 10
             };
@@ -946,6 +951,8 @@
                 if (cellEl) {
                     cellEl.classList.toggle('flagged', isFlagged);
                     cellEl.classList.remove('active-press'); // 状态改变后移除按下效果
+                    // 强制 iOS 重绘
+                    cellEl.style.zIndex = cellEl.style.zIndex === '1' ? '0' : '1';
                 }
                 
                 // 更新剩余雷数
@@ -1417,10 +1424,12 @@
             }
 
             DOM.board.addEventListener('touchstart', e => {
-                // 移除 e.preventDefault()，允许用户在棋盘上拖动进行滚动
-                // e.preventDefault();
                 const cellEl = e.target.closest('.cell');
                 if (!cellEl || gameState.gameOver || gameState.gameWin) return;
+
+                // 强制重绘，保证 iOS 滚动后的同步
+                cellEl.style.opacity = '0.99'; 
+                setTimeout(() => { cellEl.style.opacity = '1'; }, 0);
 
                 inputState.isLongPress = false;
                 cancelLongPress(); // 清除任何旧的定时器
@@ -1444,12 +1453,11 @@
                     if (navigator.vibrate) {
                         navigator.vibrate(50); // 震动50毫秒
                     }
-                    inputState.touchStartCell = null; // 操作已执行，重置起始点
+                    cellEl.classList.remove('active-press');
                 }, CONSTANTS.LONG_PRESS_MS); // 500毫秒判定为长按
-            }, { passive: false }); // 必须设置 passive: false 才能调用 preventDefault
+            }, { passive: true }); // 必须设置 passive: false 才能调用 preventDefault
 
             DOM.board.addEventListener('touchend', e => {
-                e.preventDefault();
                 inputState.lastTouchEndTime = Date.now();
                 cancelLongPress();
 
@@ -1458,6 +1466,7 @@
                 pressedCells.forEach(el => el.classList.remove('active-press'));
 
                 if (inputState.isLongPress) {
+                    e.preventDefault();
                     inputState.isLongPress = false;
                     return; // 长按已处理，直接返回
                 }
@@ -1469,6 +1478,7 @@
                 const endCol = parseInt(cellEl.dataset.col);
                 
                 if (inputState.touchStartCell.row === endRow && inputState.touchStartCell.col === endCol) {
+                    e.preventDefault();
                     const cell = gameState.board[endRow][endCol];
                     if (!cell.revealed) {
                         revealCell(endRow, endCol);
@@ -1493,7 +1503,7 @@
                     pressedCells.forEach(el => el.classList.remove('active-press'));
                     inputState.touchStartCell = null;
                 }
-            }, { passive: false });
+            }, { passive: true });
             
             DOM.board.addEventListener('touchcancel', () => {
                 cancelLongPress();
@@ -1523,6 +1533,9 @@
             const lastDifficulty = localStorage.getItem(CONSTANTS.LAST_DIFFICULTY_KEY) || 'beginner';
             setDifficulty(lastDifficulty);
             updateUI();
+
+            // 解决iOS下 :active 伪类无效的问题
+            document.body.addEventListener('touchstart', () => {}, { passive: true });
         })();
     </script>
 </body>
