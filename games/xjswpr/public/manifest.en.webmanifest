@@ -4,8 +4,8 @@
   "description": "A classic Minesweeper game based on JavaScript",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#ece9d8",
-  "theme_color": "#ece9d8",
+  "background_color": "#3a6ea5",
+  "theme_color": "#3a6ea5",
   "lang": "en",
   "scope": "./",
   "icons": [

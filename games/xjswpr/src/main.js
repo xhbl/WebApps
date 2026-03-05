@@ -392,7 +392,7 @@ function calculateNeighbors() {
 function loadBestTimes() {
     const storedTimes = localStorage.getItem(CONSTANTS.BEST_TIMES_KEY);
     if (storedTimes) {
-        // 合并，防止未来增加新难度时旧记录出错
+        // 合并，防止未来增加新难度时旧纪录出错
         bestTimes = { ...bestTimes, ...JSON.parse(storedTimes) };
     }
 }
@@ -414,7 +414,7 @@ function updateBestTimeDisplay() {
 
 function showAllBestTimes() {
     const timeUnit = currentLang === 'zh' ? ' 秒' : ' seconds';
-    const noRecord = currentLang === 'zh' ? '无记录' : 'No record';
+    const noRecord = currentLang === 'zh' ? '无纪录' : 'No record';
     
     const beginnerTime = bestTimes.beginner !== null ? `${bestTimes.beginner}${timeUnit}` : noRecord;
     const intermediateTime = bestTimes.intermediate !== null ? `${bestTimes.intermediate}${timeUnit}` : noRecord;
@@ -755,7 +755,18 @@ function showChordPreview(row, col, show) {
 
 // 渲染棋盘
 function renderBoard() {
-    DOM.board.style.gridTemplateColumns = `repeat(${gameState.config.cols}, 32px)`;
+    const MAX_CELL_SIZE = 36;
+    const MIN_CELL_SIZE = 24;
+    let cellSize = MAX_CELL_SIZE;
+
+    // 动态计算单元格大小以适配窄屏（始终以初级难度9列为基准）
+    // 使用 document.body.clientWidth 替代 container.clientWidth，避免初始加载时因容器收缩导致的计算错误
+    const availableWidth = document.body.clientWidth - 24; // 减去边框和内边距的预估值
+    const cols = DIFFICULTY.beginner.cols; // 始终使用初级难度的列数作为基准
+    const calculatedSize = Math.floor(availableWidth / cols);
+    cellSize = Math.max(MIN_CELL_SIZE, Math.min(calculatedSize, MAX_CELL_SIZE));
+
+    DOM.board.style.gridTemplateColumns = `repeat(${gameState.config.cols}, ${cellSize}px)`;
     DOM.board.innerHTML = '';
     
     for (let r = 0; r < gameState.config.rows; r++) {
@@ -765,6 +776,10 @@ function renderBoard() {
             cellDiv.className = 'cell';
             cellDiv.dataset.row = r;
             cellDiv.dataset.col = c;
+            
+            // 应用计算后的单元格尺寸
+            cellDiv.style.width = `${cellSize}px`;
+            cellDiv.style.height = `${cellSize}px`;
             
             if (cell.revealed) {
                 cellDiv.classList.add('revealed');
@@ -875,7 +890,8 @@ DOM.diffBtns.forEach(btn => {
 });
 
 // --- 新增：使用事件委托处理棋盘点击 ---
-DOM.board.addEventListener('contextmenu', e => e.preventDefault());
+// 禁用全局右键/长按菜单，防止在安卓等设备上弹出系统菜单
+document.addEventListener('contextmenu', e => e.preventDefault());
 
 DOM.board.addEventListener('mousedown', e => {
     if (Date.now() - inputState.lastTouchEndTime < 500) return;
@@ -1112,3 +1128,14 @@ updateUI();
 
 // 解决iOS下 :active 伪类无效的问题
 document.body.addEventListener('touchstart', () => {}, { passive: true });
+
+// 监听窗口大小变化，为初级难度动态调整布局
+(() => {
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            renderBoard();
+        }, 100); // 防抖
+    });
+})();
