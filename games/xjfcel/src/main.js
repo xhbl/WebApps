@@ -1124,7 +1124,7 @@ import packageJson from '../package.json'
             const col = game.cols[pos.idx];
             const idx = col.findIndex(c => c.id === card.id);
             for (let i = idx; i < col.length - 1; i++) {
-                if (col[i].isRed === col[i+1].isRed || col[i].rank === col[i+1].rank + 1) return;
+                if (col[i].isRed === col[i+1].isRed || col[i].rank !== col[i+1].rank + 1) return;
             }
             cards = col.slice(idx);
             els = cards.map(c => document.querySelector(`.card[data-id="${c.id}"]`));
