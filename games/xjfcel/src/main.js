@@ -394,6 +394,13 @@ import packageJson from '../package.json'
 
     const SUITS = ['clubs', 'diamonds', 'hearts', 'spades'];
     const SYMBOLS = { 'hearts':'♥', 'diamonds':'♦', 'clubs':'♣', 'spades':'♠' };
+    
+    const faceImages = {};
+    ['j', 'q', 'k'].forEach(k => {
+        const img = new Image();
+        img.src = `./pkp_${k}.svg`;
+        faceImages[k] = img;
+    });
 
     function getCardPosition(pos, cardIndex) {
         let x = 0, y = 0;
@@ -436,7 +443,10 @@ import packageJson from '../package.json'
                 fontSize = Math.floor((layout.cardW - paddingX) / 2.2);
             }
             el.style.fontSize = `${fontSize}px`;
-            el.querySelector('.suit-l').style.fontSize = `${Math.max(20, Math.floor(layout.cardW * 0.9))}px`;
+            const suitL = el.querySelector('.suit-l');
+            if (suitL) {
+                suitL.style.fontSize = `${Math.max(20, Math.floor(layout.cardW * 0.9))}px`;
+            }
 
             el.style.position = 'absolute';
             el.style.left = `${startPos.x}px`;
@@ -843,7 +853,10 @@ import packageJson from '../package.json'
                 fontSize = Math.floor((layout.cardW - paddingX) / 2.2);
             }
             el.style.fontSize = `${fontSize}px`;
-            el.querySelector('.suit-l').style.fontSize = `${Math.max(20, Math.floor(layout.cardW * 0.9))}px`;
+            const suitL = el.querySelector('.suit-l');
+            if (suitL) {
+                suitL.style.fontSize = `${Math.max(20, Math.floor(layout.cardW * 0.9))}px`;
+            }
             
             canvas.appendChild(el);
             el.style.left = x + 'px';
@@ -1042,7 +1055,15 @@ import packageJson from '../package.json'
         div.dataset.id = card.id;
         div.dataset.type = pos.type;
         const rank = card.rank === 1 ? 'A' : card.rank === 11 ? 'J' : card.rank === 12 ? 'Q' : card.rank === 13 ? 'K' : card.rank;
-        div.innerHTML = `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div><div class="suit-l">${SYMBOLS[card.suit]}</div></div>`;
+        
+        if (card.rank > 10) {
+            const f = card.rank === 11 ? 'j' : card.rank === 12 ? 'q' : 'k';
+            div.innerHTML = `<img src="./pkp_${f}.svg" class="face-img" alt="${f}">` +
+                            `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div></div>`;
+        } else {
+            div.innerHTML = `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div><div class="suit-l">${SYMBOLS[card.suit]}</div></div>`;
+        }
+        
         div.onmousedown = (e) => {
             if (e.button === 0) startDrag(e, card, div.posData);
             if (e.button === 2) quickMove(card, div.posData);
@@ -1509,13 +1530,21 @@ import packageJson from '../package.json'
             ctx.textAlign = 'right';
             ctx.fillText(c.suit, c.x + layout.cardW - 4, c.y + 4);
 
-            const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
-            ctx.font = `${bigSuitSize}px "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'alphabetic';
-            ctx.globalAlpha = 0.8;
-            ctx.fillText(c.suit, c.x + layout.cardW / 2, c.y + layout.cardH - 5);
-            ctx.globalAlpha = 1.0;
+            const isFace = ['J', 'Q', 'K'].includes(c.rank);
+            const f = isFace ? c.rank.toString().toLowerCase() : null;
+            if (isFace && faceImages[f] && faceImages[f].complete && faceImages[f].naturalWidth > 0) {
+                const img = faceImages[f];
+                const iH = layout.cardW * (img.naturalHeight / img.naturalWidth);
+                ctx.drawImage(img, c.x, c.y + layout.cardH - iH, layout.cardW, iH);
+            } else {
+                const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
+                ctx.font = `${bigSuitSize}px "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'alphabetic';
+                ctx.globalAlpha = 0.8;
+                ctx.fillText(c.suit, c.x + layout.cardW / 2, c.y + layout.cardH - 5);
+                ctx.globalAlpha = 1.0;
+            }
         }
 
         function animate() {
