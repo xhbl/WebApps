@@ -1,0 +1,2185 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>空当接龙 - 经典JS版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50%' y='75' font-size='85' font-weight='900' fill='%23DAA520' text-anchor='middle' style='font-family: Arial, Helvetica, sans-serif;'>K</text></svg>">
+    <style>
+        html, body {
+            height: 100%; /* Ensure html and body take full viewport height */
+            overscroll-behavior: none; /* 1. 在根元素禁止，防止整个页面被下拉 */
+        }
+        :root {
+            --win-bg: #017f01;
+        }
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none; /* 兼容Safari：禁止文本选择 */
+            -webkit-user-drag: none;
+            -webkit-tap-highlight-color: transparent; /* 移除点击高亮 */
+            -webkit-touch-callout: none; /* 禁用iOS系统长按菜单 */
+        }
+        body {
+            background-color: var(--win-bg);
+            margin: 0;
+            font-family: "Tahoma", sans-serif;
+            overflow: hidden; /* 3. 确保 body 不滚动，只让 page-container 滚动 */
+            display: flex; /* Make body a flex container */
+            flex-direction: column; /* Stack page-container vertically */
+        }
+        .page-container {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1; /* Allow page-container to grow and fill available space */
+            margin: 0 auto; /* Keep for horizontal centering */
+            overflow-y: auto; /* Allow page-container to scroll if its content overflows */
+            overscroll-behavior: none; /* 2. 在滚动容器上禁止，防止滚动到顶端时触发父级下拉 */
+        }
+        .main-area {
+            display: flex;
+            flex-direction: column; /* Default: canvas above controls */
+            flex-grow: 1;
+        }
+        .sidebar-wrapper {
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        .top-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            height: 40px;
+            padding: 0;
+            font-size: 12px;
+            flex-shrink: 0;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
+        }
+        #game-title {
+            font-size: 18px;
+            font-weight: bold;
+            line-height: 1;
+        }
+        .game-canvas {
+            position: relative;
+            width: 100%;
+            flex-grow: 1; /* Canvas grows to fill space in main-area */
+            transition: min-height 0.2s ease-out; /* 添加高度变化的过渡动画 */
+        }
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            font-size: 12px;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
+        }
+        .status-bar > span:first-child { flex: 1; text-align: left; }
+        .status-bar > span:last-child { flex: 1; text-align: right; }
+        .status-bar a {
+            color: #DAA520;
+            text-decoration: none;
+        }
+        .status-bar a:hover {
+            text-decoration: underline;
+        }
+        .bottom-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 6px 0;
+            flex-shrink: 0;
+        }
+        .control-btn {
+            background: #c0c0c0;
+            border: 2px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            padding: 3px 4px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: 'Tahoma', sans-serif;
+            min-width: 80px;
+            height: 30px;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 3px;
+        }
+        .control-btn:active {
+            border-color: #808080 #ffffff #ffffff #808080;
+        }
+        .control-btn:disabled {
+            color: #888;
+            text-shadow: 1px 1px 0 #fff;
+            pointer-events: none;
+        }
+        .slot-row { position: absolute; display: flex; width: 100%; justify-content: space-between; pointer-events: none; }
+        .group { display: flex; gap: 6px; }
+        .slot {
+            border: 1px solid rgba(0,0,0,0.3);
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+        #free-group .slot::before,
+        #found-group .slot::before {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: var(--bg-icon-size, 72px);
+            color: rgba(0, 0, 0, 0.15);
+            font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+            z-index: 0;
+        }
+        .card.selected {
+            box-shadow: 0 0 5px 2px rgba(255, 215, 0, 0.8);
+            z-index: 998;
+        }
+        .hint-glow {
+            box-shadow: 0 0 5px 2px #00BFFF !important;
+            z-index: 999 !important;
+        }
+        .col-hint-box {
+            position: absolute;
+            border: 2px solid #00BFFF;
+            box-shadow: 0 0 5px 2px #00BFFF;
+            border-radius: 4px;
+            pointer-events: none;
+            z-index: 990;
+        }
+        #free-group .slot::before { content: '〇'; }
+        #found-group .slot:nth-child(1)::before { content: '♣'; }
+        #found-group .slot:nth-child(2)::before { content: '♦'; color: rgba(255, 0, 0, 0.1); }
+        #found-group .slot:nth-child(3)::before { content: '♥'; color: rgba(255, 0, 0, 0.1); }
+        #found-group .slot:nth-child(4)::before { content: '♠'; }
+        .card {
+            position: absolute; background: white; border: 1px solid #000; border-radius: 4px;
+            cursor: pointer; font-size: 14px; z-index: 10;
+            transition: left 0.2s ease-out, top 0.2s ease-out;
+            overflow: hidden;
+            font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+            transform: translateZ(0); /* 开启硬件加速，优化移动端性能 */
+            touch-action: auto; /* 默认允许浏览器处理触摸（如滚动） */
+        }
+        .card.draggable {
+            touch-action: pinch-zoom; /* 可拖拽的牌禁止浏览器平移，由JS接管 */
+        }
+        .card[data-type="cols"]:not(.draggable) {
+            background-color: #e0e0e0; /* 不可拖动的牌背景变暗 */
+        }
+        .card.red { color: #ff0000; }
+        .card.black { color: #000000; }
+        .card-inner { padding: 2px 4px; position: relative; height: 100%; pointer-events: none; }
+        .card-header {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            line-height: 1;
+        }
+        .rank { font-weight: bold; letter-spacing: -1px; }
+        .suit-s { font-size: 0.9em; }
+        .suit-l {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: -5px;
+            opacity: 0.8;
+        }
+        .dragging { z-index: 1000 !important; transition: none !important; pointer-events: none; }
+        
+        /* 瀑布画布 */
+        #victory-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 100; display: none;
+        }
+        .lang-btn {
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 0 5px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            cursor: pointer;
+            font-family: 'Tahoma', sans-serif;
+            border-radius: 2px;
+            margin-right: 5px;
+        }
+        .lang-btn:active {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 600px), (max-height: 500px) {
+            .top-info {
+                font-size: 14px;
+            }
+            #game-title {
+                font-size: 18px;
+            }
+            .bottom-controls {
+                gap: 8px;
+                padding: 6px 0;
+            }
+            .control-btn {
+                font-size: 15px;
+                min-width: 0; /* 覆盖PC端的min-width，允许按钮收缩 */
+                flex: 1; /* 让按钮平分剩余空间 */
+                padding: 5px 2px; /* 调整内边距以适应小屏幕 */
+            }
+            .card-inner { padding: 2px; }
+        }
+
+        /* 宽屏横向布局 (e.g. 手机横屏) */
+        .page-container.landscape-wide .main-area {
+            flex-direction: row; /* canvas is left, controls are right */
+        }
+        .page-container.landscape-wide .sidebar-wrapper {
+            width: 95px; /* Fixed width for the side bar */
+        }
+        .page-container.landscape-wide .status-bar {
+            flex-direction: column;
+            justify-content: center;
+            gap: 5px;
+            padding: 5px 5px;
+        }
+        .page-container.landscape-wide .status-bar > span {
+            flex: 0 !important;
+            text-align: center !important;
+        }
+        .page-container.landscape-wide .bottom-controls {
+            flex-direction: column;
+            height: auto; /* Height will be determined by flex container */
+            padding: 10px 10px;
+            gap: 10px;
+            justify-content: center;
+        }
+        .page-container.landscape-wide .control-btn {
+            width: 100%;
+            flex: 0 1 auto; /* Reset mobile flex behavior */
+        }
+
+        /* --- 自定义 Windows XP 风格 MsgBox --- */
+        .msgbox-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4); /* 半透明遮罩 */
+            z-index: 9999;
+        }
+        .msgbox-window {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #ece9d8;
+            border: 2px solid;
+            border-color: #ffffff #808080 #808080 #ffffff;
+            box-shadow: 4px 4px 12px rgba(0,0,0,0.5);
+            min-width: 280px;
+            max-width: 90%;
+        }
+        .msgbox-window .title-bar { background: #0a246a; color: white; padding: 4px 8px; margin-bottom: 6px; font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+        .msgbox-window .title-bar .title { display: flex; align-items: center; gap: 6px; }
+        .msgbox-window .window-controls { display: flex; gap: 2px; }
+        .msgbox-window .win-btn { width: 20px; height: 20px; background: #ece9d8; border: 2px solid; border-color: #ffffff #808080 #808080 #ffffff; font-size: 12px; line-height: 16px; text-align: center; color: #000; cursor: default; }
+        .msgbox-content { padding: 20px 15px; display: flex; align-items: flex-start; gap: 15px; }
+        .msgbox-icon { font-size: 32px; line-height: 1; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.2)); }
+        .msgbox-text { font-size: 12px; line-height: 1.5; color: #000; flex: 1; white-space: pre-wrap; padding-top: 4px; }
+        .msgbox-text a { color: #0000EE; }
+        .msgbox-buttons { padding: 10px; display: flex; justify-content: center; gap: 10px; }
+        .msgbox-btn { min-width: 70px; padding: 2px 10px; background: #ece9d8; border: 2px solid; border-color: #ffffff #808080 #808080 #ffffff; font-family: 'Tahoma', sans-serif; font-size: 12px; cursor: pointer; }
+        .msgbox-btn:active { border-color: #808080 #ffffff #ffffff #808080; }
+        .msgbox-btn:focus { outline: 1px dotted #000; outline-offset: -4px; }
+        .msgbox-window.stats-mode .msgbox-content {
+            padding: 0 15px;
+        }
+        .msgbox-window.stats-mode .msgbox-text {
+            padding-top: 0;
+        }
+        .msgbox-window.stats-mode .title-bar {
+            margin-bottom: 2px;
+        }
+        .msgbox-window.stats-mode .msgbox-buttons {
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-container">
+    <div class="top-info">
+        <div style="flex: 1; display: flex; align-items: center;">
+            <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50%' y='75' font-size='85' font-weight='900' fill='%23DAA520' text-anchor='middle' style='font-family: Arial, Helvetica, sans-serif;'>K</text></svg>" style="height: 20px; width: 20px;">
+        </div>
+        <span id="game-title">空当接龙</span>
+        <div style="flex: 1; text-align: right;">
+            <button class="lang-btn" id="langToggle">中</button>
+        </div>
+    </div>
+
+    <div class="main-area">
+        <div class="game-canvas" id="canvas">
+            <div class="slot-row" id="bg-slots">
+                <div class="group" id="free-group"></div>
+                <div class="group" id="found-group"></div>
+            </div>
+        </div>
+    
+        <div class="sidebar-wrapper">
+            <div class="bottom-controls">
+            <button class="control-btn" id="stats-btn">统计</button>
+                <button class="control-btn" id="select-game-btn">选局</button>
+                <button class="control-btn" id="new-game-btn">新游戏</button>
+                <button class="control-btn" id="hint-btn">提示</button>
+                <button class="control-btn" id="undo-btn">撤销</button>
+            </div>
+            <div class="status-bar">
+                <span id="game-info"></span>
+                <span id="cards-left-info"></span>
+                <span><a href="#" id="aboutLink">XHBL</a> © 2026</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="msgbox-overlay" class="msgbox-overlay" style="display: none;">
+    <div class="msgbox-window">
+        <div class="title-bar">
+            <div class="title">
+                <span>空当接龙</span>
+            </div>
+            <div class="window-controls">
+                <div class="win-btn" id="msgbox-close">✕</div>
+            </div>
+        </div>
+        <div class="msgbox-content">
+            <div class="msgbox-icon" id="msgbox-icon"></div>
+            <div class="msgbox-text" id="msgbox-text"></div>
+        </div>
+        <div class="msgbox-buttons" id="msgbox-buttons"></div>
+    </div>
+</div>
+
+<canvas id="victory-canvas"></canvas>
+
+<script>
+(function() {
+    // ---------- 工具函数：Canvas圆角矩形 (修复瀑布动画) ----------
+    const LANG = {
+        zh: {
+            title: "空当接龙 - 经典版",
+            headerTitle: "空当接龙",
+            buttons: {
+                stats: "统计",
+                select: "选局",
+                new: "新游戏",
+                hint: "提示",
+                undo: "撤销"
+            },
+            status: {
+                game: "游戏",
+                left: "剩余纸牌"
+            },
+            about: {
+                title: "关于",
+                header: "一款基于JavaScript的经典空当接龙游戏",
+                version: "v1.0.48 by XHBL",
+                email: "newxhbl@hotmail.com"
+            },
+            newGameTitle: "新游戏",
+            confirmNewGameMessage: "游戏正在进行，要开始新的一局吗？",
+            replayCurrentGame: "重玩本局",
+            selectGameTitle: "选局",
+            selectGameMessage: "选择 1 - 1000000 之间的游戏编号:",
+            errorTitle: "错误",
+            invalidSeedMessage: "请输入 1 到 1000000 之间的有效数字。",
+            ok: "确定",
+            cancel: "取消",
+            yes: "是",
+            no: "否",
+            close: "关闭",
+            winTitle: "恭喜",
+            winMessage: "恭喜你获胜了！\n再玩新的一局吗？",
+            noMovesTitle: "无路可走",
+            noMovesMessage: "当前已无路可走。\n您可以撤销上一步或开始新游戏。",
+            stats: {
+                title: "统计信息",
+                played: "已玩游戏",
+                won: "已胜游戏",
+                rate: "获胜率",
+                maxWin: "最多连胜",
+                maxLose: "最多连败",
+                current: "当前连局",
+                reset: "重置",
+                confirmReset: "确定要重置所有统计数据吗？",
+                winStreakTag: "连胜",
+                loseStreakTag: "连败"
+            }
+        },
+        en: {
+            title: "FreeCell - Classic Version",
+            headerTitle: "FreeCell",
+            buttons: {
+                stats: "Stats",
+                select: "Select",
+                new: "New",
+                hint: "Hint",
+                undo: "Undo"
+            },
+            status: {
+                game: "Game",
+                left: "Cards left"
+            },
+            about: {
+                title: "About",
+                header: "A JavaScript-based classic FreeCell game",
+                version: "v1.0.48 by XHBL",
+                email: "newxhbl@hotmail.com"
+            },
+            newGameTitle: "New Game",
+            confirmNewGameMessage: "A game is in progress. Start a new game?",
+            replayCurrentGame: "Replay this game",
+            selectGameTitle: "Select Game",
+            selectGameMessage: "Enter a game number between 1 - 1,000,000:",
+            errorTitle: "Error",
+            invalidSeedMessage: "Please enter a valid number between 1 and 1,000,000.",
+            ok: "OK",
+            cancel: "Cancel",
+            yes: "Yes",
+            no: "No",
+            close: "Close",
+            winTitle: "Congratulations",
+            winMessage: "You Win!\nPlay a new game?",
+            noMovesTitle: "No Moves Left",
+            noMovesMessage: "No more moves available.\nYou can undo or start a new game.",
+            stats: {
+                title: "Statistics",
+                played: "Games Played",
+                won: "Games Won",
+                rate: "Win Percentage",
+                maxWin: "Longest Win Streak",
+                maxLose: "Longest Lose Streak",
+                current: "Current Streak",
+                reset: "Reset",
+                confirmReset: "Are you sure you want to reset all statistics?",
+                winStreakTag: "Wins",
+                loseStreakTag: "Losses"
+            }
+        }
+    };
+    const STORAGE_KEY = 'xjfcel-savegame';
+    const STATS_KEY = 'xjfcel-stats';
+    const LANG_KEY = 'xjfcel-lang';
+
+    function detectLanguage() {
+        const stored = localStorage.getItem(LANG_KEY);
+        if (stored) return stored;
+        const browserLang = navigator.language || navigator.userLanguage || '';
+        return browserLang.includes('zh') ? 'zh' : 'en';
+    }
+    let currentLang = detectLanguage();
+
+    function t(key, params = {}) {
+        let text = key.split('.').reduce((obj, k) => obj && obj[k], LANG[currentLang]);
+        if (text === undefined) return key;
+        if (typeof text === 'string') {
+            for (const [param, value] of Object.entries(params)) {
+                text = text.replace(`{${param}}`, value);
+            }
+        }
+        return text;
+    }
+
+    function updateUIText() {
+        document.title = t('title');
+        document.getElementById('game-title').textContent = t('headerTitle');
+        document.getElementById('langToggle').textContent = currentLang === 'zh' ? '中' : 'EN';
+        
+        document.getElementById('stats-btn').textContent = t('buttons.stats');
+        document.getElementById('select-game-btn').textContent = t('buttons.select');
+        document.getElementById('new-game-btn').textContent = t('buttons.new');
+        document.getElementById('hint-btn').textContent = t('buttons.hint');
+        document.getElementById('undo-btn').textContent = t('buttons.undo');
+
+        // 尝试更新状态栏（使用 try-catch 防止在 game 对象初始化前调用报错）
+        try { updateStatusBar(); } catch (e) {}
+    }
+
+    function setLanguage(lang) {
+        currentLang = lang;
+        localStorage.setItem(LANG_KEY, lang);
+        updateUIText();
+    }
+
+    let gameStats = {
+        played: 0,
+        won: 0,
+        winStreak: 0,
+        maxWinStreak: 0,
+        maxLoseStreak: 0
+    };
+
+    function loadStats() {
+        const s = localStorage.getItem(STATS_KEY);
+        if (s) {
+            try {
+                const parsed = JSON.parse(s);
+                Object.assign(gameStats, parsed);
+            } catch(e) {}
+        }
+    }
+
+    function saveStats() {
+        localStorage.setItem(STATS_KEY, JSON.stringify(gameStats));
+    }
+
+    function updateStatsOnWin() {
+        gameStats.played++;
+        gameStats.won++;
+        if (gameStats.winStreak > 0) {
+            gameStats.winStreak++;
+        } else {
+            gameStats.winStreak = 1;
+        }
+        if (gameStats.winStreak > gameStats.maxWinStreak) {
+            gameStats.maxWinStreak = gameStats.winStreak;
+        }
+        saveStats();
+    }
+
+    function checkAbandonment() {
+        // 如果当前游戏有操作记录且未获胜，则视为放弃/失败
+        if (game.hasMoved && !game.isWon) {
+            gameStats.played++;
+            if (gameStats.winStreak < 0) {
+                gameStats.winStreak--;
+            } else {
+                gameStats.winStreak = -1;
+            }
+            if (Math.abs(gameStats.winStreak) > gameStats.maxLoseStreak) {
+                gameStats.maxLoseStreak = Math.abs(gameStats.winStreak);
+            }
+            saveStats();
+        }
+    }
+
+    function saveGameState() {
+        if (game.isWon) {
+            clearSavedGame();
+            return;
+        }
+        const state = {
+            seed: game.seed,
+            free: game.free,
+            found: game.found,
+            cols: game.cols,
+            history: game.history,
+            score: game.score,
+            isWon: game.isWon,
+            hasMoved: game.hasMoved
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function clearSavedGame() {
+        localStorage.removeItem(STORAGE_KEY);
+    }
+
+    function loadAndInitialize() {
+        const savedData = localStorage.getItem(STORAGE_KEY);
+        if (savedData) {
+            try {
+                const state = JSON.parse(savedData);
+                if (state.isWon) { // 如果保存的是已获胜的游戏，则开始新局
+                    clearSavedGame();
+                    return newRandomGame(true);
+                }
+                Object.assign(game, state); // 恢复游戏状态
+                if (state.hasMoved === undefined && game.history.length > 0) {
+                    game.hasMoved = true; // 兼容旧存档：如果有历史记录则视为已操作
+                }
+                updateUIText();
+                updateAndRender(); // 渲染恢复的牌局，不播放发牌动画
+            } catch (e) {
+                newRandomGame(true); // 解析失败则开始新局
+            }
+        } else {
+            newRandomGame(true); // 没有存档则开始新局
+        }
+    }
+
+    function showMessageBox(options) {
+        const { title = t('title'), message, type = 'info', buttons = 'ok', checkbox = null, callback } = options;
+        const overlay = document.getElementById('msgbox-overlay');
+        const iconEl = document.getElementById('msgbox-icon');
+        const textEl = document.getElementById('msgbox-text');
+        const btnsEl = document.getElementById('msgbox-buttons');
+        const closeBtn = document.getElementById('msgbox-close');
+        const titleEl = document.querySelector('#msgbox-overlay .title-bar .title span');
+
+        document.querySelector('.msgbox-window').classList.remove('stats-mode');
+
+        if (titleEl) titleEl.textContent = title;
+        textEl.innerHTML = message;
+
+        if (checkbox && checkbox.text) {
+            textEl.innerHTML += `<div style="margin-top: 10px;"><label style="cursor: pointer; display: flex; align-items: center;"><input type="checkbox" id="msgbox-checkbox" style="margin: 0 6px 0 0;"><span>${checkbox.text}</span></label></div>`;
+        }
+
+        iconEl.style.display = 'block';
+
+        let iconChar = '';
+        if (type === 'question') iconChar = '❓';
+        else if (type === 'error') iconChar = '❌';
+        else if (type === 'win') iconChar = '🚩';
+        else iconChar = 'ℹ️';
+        iconEl.textContent = iconChar;
+
+        btnsEl.innerHTML = '';
+        const createBtn = (text, val) => {
+            const btn = document.createElement('button');
+            btn.className = 'msgbox-btn';
+            btn.textContent = text;
+            btn.onclick = () => {
+                overlay.style.display = 'none';
+                if (callback) {
+                    const checkboxEl = document.getElementById('msgbox-checkbox');
+                    const checkboxChecked = checkboxEl ? checkboxEl.checked : false;
+                    // Pass an object to the callback for more flexibility
+                    callback({ confirmed: val, checkboxChecked: checkboxChecked });
+                }
+            };
+            return btn;
+        };
+
+        if (buttons === 'yes-no') {
+            btnsEl.appendChild(createBtn(t('yes'), true));
+            btnsEl.appendChild(createBtn(t('no'), false));
+        } else {
+            btnsEl.appendChild(createBtn(t('ok'), true));
+        }
+
+        closeBtn.onclick = () => {
+            overlay.style.display = 'none';
+            if (callback) callback({ confirmed: false, checkboxChecked: false });
+        };
+        overlay.style.display = 'block';
+    }
+
+    function showInputBox(options) {
+        const { title, message, defaultValue = '', callback } = options;
+        const overlay = document.getElementById('msgbox-overlay');
+        const iconEl = document.getElementById('msgbox-icon');
+        const textEl = document.getElementById('msgbox-text');
+        const btnsEl = document.getElementById('msgbox-buttons');
+        const closeBtn = document.getElementById('msgbox-close');
+        const titleEl = document.querySelector('#msgbox-overlay .title-bar .title span');
+
+        document.querySelector('.msgbox-window').classList.remove('stats-mode');
+
+        if (titleEl) titleEl.textContent = title;
+        
+        textEl.innerHTML = `${message}<br><input type="number" id="msgbox-input" value="${defaultValue}" style="width: 100%; margin-top: 10px; padding: 4px; border: 1px solid #808080; -webkit-user-select: text; user-select: text;">`;
+        
+        iconEl.textContent = '';
+        iconEl.style.display = 'none';
+        btnsEl.innerHTML = '';
+        const createBtn = (text, val, isDefault) => {
+            const btn = document.createElement('button');
+            btn.className = 'msgbox-btn';
+            btn.textContent = text;
+            btn.onclick = () => {
+                const input = document.getElementById('msgbox-input');
+                const value = val ? input.value : null;
+                overlay.style.display = 'none';
+                if (callback) callback(value);
+            };
+            if (isDefault) {
+                setTimeout(() => btn.focus(), 100);
+            }
+            return btn;
+        };
+
+        const okBtn = createBtn(t('ok'), true, false);
+        const cancelBtn = createBtn(t('cancel'), false, false);
+        
+        btnsEl.appendChild(okBtn);
+        btnsEl.appendChild(cancelBtn);
+
+        const inputEl = document.getElementById('msgbox-input');
+        inputEl.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                okBtn.click();
+            } else if (e.key === 'Escape') {
+                cancelBtn.click();
+            }
+        };
+        setTimeout(() => {
+            inputEl.focus();
+            inputEl.select();
+        }, 50);
+
+        closeBtn.onclick = () => {
+            overlay.style.display = 'none';
+            if (callback) callback(null);
+        };
+        overlay.style.display = 'block';
+    }
+
+    function showAbout() {
+        const about = t('about');
+        const emailLink = `<a href="mailto:${about.email}?subject=[xjfcel]: Inquiry" target="_blank">${about.email}</a>`;
+        const message = `${about.header}\n\n${about.version}\n${emailLink}`;
+        showMessageBox({ title: about.title, message: message, type: 'info', buttons: 'ok' });
+    }
+
+    if (!CanvasRenderingContext2D.prototype.roundRect) {
+        CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+            if (w < 2 * r) r = w / 2;
+            if (h < 2 * r) r = h / 2;
+            this.moveTo(x + r, y);
+            this.lineTo(x + w - r, y);
+            this.quadraticCurveTo(x + w, y, x + w, y + r);
+            this.lineTo(x + w, y + h - r);
+            this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            this.lineTo(x + r, y + h);
+            this.quadraticCurveTo(x, y + h, x, y + h - r);
+            this.lineTo(x, y + r);
+            this.quadraticCurveTo(x, y, x + r, y);
+            this.closePath();
+            return this;
+        };
+    }
+
+    // ---------- 伪随机数生成器 (Windows FreeCell 算法) ----------
+    class MSRand {
+        constructor(seed) { this.seed = seed; }
+        next() { this.seed = (this.seed * 214013 + 2531011) & 0xFFFFFFFF; return (this.seed >>> 16) & 0x7FFF; }
+    }
+
+    const SUITS = ['clubs', 'diamonds', 'hearts', 'spades'];
+    const SYMBOLS = { 'hearts':'♥', 'diamonds':'♦', 'clubs':'♣', 'spades':'♠' };
+
+    // 动画辅助函数
+    function getCardPosition(pos, cardIndex) {
+        let x = 0, y = 0;
+        if (pos.type === 'free') {
+            x = layout.freeSlotsPos[pos.idx].x;
+            y = layout.freeSlotsPos[pos.idx].y;
+        } else if (pos.type === 'found') {
+            x = layout.foundSlotsPos[pos.idx].x;
+            y = layout.foundSlotsPos[pos.idx].y;
+        } else if (pos.type === 'cols') {
+            x = layout.colsXPos[pos.idx];
+            const colY = layout.paddingY + layout.cardH + layout.rowGap;
+            y = colY + cardIndex * layout.stackYOffset;
+        }
+        return { x, y };
+    }
+
+    async function animateMove(cards, from, to) {
+        const duration = 150;
+        const canvas = document.getElementById('canvas');
+        const flyers = [];
+
+        let startIdx = 0;
+        if (from.type === 'cols') startIdx = game.cols[from.idx].length - cards.length;
+
+        let destIdx = 0;
+        if (to.type === 'cols') destIdx = game.cols[to.idx].length;
+
+        for (let i = 0; i < cards.length; i++) {
+            const card = cards[i];
+            const startPos = getCardPosition(from, startIdx + i);
+            
+            const el = createCardEl(card, { type: 'animation' });
+            el.style.width = `${layout.cardW}px`;
+            el.style.height = `${layout.cardH}px`;
+            
+            let fontSize = Math.max(10, Math.floor(layout.stackYOffset * 0.90));
+            const paddingX = (window.innerWidth <= 600 || window.innerHeight <= 500) ? 4 : 8;
+            if (fontSize * 2.2 > layout.cardW - paddingX) {
+                fontSize = Math.floor((layout.cardW - paddingX) / 2.2);
+            }
+            el.style.fontSize = `${fontSize}px`;
+            el.querySelector('.suit-l').style.fontSize = `${Math.max(20, Math.floor(layout.cardW * 0.9))}px`;
+
+            el.style.position = 'absolute';
+            el.style.left = `${startPos.x}px`;
+            el.style.top = `${startPos.y}px`;
+            el.style.zIndex = 1000 + i;
+            el.style.transition = `left ${duration}ms ease-out, top ${duration}ms ease-out`;
+            el.style.pointerEvents = 'none';
+            el.classList.add('selected');
+
+            // 隐藏原始卡牌，避免“分身”效果
+            const originalEl = document.querySelector(`.card[data-id="${card.id}"]`);
+            if (originalEl) originalEl.style.visibility = 'hidden';
+
+            canvas.appendChild(el);
+            flyers.push({ el, index: i });
+        }
+
+        // Force reflow
+        if (flyers.length > 0) flyers[0].el.getBoundingClientRect();
+
+        flyers.forEach(({ el, index }) => {
+            const destPos = getCardPosition(to, destIdx + index);
+            el.style.left = `${destPos.x}px`;
+            el.style.top = `${destPos.y}px`;
+        });
+
+        await new Promise(r => setTimeout(r, duration));
+        flyers.forEach(f => f.el.remove());
+    }
+
+    function updateStatusBar() {
+        document.getElementById('game-info').innerText = `${t('status.game')}: #${game.seed}`;
+        const cardsOnBoard = game.cols.reduce((sum, col) => sum + col.length, 0) + game.free.filter(Boolean).length;
+        document.getElementById('cards-left-info').innerText = `${t('status.left')}: ${cardsOnBoard}`;
+    }
+
+    // ---------- 核心游戏逻辑 ----------
+    class FreeCellLogic {
+        constructor() { 
+            this.reset(Math.floor(Math.random() * 1000000) + 1); 
+            this.score = 0;
+            this.isWon = false;
+            this.history = [];
+        }
+
+        reset(seed) {
+            this.seed = seed;
+            this.free = Array(4).fill(null);
+            this.found = [0, 0, 0, 0];
+            this.cols = Array.from({length: 8}, () => []);
+            this.isWon = false;
+            this.history = [];
+            this.score = 0;
+            this.hasMoved = false;
+            let deck = [];
+            // Microsoft FreeCell 算法：初始化顺序为 K黑,K红,K方,K梅... (51 -> 0)
+            for (let r = 13; r >= 1; r--) {
+                for (let s = 3; s >= 0; s--) {
+                    let suit = SUITS[s];
+                    deck.push({ suit: suit, rank: r, isRed: (suit === 'hearts' || suit === 'diamonds'), id: suit + r });
+                }
+            }
+            const rng = new MSRand(seed);
+            for (let i = 0; i < 52; i++) {
+                let j = 51 - (rng.next() % (52 - i));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+            deck.forEach((card, i) => this.cols[i % 8].push(card));
+        }
+
+        getMaxMovable(toEmptyCol) {
+            const freeCells = this.free.filter(c => !c).length;
+            let emptyCols = this.cols.filter(c => c.length === 0).length;
+            if (toEmptyCol) emptyCols--;
+            return (freeCells + 1) * Math.pow(2, Math.max(0, emptyCols));
+        }
+
+        getHints() {
+            const hints = [];
+            
+            // 1. 优先检查能否移入回收区 (Found)
+            // From Cols
+            for (let c = 0; c < 8; c++) {
+                if (this.cols[c].length > 0) {
+                    let card = this.cols[c][this.cols[c].length - 1];
+                    let suitIdx = SUITS.indexOf(card.suit);
+                    if (card.rank === this.found[suitIdx] + 1) {
+                        hints.push({ src: { type: 'cols', idx: c, card }, dest: { type: 'found', idx: suitIdx }, score: 100 });
+                    }
+                }
+            }
+            // From Free
+            for (let f = 0; f < 4; f++) {
+                if (this.free[f]) {
+                    let card = this.free[f];
+                    let suitIdx = SUITS.indexOf(card.suit);
+                    if (card.rank === this.found[suitIdx] + 1) {
+                        hints.push({ src: { type: 'free', idx: f, card }, dest: { type: 'found', idx: suitIdx }, score: 100 });
+                    }
+                }
+            }
+
+            // 2. 检查能否移动到叠牌区 (Tableau)
+            // 2.1 从中转区 (Free) 移动
+            for (let f = 0; f < 4; f++) {
+                if (this.free[f]) {
+                    let card = this.free[f];
+                    for (let c = 0; c < 8; c++) {
+                        if (this.cols[c].length > 0) {
+                            let top = this.cols[c][this.cols[c].length - 1];
+                            if (top.isRed !== card.isRed && top.rank === card.rank + 1) {
+                                hints.push({ src: { type: 'free', idx: f, card }, dest: { type: 'cols', idx: c }, score: 50 });
+                            }
+                        } else if (this.getMaxMovable(true) >= 1) {
+                             hints.push({ src: { type: 'free', idx: f, card }, dest: { type: 'cols', idx: c }, score: 20 });
+                        }
+                    }
+                }
+            }
+            // 2.2 从其他列移动 (尝试移动最长有效序列)
+            for (let c1 = 0; c1 < 8; c1++) {
+                if (this.cols[c1].length === 0) continue;
+                let col = this.cols[c1];
+                
+                // 检查移动单张牌
+                let card = col[col.length - 1];
+                
+                // 检查移动有效序列
+                let validLen = 1;
+                for (let k = col.length - 2; k >= 0; k--) {
+                    if (col[k].isRed !== col[k+1].isRed && col[k].rank === col[k+1].rank + 1) validLen++;
+                    else break;
+                }
+
+                // 从最深的可移动牌开始尝试
+                for (let j = 0; j < validLen; j++) {
+                    let idx = col.length - validLen + j;
+                    let cardToMove = col[idx];
+                    let cardsToMove = col.slice(idx);
+                    for (let c2 = 0; c2 < 8; c2++) {
+                        if (c1 === c2) continue;
+                        let valid = false;
+                        let score = 0;
+
+                        if (this.cols[c2].length > 0) {
+                            let top = this.cols[c2][this.cols[c2].length - 1];
+                            if (top.isRed !== cardToMove.isRed && top.rank === cardToMove.rank + 1) {
+                                valid = true;
+                                score = 40 + cardsToMove.length; // 优先移动长序列
+                            }
+                        } else if (idx > 0) {
+                            valid = true; // 移动到空列 (不移动整列到空列)
+                            score = 30;
+                        }
+
+                        if (valid && cardsToMove.length <= this.getMaxMovable(this.cols[c2].length === 0)) {
+                            hints.push({ src: { type: 'cols', idx: c1, card: cardToMove }, dest: { type: 'cols', idx: c2 }, score: score });
+                        }
+                    }
+                }
+            }
+
+            // 3. 检查能否移动到中转区 (Cols -> Free)
+            const emptyFreeIndices = this.free.map((c, i) => c === null ? i : -1).filter(i => i !== -1);
+            if (emptyFreeIndices.length > 0) {
+                for (let c = 0; c < 8; c++) {
+                    if (this.cols[c].length > 0) {
+                        let card = this.cols[c][this.cols[c].length - 1];
+                        // 建议移动到第一个可用的空闲位
+                        hints.push({ src: { type: 'cols', idx: c, card }, dest: { type: 'free', idx: emptyFreeIndices[0] }, score: 10 });
+                    }
+                }
+            }
+
+            // 按分数降序排序
+            hints.sort((a, b) => b.score - a.score);
+            return hints;
+        }
+
+        async move(cards, from, to, animate = true) {
+            if (!this.hasMoved) {
+                this.hasMoved = true;
+            }
+
+            this.history.push(JSON.stringify({
+                free: this.free.map(f => f ? {...f} : null),
+                found: [...this.found],
+                cols: this.cols.map(col => col.map(c => ({...c}))),
+                score: this.score
+            }));
+            if (this.history.length > 100) this.history.shift();
+
+            // 播放飞牌动画
+            if (animate) {
+                await animateMove(cards, from, to);
+            }
+
+            if (from.type === 'cols') {
+                this.cols[from.idx].splice(-cards.length);
+            } else if (from.type === 'free') {
+                this.free[from.idx] = null;
+            }
+
+            if (to.type === 'cols') {
+                this.cols[to.idx].push(...cards);
+            } else if (to.type === 'free') {
+                this.free[to.idx] = cards[0];
+            } else if (to.type === 'found') {
+                this.found[to.idx] = cards[0].rank;
+                this.score += 10;
+            }
+
+            renderContent();
+            await this.autoCollect();
+            this.checkWin();
+            saveGameState();
+
+            if (!this.isWon && this.getHints().length === 0) {
+                showMessageBox({
+                    title: t('noMovesTitle'),
+                    message: t('noMovesMessage'),
+                    type: 'error',
+                    buttons: 'ok'
+                });
+            }
+        }
+
+        async autoCollect() {
+            const candidates = [
+                ...this.free.map((c, i) => c ? { card: c, pos: { type: 'free', idx: i } } : null),
+                ...this.cols.map((col, i) => col.length > 0 ? { card: col[col.length-1], pos: { type: 'cols', idx: i } } : null)
+            ].filter(Boolean);
+
+            for (let { card, pos } of candidates) {
+                const suitIdx = SUITS.indexOf(card.suit);
+
+                // 基础检查: 这张牌是否是其回收单元的下一张?
+                if (card.rank === this.found[suitIdx] + 1) {
+                    
+                    // 安全检查 (N-1 Rule):
+                    let isSafeToMove = false;
+
+                    // 规则 1: A 和 2 永远是安全的
+                    if (card.rank <= 2) {
+                        isSafeToMove = true;
+                    } else {
+                        // 规则 2: 对于 3 及以上的牌 (N)，检查所有点数为 N-1 且颜色相反的牌是否已回收
+                        const rankToCompare = card.rank - 1;
+                        const oppositeColorIndices = card.isRed ? [0, 3] : [1, 2]; // 黑桃/梅花 vs 红桃/方块
+
+                        if (this.found[oppositeColorIndices[0]] >= rankToCompare && 
+                            this.found[oppositeColorIndices[1]] >= rankToCompare) {
+                            isSafeToMove = true;
+                        }
+                    }
+
+                    if (isSafeToMove) {
+                        await this.move([card], pos, { type: 'found', idx: suitIdx }, true);
+                        return; // 每次只移动一张最安全的牌，然后重新开始检查
+                    }
+                }
+            }
+        }
+
+        checkWin() {
+            if (this.isWon) return;
+            if (this.found.every(r => r === 13)) {
+                this.isWon = true;
+                handleGameWin();
+            }
+        }
+
+        undo() {
+            if (this.history.length === 0) return;
+            let prev = JSON.parse(this.history.pop());
+            this.free = prev.free.map(f => f ? {...f} : null);
+            this.found = [...prev.found];
+            this.cols = prev.cols.map(col => col.map(c => ({...c})));
+            this.score = prev.score;
+            renderContent();
+            saveGameState();
+        }
+    }
+
+    const game = new FreeCellLogic();
+    let drag = null;
+    let selection = null;
+    let currentHints = [];
+    let currentHintIndex = 0;
+    let lastTapTime = 0; // 用于检测双击
+    const DOUBLE_TAP_DELAY = 300; // 双击判定时间间隔(ms)
+    const DRAG_THRESHOLD = 5; // 拖拽阈值，鼠标移动超过此像素才算拖拽
+    let layout = {
+        cardW: 71, cardH: 96, paddingX: 10, paddingY: 10, colGap: 10, rowGap: 20, statusBarH: 0,
+        stackYOffset: 25, topBarH: 0, bottomBarH: 0, canvasW: 0, canvasH: 0,
+        freeSlotsPos: [], foundSlotsPos: [], colsXPos: []
+    };
+
+    function calculateLayout() {
+        const vw = document.documentElement.clientWidth; // 修复：使用 clientWidth 排除滚动条宽度
+        const vh = window.innerHeight;
+        const pageContainer = document.querySelector('.page-container');
+        const topBar = document.querySelector('.top-info');
+        const bottomBar = document.querySelector('.bottom-controls');
+        const statusBar = document.querySelector('.status-bar');
+
+        // 切换布局模式
+        const isLandscapeWide = (vw / vh >= 2) && (vh < 500);
+        pageContainer.classList.toggle('landscape-wide', isLandscapeWide);
+
+        layout.topBarH = topBar.offsetHeight;
+        layout.statusBarH = statusBar.offsetHeight;
+        layout.bottomBarH = bottomBar.offsetHeight;
+        const bottomBarWidth = isLandscapeWide ? 95 : 0; // 侧边栏固定宽度95px，竖屏时不占用水平空间
+        
+        const canvasVpHeight = Math.max(400, vh); // 保证最小高度
+        
+        const canvasVpWidth = vw;
+
+        let mode = 'pc';
+        if (vw < 480) mode = 'phone';
+        else if (vw < 800) mode = 'tablet';
+
+        // 定义响应式间距
+        const basePaddingX = { phone: 2, tablet: 10, pc: 50 }[mode];
+        const baseColGap = { phone: 2, tablet: 8, pc: 10 }[mode]; // 窄屏下缩小列间距
+        const cardAspectRatio = 96 / 71;
+        
+        let vMode = 'pc';
+        if (canvasVpHeight < 500) vMode = 'phone';
+        else if (canvasVpHeight < 700) vMode = 'tablet';
+        const basePaddingY = 5;
+        
+        const gapValues = { phone: 10, tablet: 15, pc: 20 };
+        const baseRowGap = Math.min(gapValues[mode], gapValues[vMode]);
+
+        // 1. 根据宽度计算牌宽
+        const availableW = Math.max(320, isLandscapeWide ? canvasVpWidth - bottomBarWidth : canvasVpWidth);
+        let cardW_width = (availableW - (2 * basePaddingX) - (7 * baseColGap)) / 8;
+
+        // 2. 根据高度计算牌宽 (关键逻辑重构)
+        // 这里的核心逻辑是：计算出在给定的垂直空间里，能容纳一个完整游戏布局（上层加13张叠牌）的最大牌张尺寸。
+
+        // 2.1. 计算可用于游戏画布的总垂直空间 (availableH)
+        // 在竖屏模式下，需要减去状态栏和按钮栏的高度
+        const availableH = canvasVpHeight - layout.topBarH - (isLandscapeWide ? 0 : (layout.bottomBarH + layout.statusBarH));
+        const verticalFixedSpace = basePaddingY + baseRowGap + basePaddingY;
+
+        // 2.3. 推导卡牌高度 (cardH) 的计算公式
+        // availableH = verticalFixedSpace + (上排卡牌高度) + (下排13张叠牌的高度)
+        // availableH = verticalFixedSpace + cardH + (cardH + 12 * stackYOffset)
+        // 因为 stackYOffset ≈ cardH * STACK_OFFSET_RATIO, 所以:
+        // availableH = verticalFixedSpace + cardH + (cardH + 12 * cardH * STACK_OFFSET_RATIO)
+        // availableH = verticalFixedSpace + cardH * (1 + 1 + 12 * STACK_OFFSET_RATIO)
+        // availableH = verticalFixedSpace + cardH * (2 + 12 * STACK_OFFSET_RATIO)
+        // 移项得到:
+        // cardH = (availableH - verticalFixedSpace) / (2 + 12 * STACK_OFFSET_RATIO)
+        const STACK_OFFSET_RATIO = 0.32; // 统一使用 33% 的间距，保证在各种尺寸下都能看清牌面
+        const cardHeightFactor = 2 + (12 * STACK_OFFSET_RATIO);
+        
+        // 2.4. 计算出在当前高度限制下的卡牌高度
+        let cardH_height = (availableH - verticalFixedSpace) / cardHeightFactor;
+        if (cardH_height <= 0) { cardH_height = 50; } // 增加一个健壮性检查，如果计算出的高度为负或无效，则回退到一个安全值
+        let cardW_height = cardH_height / cardAspectRatio;
+
+        // 取较小值以适应屏幕，同时保证最小宽度
+        let cardW = Math.min(cardW_width, cardW_height);
+        cardW = Math.max(30, cardW); // 防止过小
+
+        let cardH = cardW * cardAspectRatio;
+ 
+        layout.cardW = Math.floor(cardW);
+        layout.cardH = Math.floor(cardH);
+        layout.stackYOffset = Math.floor(layout.cardH * STACK_OFFSET_RATIO);
+
+        const totalWidth = 8 * layout.cardW + 7 * baseColGap;
+        const gameAreaWidth = totalWidth + 2 * basePaddingX;
+        const containerWidth = isLandscapeWide ? gameAreaWidth + bottomBarWidth : gameAreaWidth;
+        pageContainer.style.width = `${containerWidth}px`;
+
+        // 核心对齐修复：动态设置上下栏的内边距，使其与游戏区的内边距(basePaddingX)保持一致
+        topBar.style.paddingLeft = `${basePaddingX}px`;
+        topBar.style.paddingRight = `${basePaddingX}px`;
+        statusBar.style.paddingLeft = `${basePaddingX}px`;
+        statusBar.style.paddingRight = `${basePaddingX}px`;
+        if (!isLandscapeWide) {
+            bottomBar.style.paddingLeft = `${basePaddingX}px`;
+            bottomBar.style.paddingRight = `${basePaddingX}px`;
+        } else {
+            bottomBar.style.paddingLeft = '';
+            bottomBar.style.paddingRight = '';
+            statusBar.style.paddingLeft = '';
+            statusBar.style.paddingRight = '';
+        }
+
+        layout.paddingX = basePaddingX;
+        layout.paddingY = basePaddingY;
+        layout.colGap = baseColGap;
+        layout.rowGap = baseRowGap;
+
+        for (let i = 0; i < 4; i++) {
+            layout.freeSlotsPos[i] = { x: layout.paddingX + i * (layout.cardW + layout.colGap), y: layout.paddingY };
+            layout.foundSlotsPos[i] = { x: layout.paddingX + totalWidth - (4 - i) * layout.cardW - (3 - i) * layout.colGap, y: layout.paddingY };
+        }
+        for (let i = 0; i < 8; i++) {
+            layout.colsXPos[i] = layout.paddingX + i * (layout.cardW + layout.colGap);
+        }
+    }
+
+    function renderContent() {
+        const freeGroup = document.getElementById('free-group');
+        const foundGroup = document.getElementById('found-group');
+        freeGroup.innerHTML = '';
+        foundGroup.innerHTML = '';
+        for (let i = 0; i < 4; i++) {
+            freeGroup.appendChild(document.createElement('div')).className = 'slot';
+            foundGroup.appendChild(document.createElement('div')).className = 'slot';
+        }
+
+        const bgIconSize = Math.floor(layout.cardH * 0.66);
+        document.documentElement.style.setProperty('--bg-icon-size', `${bgIconSize}px`);
+
+        const gridWidth = 8 * layout.cardW + 7 * layout.colGap;
+        document.getElementById('bg-slots').style.cssText = `left:${layout.paddingX}px; top:${layout.paddingY}px; width:${gridWidth}px;`;
+        freeGroup.style.gap = `${layout.colGap}px`;
+        foundGroup.style.gap = `${layout.colGap}px`;
+        
+        document.querySelectorAll('.slot').forEach(slot => {
+            slot.style.width = `${layout.cardW}px`;
+            slot.style.height = `${layout.cardH}px`;
+        });
+
+        document.querySelectorAll('.card').forEach(el => el.remove());
+
+        const canvas = document.getElementById('canvas');
+
+        const createAndPlaceCard = (card, pos, x, y, isDraggable) => {
+            let el = createCardEl(card, pos);
+            el.style.width = `${layout.cardW}px`;
+            el.style.height = `${layout.cardH}px`;
+            
+            // 动态计算字体大小：利用叠牌留空区域(30%高度)
+            // 留出少量padding
+            let fontSize = Math.max(10, Math.floor(layout.stackYOffset * 0.90));
+            const paddingX = (window.innerWidth <= 600 || window.innerHeight <= 500) ? 4 : 8;
+            // 防止宽度溢出 (假设最大宽度为 "10" + 花色 + 间距)
+            if (fontSize * 2.2 > layout.cardW - paddingX) {
+                fontSize = Math.floor((layout.cardW - paddingX) / 2.2);
+            }
+            el.style.fontSize = `${fontSize}px`;
+            el.querySelector('.suit-l').style.fontSize = `${Math.max(20, Math.floor(layout.cardW * 0.9))}px`;
+            
+            canvas.appendChild(el);
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            el.posData = pos;
+            if (isDraggable) el.classList.add('draggable');
+        };
+
+        game.free.forEach((c, i) => {
+            if (c) createAndPlaceCard(c, {type:'free', idx:i}, layout.freeSlotsPos[i].x, layout.freeSlotsPos[i].y, true);
+        });
+
+        game.found.forEach((r, i) => {
+            if (r > 0) {
+                let card = { suit: SUITS[i], rank: r, isRed: (i===1||i===2), id: SUITS[i]+r };
+                createAndPlaceCard(card, {type:'found', idx:i}, layout.foundSlotsPos[i].x, layout.foundSlotsPos[i].y, false);
+            }
+        });
+
+        const colY = layout.paddingY + layout.cardH + layout.rowGap;
+        game.cols.forEach((col, i) => {
+            // 计算该列从哪里开始是有效的拖拽序列（符合颜色交替且点数递减）
+            let draggableStartIndex = col.length - 1;
+            for (let k = col.length - 2; k >= 0; k--) {
+                if (col[k].isRed !== col[k+1].isRed && col[k].rank === col[k+1].rank + 1) {
+                    draggableStartIndex = k;
+                } else {
+                    break;
+                }
+            }
+            col.forEach((c, j) => {
+                const isDraggable = j >= draggableStartIndex;
+                createAndPlaceCard(c, {type:'cols', idx:i, cardIdx:j}, layout.colsXPos[i], colY + j * layout.stackYOffset, isDraggable);
+            });
+        });
+
+        updateStatusBar();
+
+        // 更新撤销按钮状态
+        document.getElementById('undo-btn').disabled = game.history.length === 0 || game.isWon;
+        document.getElementById('hint-btn').disabled = game.isWon;
+
+        // 修复：基于最坏情况（13张牌）计算画布的最小高度，确保从一开始就有足够的滚动空间
+        // 同时考虑当前牌局的实际高度（如果超过13张），防止长牌列被截断
+        const maxCardsInCol = Math.max(13, ...game.cols.map(c => c.length));
+        const requiredCanvasHeight = colY + layout.cardH + ((maxCardsInCol - 1) * layout.stackYOffset) + layout.paddingY;
+
+        // The flex-grow property on .game-canvas will handle stretching it to the bottom of the viewport.
+        canvas.style.minHeight = `${requiredCanvasHeight}px`;
+        canvas.style.height = ''; // Let CSS flex-grow take effect
+    }
+
+    function updateAndRender() {
+        calculateLayout();
+        renderContent();
+    }
+
+    function clearSelection() {
+        if (!selection) return;
+        selection.els.forEach(el => el.classList.remove('selected'));
+        selection = null;
+    }
+
+    function clearHint() {
+        document.querySelectorAll('.hint-glow').forEach(el => el.classList.remove('hint-glow'));
+        document.querySelectorAll('.col-hint-box').forEach(el => el.remove());
+        currentHints = [];
+        currentHintIndex = 0;
+    }
+
+    // 全局交互监听：任何非“提示”按钮的操作都清除提示
+    function handleGlobalInteraction(e) {
+        if (currentHints.length === 0) return; // 优化：只有在提示开启时才尝试清除
+        if (e.target instanceof Element && e.target.closest('#hint-btn')) return;
+        clearHint();
+    }
+    window.addEventListener('mousedown', handleGlobalInteraction);
+    window.addEventListener('touchstart', handleGlobalInteraction, { passive: true });
+
+    function showHint() {
+        // 仅清除视觉效果，不清除 currentHints 数据，以便循环显示
+        document.querySelectorAll('.hint-glow').forEach(el => el.classList.remove('hint-glow'));
+        document.querySelectorAll('.col-hint-box').forEach(el => el.remove());
+
+        if (currentHints.length === 0) {
+            currentHints = game.getHints();
+            currentHintIndex = 0;
+        }
+
+        if (currentHints.length === 0) return;
+
+        const hint = currentHints[currentHintIndex];
+        currentHintIndex = (currentHintIndex + 1) % currentHints.length;
+
+        // 高亮源牌
+        if (hint.src.type === 'cols') {
+            const col = game.cols[hint.src.idx];
+            const startIdx = col.findIndex(c => c.id === hint.src.card.id);
+            if (startIdx !== -1) {
+                for (let i = startIdx; i < col.length; i++) {
+                    const el = document.querySelector(`.card[data-id="${col[i].id}"]`);
+                    if (el) el.classList.add('hint-glow');
+                }
+            }
+        } else {
+            let srcEl = document.querySelector(`.card[data-id="${hint.src.card.id}"]`);
+            if (srcEl) srcEl.classList.add('hint-glow');
+        }
+
+        // 高亮目标
+        let destEl;
+        if (hint.dest.type === 'found') {
+            destEl = document.getElementById('found-group').children[hint.dest.idx];
+            destEl.classList.add('hint-glow');
+        } else if (hint.dest.type === 'free') {
+            destEl = document.getElementById('free-group').children[hint.dest.idx];
+            destEl.classList.add('hint-glow');
+        } else if (hint.dest.type === 'cols') {
+            const col = game.cols[hint.dest.idx];
+            if (col.length > 0) {
+                const card = col[col.length - 1];
+                destEl = document.querySelector(`.card[data-id="${card.id}"]`);
+                destEl.classList.add('hint-glow');
+            } else {
+                // 空列高亮
+                const x = layout.colsXPos[hint.dest.idx];
+                const y = layout.paddingY + layout.cardH + layout.rowGap;
+                const hintBox = document.createElement('div');
+                hintBox.className = 'col-hint-box';
+                hintBox.style.left = x + 'px';
+                hintBox.style.top = y + 'px';
+                hintBox.style.width = layout.cardW + 'px';
+                hintBox.style.height = layout.cardH + 'px';
+                document.getElementById('canvas').appendChild(hintBox);
+            }
+        }
+        // 移除定时消失，提示将一直保留直到用户操作
+    }
+
+    function handleCardClick(card, pos) {
+        // 如果有牌被选中...
+        if (selection) {
+            // Case 1: 用户点击了当前已选中牌列中的任意一张牌，意图是取消选择。
+            if (selection.els.some(el => el.dataset.id === card.id)) {
+                clearSelection();
+                return;
+            }
+
+            // Case 2: 用户点击了另一张牌，意图是“放置”。
+            const { cards: selectedCards, from: selectedFrom } = selection;
+            const dest = { type: 'cols', idx: pos.idx };
+            const targetCol = game.cols[dest.idx];
+
+            // 检查目标是否是牌垛的最后一张，以及移动规则是否满足
+            if (targetCol.length > 0 && targetCol[targetCol.length - 1].id === card.id) {
+                const maxMovable = game.getMaxMovable(false);
+                if (selectedCards.length <= maxMovable) {
+                    let top = targetCol[targetCol.length - 1];
+                    if (top.isRed !== selectedCards[0].isRed && top.rank === selectedCards[0].rank + 1) {
+                        // 移动有效！执行移动并清除选择。
+                        game.move(selectedCards, selectedFrom, dest); // 点击放置也需要飞牌动画
+                        clearSelection();
+                        return; // 操作完成
+                    }
+                }
+            }
+
+            // Case 3: “放置”尝试无效。根据您的反馈，现在只取消选择，不再重新选择。
+            clearSelection();
+            return; // 关键：在这里返回，阻止代码继续执行到下方的“选择逻辑”部分。
+        }
+
+        // --- 选择逻辑 ---
+        // 如果之前没有选择，或“重新选择”时，会执行到这里。
+        if (pos.type === 'found') return; // 不能从回收单元选择
+
+        let cardsToSelect = [];
+        let elementsToSelect = [];
+
+        if (pos.type === 'cols') {
+            const col = game.cols[pos.idx];
+            const idx = col.findIndex(c => c.id === card.id);
+            const potentialStack = col.slice(idx);
+            
+            let isStackValid = true;
+            for (let i = 0; i < potentialStack.length - 1; i++) {
+                if (potentialStack[i].isRed === potentialStack[i+1].isRed || potentialStack[i].rank !== potentialStack[i+1].rank + 1) {
+                    isStackValid = false;
+                    break;
+                }
+            }
+
+            // 如果点击的不是一个有效的牌垛，则只允许选择最后一张牌
+            if (!isStackValid && pos.cardIdx !== col.length - 1) {
+                return; // 不做任何选择
+            }
+            cardsToSelect = isStackValid ? potentialStack : [card];
+
+            const maxMovable = game.getMaxMovable(false);
+            if (cardsToSelect.length > maxMovable) return; // 牌垛太长，不可选
+
+            elementsToSelect = cardsToSelect.map(c => document.querySelector(`.card[data-id="${c.id}"]`));
+        } else { // 'free'
+            cardsToSelect = [card];
+            elementsToSelect = [document.querySelector(`.card[data-id="${card.id}"]`)];
+        }
+
+        if (cardsToSelect.length > 0) {
+            selection = { cards: cardsToSelect, from: pos, els: elementsToSelect };
+            elementsToSelect.forEach(el => el.classList.add('selected'));
+        }
+    }
+
+    function createCardEl(card, pos) {
+        const div = document.createElement('div');
+        div.className = `card ${card.isRed ? 'red' : 'black'}`;
+        div.dataset.id = card.id;
+        div.dataset.type = pos.type;
+        const rank = card.rank === 1 ? 'A' : card.rank === 11 ? 'J' : card.rank === 12 ? 'Q' : card.rank === 13 ? 'K' : card.rank;
+        div.innerHTML = `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div><div class="suit-l">${SYMBOLS[card.suit]}</div></div>`;
+        div.onmousedown = (e) => {
+            if (e.button === 0) startDrag(e, card, div.posData);
+            if (e.button === 2) quickMove(card, div.posData);
+        };
+        // 添加触摸事件监听
+        div.ontouchstart = (e) => {
+            if (e.touches.length > 1) return; // 忽略多指触控
+            startTouchDrag(e, card, div.posData);
+        };
+        div.ondblclick = () => quickMove(card, div.posData);
+        return div;
+    }
+
+    function startDrag(e, card, pos) {
+        if (pos.type === 'found') return;
+        let cards = [card], els = [];
+        if (pos.type === 'cols') {
+            const col = game.cols[pos.idx];
+            const idx = col.findIndex(c => c.id === card.id);
+            for (let i = idx; i < col.length - 1; i++) {
+                if (col[i].isRed === col[i+1].isRed || col[i].rank !== col[i+1].rank + 1) return;
+            }
+            cards = col.slice(idx);
+            els = cards.map(c => document.querySelector(`.card[data-id="${c.id}"]`));
+        } else {
+            els = [e.currentTarget];
+        }
+
+        const canvasRect = document.getElementById('canvas').getBoundingClientRect();
+        drag = {
+            cards, from: pos, els,
+            ox: e.clientX - els[0].getBoundingClientRect().left,
+            oy: e.clientY - els[0].getBoundingClientRect().top,
+            moved: false,
+            // 记录鼠标按下时的初始位置
+            startX: e.clientX,
+            startY: e.clientY
+        };
+
+        const moveHandler = (me) => {
+            // 计算鼠标移动距离
+            const dx = Math.abs(me.clientX - drag.startX);
+            const dy = Math.abs(me.clientY - drag.startY);
+
+            // 只有当移动距离超过阈值时，才将其确认为拖拽
+            if (!drag.moved && (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD)) {
+                drag.moved = true; // 标记为拖拽
+                clearSelection(); // 清除任何已有的点击选择
+                els.forEach(el => el.classList.add('selected')); // 为拖拽的牌添加高亮
+            }
+            if (drag.moved) { // 只有在确认是拖拽后，才更新位置和添加dragging类
+                els.forEach((el, i) => {
+                    el.classList.add('dragging');
+                    el.style.left = (me.clientX - canvasRect.left - drag.ox) + 'px';
+                    el.style.top = (me.clientY - canvasRect.top - drag.oy + i * layout.stackYOffset) + 'px';
+                });
+            }
+        };
+
+        const upHandler = (ue) => {
+            document.removeEventListener('mousemove', moveHandler);
+            document.removeEventListener('mouseup', upHandler);
+
+            if (!drag) return;
+
+            if (drag.moved) {
+                finishDrag(ue);
+            } else {
+                // This was a click, not a drag
+                handleCardClick(drag.cards[0], drag.from);
+                drag = null;
+            }
+        };
+        document.addEventListener('mousemove', moveHandler);
+        document.addEventListener('mouseup', upHandler);
+    }
+
+    // 专门处理触摸拖拽的逻辑
+    function startTouchDrag(e, card, pos) {
+        if (pos.type === 'found') return;
+        
+        let cards = [card], els = [];
+
+        if (pos.type === 'cols') {
+            const col = game.cols[pos.idx];
+            const idx = col.findIndex(c => c.id === card.id);
+            for (let i = idx; i < col.length - 1; i++) {
+                if (col[i].isRed === col[i+1].isRed || col[i].rank !== col[i+1].rank + 1) return;
+            }
+            cards = col.slice(idx);
+            els = cards.map(c => document.querySelector(`.card[data-id="${c.id}"]`));
+        } else {
+            els = [e.currentTarget];
+        }
+
+        const touch = e.touches[0];
+        const canvasRect = document.getElementById('canvas').getBoundingClientRect();
+        
+        drag = {
+            cards, from: pos, els,
+            ox: touch.clientX - els[0].getBoundingClientRect().left,
+            oy: touch.clientY - els[0].getBoundingClientRect().top,
+            moved: false,
+            startX: touch.clientX,
+            startY: touch.clientY
+        };
+
+        const touchMoveHandler = (te) => {
+            const t = te.touches[0];
+            const dx = Math.abs(t.clientX - drag.startX);
+            const dy = Math.abs(t.clientY - drag.startY);
+
+            if (!drag.moved && (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD)) {
+                drag.moved = true;
+                clearSelection();
+                els.forEach(el => el.classList.add('selected'));
+            }
+
+            if (drag.moved) {
+                if (te.cancelable) te.preventDefault(); // 拖拽时必须阻止滚动
+                els.forEach((el, i) => {
+                    el.classList.add('dragging');
+                    el.style.left = (t.clientX - canvasRect.left - drag.ox) + 'px';
+                    el.style.top = (t.clientY - canvasRect.top - drag.oy + i * layout.stackYOffset) + 'px';
+                });
+            }
+        };
+
+        const touchEndHandler = (te) => {
+            if (te.cancelable) te.preventDefault(); // 阻止鼠标模拟事件，防止触发点击穿透
+            document.removeEventListener('touchmove', touchMoveHandler);
+            document.removeEventListener('touchend', touchEndHandler);
+            document.removeEventListener('touchcancel', touchCancelHandler);
+
+            if (!drag) return;
+
+            if (drag.moved) {
+                // 拖拽结束
+                const t = te.changedTouches[0];
+                finishDrag({ clientX: t.clientX, clientY: t.clientY });
+            } else {
+                // 点击 (Tap)
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTapTime;
+                
+                if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
+                    // 双击
+                    quickMove(card, pos);
+                    lastTapTime = 0;
+                } else {
+                    // 单击
+                    handleCardClick(card, pos);
+                    lastTapTime = currentTime;
+                }
+                drag = null;
+            }
+        };
+
+        const touchCancelHandler = (te) => {
+            document.removeEventListener('touchmove', touchMoveHandler);
+            document.removeEventListener('touchend', touchEndHandler);
+            document.removeEventListener('touchcancel', touchCancelHandler);
+            
+            if (drag) {
+                renderContent(); // 重置视图，取消拖拽状态
+                drag = null;
+            }
+        };
+
+        document.addEventListener('touchmove', touchMoveHandler, { passive: false });
+        document.addEventListener('touchend', touchEndHandler);
+        document.addEventListener('touchcancel', touchCancelHandler);
+    }
+
+    function findDestFromCoords(clientX, clientY) {
+        const canvas = document.getElementById('canvas');
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = clientX - rect.left;
+        const mouseY = clientY - rect.top;
+        let dest = null;
+
+        const topRowYEnd = layout.paddingY + layout.cardH;
+        if (mouseY < topRowYEnd) {
+            for (let i = 0; i < 4; i++) {
+                const pos = layout.freeSlotsPos[i];
+                if (mouseX >= pos.x && mouseX <= pos.x + layout.cardW) {
+                    dest = { type: 'free', idx: i };
+                    break;
+                }
+            }
+            if (!dest) {
+                for (let i = 0; i < 4; i++) {
+                    const pos = layout.foundSlotsPos[i];
+                    if (mouseX >= pos.x && mouseX <= pos.x + layout.cardW) {
+                        dest = { type: 'found', idx: i };
+                        break;
+                    }
+                }
+            }
+        } else {
+            for (let i = 0; i < 8; i++) {
+                const x = layout.colsXPos[i];
+                if (mouseX >= x && mouseX < x + layout.cardW) {
+                    dest = { type: 'cols', idx: i };
+                    break;
+                }
+            }
+        }
+        return dest;
+    }
+
+    function finishDrag(e) {
+        const { cards, from, els } = drag;
+        const dest = findDestFromCoords(e.clientX, e.clientY);
+        els.forEach(el => el.classList.remove('selected'));
+        els.forEach(el => el.classList.remove('dragging'));
+
+        if (dest) {
+            let valid = false;
+            if (dest.type === 'cols') {
+                const col = game.cols[dest.idx];
+                const maxMovable = game.getMaxMovable(col.length === 0);
+                if (cards.length <= maxMovable) {
+                    if (col.length === 0) valid = true;
+                    else {
+                        let top = col[col.length-1];
+                        if (top.isRed !== cards[0].isRed && top.rank === cards[0].rank + 1) valid = true;
+                    }
+                }
+            } else if (dest.type === 'free' && cards.length === 1 && !game.free[dest.idx]) {
+                valid = true;
+            } else if (dest.type === 'found' && cards.length === 1) {
+                let suitIdx = SUITS.indexOf(cards[0].suit);
+                if (dest.idx === suitIdx && cards[0].rank === game.found[suitIdx] + 1) valid = true;
+            }
+
+            if (valid) {
+                game.move(cards, from, dest, false); // 拖拽放置不需要飞牌动画
+            } else {
+                renderContent();
+            }
+        } else {
+            renderContent();
+        }
+        drag = null;
+    }
+
+    function quickMove(card, pos) {
+        clearSelection();
+        if (pos.type === 'found') return;
+        if (pos.type === 'cols' && game.cols[pos.idx][game.cols[pos.idx].length-1].id !== card.id) return;
+
+        let suitIdx = SUITS.indexOf(card.suit);
+        if (card.rank === game.found[suitIdx] + 1) {
+            game.move([card], pos, { type: 'found', idx: suitIdx });
+        } else {
+            let emptyFree = game.free.indexOf(null);
+            if (emptyFree !== -1) {
+                game.move([card], pos, { type: 'free', idx: emptyFree });
+            }
+        }
+    }
+
+    // --- 发牌动画逻辑 ---
+    let isAnimating = false;
+
+    async function animateDeal() {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const canvas = document.getElementById('canvas');
+        const rect = canvas.getBoundingClientRect();
+        
+        // 计算发牌起始点：屏幕底部中央
+        // 注意：rect.left/top 是 canvas 相对于视口的位置，我们需要计算相对于 canvas 内部坐标系的起始点
+        const startX = (window.innerWidth / 2) - (layout.cardW / 2) - rect.left;
+        const startY = window.innerHeight - rect.top - layout.cardH - 40; // 从视口底部内侧开始，确保整张牌可见
+
+        // 收集所有卡牌，并按发牌顺序排序（逐行发牌：第1行从左到右，第2行从左到右...）
+        const dealingOrder = [];
+        let maxLen = 0;
+        game.cols.forEach(c => maxLen = Math.max(maxLen, c.length));
+        
+        for (let r = 0; r < maxLen; r++) {
+            for (let c = 0; c < 8; c++) {
+                if (game.cols[c][r]) {
+                    const card = game.cols[c][r];
+                    const el = document.querySelector(`.card[data-id="${card.id}"]`);
+                    if (el) {
+                        dealingOrder.push({ 
+                            el, 
+                            targetLeft: el.style.left, 
+                            targetTop: el.style.top 
+                        });
+                    }
+                }
+            }
+        }
+
+        // 禁用交互
+        document.body.style.pointerEvents = 'none';
+
+        // 1. 初始化位置：全部移到发牌点
+        dealingOrder.forEach(({ el }, i) => {
+            el.style.transition = 'none';
+            el.style.left = `${startX}px`;
+            el.style.top = `${startY}px`;
+            el.style.zIndex = 100 + i; // 确保飞行的牌在上面
+        });
+
+        // 强制浏览器重排 (Reflow) 以应用初始位置
+        canvas.offsetHeight;
+
+        // 2. 执行动画
+        const delay = 15; // 每张牌的间隔 (ms)
+        const duration = 250; // 飞行时间 (ms)
+        
+        const promises = dealingOrder.map((item, i) => {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    item.el.style.transition = `left ${duration}ms ease-out, top ${duration}ms ease-out`;
+                    item.el.style.left = item.targetLeft;
+                    item.el.style.top = item.targetTop;
+                    
+                    // 动画结束后恢复 z-index (可选，或者就留着)
+                    setTimeout(() => {
+                        item.el.style.zIndex = ''; 
+                        resolve();
+                    }, duration);
+                }, i * delay);
+            });
+        });
+
+        await Promise.all(promises);
+        
+        // 恢复交互
+        isAnimating = false;
+        document.body.style.pointerEvents = '';
+    }
+
+    async function startNewGame(seed) {
+        checkAbandonment(); // 检查上一局是否中途放弃
+        game.reset(seed);
+        saveGameState(); // 保存新牌局的初始状态
+        updateAndRender();
+        // 滚动到顶部，确保能看到发牌动画
+        const container = document.querySelector('.page-container');
+        if (container) container.scrollTop = 0;
+        await animateDeal();
+    }
+
+    // “新游戏”按钮功能：开始一个随机牌局
+    function newRandomGame(force = false) {
+        const _start = () => startNewGame(Math.floor(Math.random() * 1000000) + 1);
+
+        if (!force && !game.isWon && game.hasMoved) {
+            showMessageBox({
+                title: t('newGameTitle'),
+                message: t('confirmNewGameMessage'),
+                type: 'question',
+                buttons: 'yes-no',
+                checkbox: { text: t('replayCurrentGame') },
+                callback: (result) => {
+                    if (result.confirmed) {
+                        if (result.checkboxChecked) {
+                            startNewGame(game.seed);
+                        } else {
+                            _start();
+                        }
+                    }
+                }
+            });
+        } else {
+            _start();
+        }
+    }
+
+    // “选局”按钮功能：弹出对话框让用户选择牌局
+    function selectGame() {
+        showInputBox({
+            title: t('selectGameTitle'),
+            message: t('selectGameMessage'),
+            defaultValue: game.seed,
+            callback: (seed) => {
+                if (seed !== null) {
+                    let numSeed = parseInt(seed);
+                    if (!isNaN(numSeed) && numSeed >= 1 && numSeed <= 1000000) {
+                        startNewGame(numSeed);
+                    } else {
+                        showMessageBox({
+                            title: t('errorTitle'),
+                            message: t('invalidSeedMessage'),
+                            type: 'error'
+                        });
+                    }
+                }
+            }
+        });
+    }
+    
+    function handleGameWin() {
+        document.getElementById('undo-btn').disabled = true;
+        document.getElementById('hint-btn').disabled = true;
+        updateStatsOnWin(); // 更新获胜统计
+        clearSavedGame(); // 游戏获胜后，清除本地存档
+        
+        const stopAnim = startVictoryDemo();
+        
+        showMessageBox({
+            title: t('winTitle'),
+            message: t('winMessage'),
+            type: 'win',
+            buttons: 'yes-no',
+            callback: (result) => {
+                stopAnim();
+                if (result.confirmed) {
+                    newRandomGame(true);
+                }
+            }
+        });
+    }
+
+    function startVictoryDemo() {
+        document.querySelectorAll('.card').forEach(c => c.style.display = 'none');
+        return victoryAnimation();
+    }
+
+    function victoryAnimation() {
+        let animFrameId;
+        const vCanvas = document.getElementById('victory-canvas');
+        const ctx = vCanvas.getContext('2d');
+        vCanvas.style.display = 'block';
+        
+        const resizeCanvas = () => {
+            vCanvas.width = window.innerWidth;
+            vCanvas.height = window.innerHeight;
+        };
+        resizeCanvas();
+
+        const cards = [];
+        const foundSlotsEls = document.getElementById('found-group').children;
+
+        for (let r = 13; r >= 1; r--) {
+            for (let s = 0; s < 4; s++) {
+                const rect = foundSlotsEls[s].getBoundingClientRect();
+                cards.push({
+                    rank: r === 1 ? 'A' : r === 11 ? 'J' : r === 12 ? 'Q' : r === 13 ? 'K' : r,
+                    suit: SYMBOLS[SUITS[s]],
+                    isRed: s === 1 || s === 2,
+                    x: rect.left,
+                    y: rect.top,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: Math.random() * -10,
+                    active: false,
+                    resting: false
+                });
+            }
+        }
+
+        let currentCardIndex = 0;
+        const gravity = 0.8;
+        const bounce = -0.7;
+
+        function drawCard(c) {
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(c.x, c.y, layout.cardW, layout.cardH, 4);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = c.isRed ? '#ff0000' : '#000000';
+            
+            // 计算字体大小，保持与 createCardEl 逻辑一致
+            let fontSize = Math.max(10, Math.floor(layout.stackYOffset * 0.90));
+            const paddingX = (window.innerWidth <= 600 || window.innerHeight <= 500) ? 4 : 8;
+            if (fontSize * 2.2 > layout.cardW - paddingX) {
+                fontSize = Math.floor((layout.cardW - paddingX) / 2.2);
+            }
+
+            // 左上角点数
+            ctx.font = `bold ${fontSize}px "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif`;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(c.rank, c.x + 4, c.y + 2);
+
+            // 右上角小花色
+            ctx.font = `${fontSize * 0.9}px "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif`;
+            ctx.textAlign = 'right';
+            ctx.fillText(c.suit, c.x + layout.cardW - 4, c.y + 4);
+
+            // 底部大花色
+            const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
+            ctx.font = `${bigSuitSize}px "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
+            ctx.globalAlpha = 0.8;
+            ctx.fillText(c.suit, c.x + layout.cardW / 2, c.y + layout.cardH - 5);
+            ctx.globalAlpha = 1.0;
+        }
+
+        function animate() {
+            // 动态调整画布大小以适应移动端地址栏变化
+            if (vCanvas.width !== window.innerWidth || vCanvas.height !== window.innerHeight) {
+                resizeCanvas();
+            }
+
+            // 随机激活卡牌下落
+            if (currentCardIndex < cards.length && Math.random() > 0.8) {
+                cards[currentCardIndex].active = true;
+                currentCardIndex++;
+            }
+
+            ctx.clearRect(0, 0, vCanvas.width, vCanvas.height);
+            const floorY = vCanvas.height
+            
+            // 绘制静止在收牌区的牌 (从底层的A绘制到顶层的K，确保遮挡关系正确)
+            for (let i = cards.length - 1; i >= 0; i--) {
+                if (!cards[i].active) {
+                    drawCard(cards[i]);
+                }
+            }
+
+            cards.forEach(c => {
+                if (!c.active) return;
+                drawCard(c);
+                c.x += c.vx;
+                
+                if (c.resting) {
+                    // 如果窗口变高导致卡牌悬空，恢复重力
+                    if (c.y + layout.cardH < floorY - 2) c.resting = false;
+                }
+                
+                if (!c.resting) {
+                    c.vy += gravity;
+                    c.y += c.vy;
+                }
+
+                if (c.y + layout.cardH > floorY) {
+                    c.y = floorY - layout.cardH;
+                    c.vy *= bounce;
+                    
+                    // 当反弹速度很小时，停止垂直运动，防止在底部抖动或穿模
+                    if (Math.abs(c.vy) < gravity * 3) {
+                        c.resting = true;
+                        c.vy = 0;
+                    }
+                }
+                if (c.x < 0 || c.x + layout.cardW > vCanvas.width) {
+                    c.vx *= -1;
+                }
+            });
+
+            animFrameId = requestAnimationFrame(animate);
+        }
+        animate();
+
+        // 返回清理函数
+        return () => {
+            if (animFrameId) cancelAnimationFrame(animFrameId);
+            vCanvas.style.display = 'none';
+            document.querySelectorAll('.card').forEach(c => c.style.display = '');
+        };
+    }
+
+    function showStats() {
+        const winRate = gameStats.played > 0 ? ((gameStats.won / gameStats.played) * 100).toFixed(1) : 0;
+        const currentStreak = gameStats.winStreak;
+        
+        let streakText = '0';
+        if (currentStreak > 0) {
+            streakText = `${currentStreak} ${t('stats.winStreakTag')}`;
+        } else if (currentStreak < 0) {
+            streakText = `${Math.abs(currentStreak)} ${t('stats.loseStreakTag')}`;
+        }
+        
+        const msg = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; text-align: left; font-size: 12px;">
+                <div>${t('stats.played')}:</div><div style="text-align:right; font-weight:bold;">${gameStats.played}</div>
+                <div>${t('stats.won')}:</div><div style="text-align:right; font-weight:bold;">${gameStats.won}</div>
+                <div>${t('stats.rate')}:</div><div style="text-align:right; font-weight:bold;">${winRate}%</div>
+                <div style="grid-column: span 2; height: 1px; background: #ccc; margin: 3px 0;"></div>
+                <div>${t('stats.maxWin')}:</div><div style="text-align:right; font-weight:bold;">${gameStats.maxWinStreak}</div>
+                <div>${t('stats.maxLose')}:</div><div style="text-align:right; font-weight:bold;">${gameStats.maxLoseStreak}</div>
+                <div>${t('stats.current')}:</div><div style="text-align:right; font-weight:bold; color: ${currentStreak > 0 ? 'green' : (currentStreak < 0 ? 'red' : 'black')}">${streakText}</div>
+            </div>
+        `;
+
+        const overlay = document.getElementById('msgbox-overlay');
+        const titleEl = document.querySelector('#msgbox-overlay .title-bar .title span');
+        const textEl = document.getElementById('msgbox-text');
+        const btnsEl = document.getElementById('msgbox-buttons');
+        const iconEl = document.getElementById('msgbox-icon');
+        const closeBtn = document.getElementById('msgbox-close');
+
+        document.querySelector('.msgbox-window').classList.add('stats-mode');
+
+        titleEl.textContent = t('stats.title');
+        textEl.innerHTML = msg;
+        iconEl.style.display = 'none'; // 统计界面隐藏图标以节省空间
+
+        btnsEl.innerHTML = '';
+        
+        const createBtn = (text, onClick) => {
+            const btn = document.createElement('button');
+            btn.className = 'msgbox-btn';
+            btn.textContent = text;
+            btn.onclick = onClick;
+            return btn;
+        };
+
+        btnsEl.appendChild(createBtn(t('close'), () => { overlay.style.display = 'none'; }));
+        btnsEl.appendChild(createBtn(t('stats.reset'), () => {
+            if (confirm(t('stats.confirmReset'))) {
+                gameStats = { played: 0, won: 0, winStreak: 0, maxWinStreak: 0, maxLoseStreak: 0 };
+                saveStats();
+                showStats(); // 刷新显示
+            }
+        }));
+
+        closeBtn.onclick = () => { overlay.style.display = 'none'; };
+        overlay.style.display = 'block';
+    }
+
+    window.oncontextmenu = (e) => e.preventDefault();
+
+    document.getElementById('new-game-btn').onclick = () => { clearHint(); newRandomGame(); };
+    document.getElementById('select-game-btn').onclick = () => { clearHint(); selectGame(); };
+    document.getElementById('undo-btn').onclick = () => { if(game.isWon) return; clearHint(); game.undo(); };
+    document.getElementById('hint-btn').onclick = showHint;
+    document.getElementById('stats-btn').onclick = showStats;
+    document.getElementById('aboutLink').onclick = (e) => { e.preventDefault(); clearHint(); showAbout(); };
+    document.getElementById('langToggle').onclick = () => { clearHint(); setLanguage(currentLang === 'zh' ? 'en' : 'zh'); };
+
+    document.getElementById('canvas').addEventListener('click', e => {
+        // If the click is on a card, do nothing. The card's own handler will deal with it.
+        if (e.target.closest('.card')) return;
+        
+        // If nothing is selected, clicking empty space does nothing.
+        if (!selection) return;
+        
+        // Clicking empty space clears hint (handled by global listener usually, but good to be explicit if logic changes)
+        clearHint();
+
+        const dest = findDestFromCoords(e.clientX, e.clientY);
+
+        if (dest) {
+            // Check if the destination is empty (for free cells and columns)
+            const isDestEmpty = (dest.type === 'free' && !game.free[dest.idx]) || (dest.type === 'cols' && game.cols[dest.idx].length === 0);
+            
+            if (isDestEmpty || dest.type === 'found') {
+                const { cards, from } = selection;
+                let valid = false;
+                if (dest.type === 'cols') {
+                    const maxMovable = game.getMaxMovable(true);
+                    if (cards.length <= maxMovable) valid = true;
+                } else if (dest.type === 'free' && cards.length === 1) {
+                    valid = true;
+                } else if (dest.type === 'found' && cards.length === 1) {
+                    let suitIdx = SUITS.indexOf(cards[0].suit);
+                    if (dest.idx === suitIdx && cards[0].rank === game.found[suitIdx] + 1) valid = true;
+                }
+
+                if (valid) {
+                    game.move(cards, from, dest);
+                }
+            }
+        }
+        clearSelection();
+    });
+
+    const handleResize = () => {
+        clearTimeout(window.resizeTimer);
+        // Use a slightly longer delay to allow the browser to settle after orientation change
+        window.resizeTimer = setTimeout(() => { // Removed setViewportHeight call
+            updateAndRender();
+        }, 250);
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+
+    // 解决iOS下 :active 伪类无效的问题
+    document.body.addEventListener('touchstart', () => {}, { passive: true });
+
+    window.startVictoryDemo = startVictoryDemo; // 保留用于调试
+
+    loadStats();
+    loadAndInitialize();
+})();
+</script>
+</body>
+</html>

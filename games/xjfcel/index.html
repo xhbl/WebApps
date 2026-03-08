@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./xjfcel.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#017f01" />
+    <meta name="description" content="一款基于JavaScript的经典空当接龙游戏" />
+    <link rel="apple-touch-icon" href="./xjfcel.svg" />
+    <meta name="msapplication-TileImage" content="./xjfcel.svg" />
+    <meta name="msapplication-TileColor" content="#017f01" />
+    <title>空当接龙 - 经典JS版</title>
+    <script>
+      function detectBrowserLanguage() {
+        const storedLang = localStorage.getItem('xjfcel-lang');
+        if (storedLang) return storedLang;
+        
+        const browserLang = navigator.language || navigator.userLanguage;
+        return browserLang.includes('zh') ? 'zh' : 'en';
+      }
+      
+      const lang = detectBrowserLanguage();
+      const manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      manifestLink.href = `./manifest.${lang}.webmanifest`;
+      document.head.appendChild(manifestLink);
+    </script>
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <div class="page-container">
+          <div class="top-info">
+              <div style="flex: 1; display: flex; align-items: center;">
+                  <img src="./xjfcel.svg" style="height: 20px; width: 20px;">
+              </div>
+              <span id="game-title">空当接龙</span>
+              <div style="flex: 1; text-align: right;">
+                  <button class="lang-btn" id="langToggle">中</button>
+              </div>
+          </div>
+
+          <div class="main-area">
+              <div class="game-canvas" id="canvas">
+                  <div class="slot-row" id="bg-slots">
+                      <div class="group" id="free-group"></div>
+                      <div class="group" id="found-group"></div>
+                  </div>
+              </div>
+          
+              <div class="sidebar-wrapper">
+                  <div class="bottom-controls">
+                  <button class="control-btn" id="stats-btn">统计</button>
+                      <button class="control-btn" id="select-game-btn">选局</button>
+                      <button class="control-btn" id="new-game-btn">新游戏</button>
+                      <button class="control-btn" id="hint-btn">提示</button>
+                      <button class="control-btn" id="undo-btn">撤销</button>
+                  </div>
+                  <div class="status-bar">
+                      <span id="game-info"></span>
+                      <span id="cards-left-info"></span>
+                      <span><a href="#" id="aboutLink">XHBL</a> © 2026</span>
+                  </div>
+              </div>
+          </div>
+      </div>
+    </div>
+
+      <div id="msgbox-overlay" class="msgbox-overlay" style="display: none;">
+          <div class="msgbox-window">
+              <div class="title-bar">
+                  <div class="title">
+                      <span>空当接龙</span>
+                  </div>
+                  <div class="window-controls">
+                      <div class="win-btn" id="msgbox-close">✕</div>
+                  </div>
+              </div>
+              <div class="msgbox-content">
+                  <div class="msgbox-icon" id="msgbox-icon"></div>
+                  <div class="msgbox-text" id="msgbox-text"></div>
+              </div>
+              <div class="msgbox-buttons" id="msgbox-buttons"></div>
+          </div>
+      </div>
+
+      <canvas id="victory-canvas"></canvas>
+  </body>
+</html>
