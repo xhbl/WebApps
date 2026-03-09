@@ -1,5 +1,5 @@
 html, body {
-    height: 100%;
+    height: 100%; /* 确保 html 和 body 占据整个视口高度 */
     overscroll-behavior: none;
 }
 :root {
@@ -8,18 +8,18 @@ html, body {
 * {
     box-sizing: border-box;
     user-select: none;
-    -webkit-user-select: none;
+    -webkit-user-select: none; /* 兼容Safari：禁止文本选择 */
     -webkit-user-drag: none;
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent; /* 移除点击高亮 */
+    -webkit-touch-callout: none; /* 禁用iOS系统长按菜单 */
 }
 body {
     background-color: var(--win-bg);
     margin: 0;
     font-family: "Tahoma", sans-serif;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    overflow: hidden; /* 确保 body 不滚动，只让 page-container 滚动 */
+    display: flex; /* 使 body 成为 flex 容器 */
+    flex-direction: column; /* 垂直堆叠 page-container */
 }
 #app {
     display: flex;
@@ -30,14 +30,14 @@ body {
 .page-container {
     display: flex;
     flex-direction: column;
-    flex-grow: 1;
-    margin: 0 auto;
-    overflow-y: auto;
-    overscroll-behavior: none;
+    flex-grow: 1; /* 允许 page-container 增长并填充可用空间 */
+    margin: 0 auto; /* 用于水平居中 */
+    overflow-y: auto; /* 如果内容溢出，允许 page-container 滚动 */
+    overscroll-behavior: none; /* 在滚动容器上禁止，防止滚动到顶端时触发父级下拉 */
 }
 .main-area {
     display: flex;
-    flex-direction: column;
+    flex-direction: column; /* 默认：画布在控件上方 */
     flex-grow: 1;
 }
 .sidebar-wrapper {
@@ -65,8 +65,8 @@ body {
 .game-canvas {
     position: relative;
     width: 100%;
-    flex-grow: 1;
-    transition: min-height 0.2s ease-out;
+    flex-grow: 1; /* 画布增长以填充 main-area 中的空间 */
+    transition: min-height 0.2s ease-out; /* 添加高度变化的过渡动画 */
 }
 .status-bar {
     display: flex;
@@ -165,14 +165,14 @@ body {
     transition: left 0.2s ease-out, top 0.2s ease-out;
     overflow: hidden;
     font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
-    transform: translateZ(0);
-    touch-action: auto;
+    transform: translateZ(0); /* 开启硬件加速，优化移动端性能 */
+    touch-action: auto; /* 默认允许浏览器处理触摸（如滚动） */
 }
 .card.draggable {
-    touch-action: pinch-zoom;
+    touch-action: pinch-zoom; /* 可拖拽的牌禁止浏览器平移，由JS接管 */
 }
 .card[data-type="cols"]:not(.draggable) {
-    background-color: #e0e0e0;
+    background-color: #e0e0e0; /* 不可拖动的牌背景变暗 */
 }
 .card.red { color: #ff0000; }
 .card.black { color: #000000; }
@@ -202,6 +202,7 @@ body {
 }
 .dragging { z-index: 1000 !important; transition: none !important; pointer-events: none; }
 
+/* 瀑布画布 */
 #victory-canvas {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     pointer-events: none; z-index: 100; display: none;
@@ -241,20 +242,20 @@ body {
     }
     .control-btn {
         font-size: 15px;
-        min-width: 0;
-        flex: 1;
-        padding: 5px 2px;
+        min-width: 0; /* 覆盖PC端的min-width，允许按钮收缩 */
+        flex: 1; /* 让按钮平分剩余空间 */
+        padding: 5px 2px; /* 调整内边距以适应小屏幕 */
         height: auto;
     }
     .card-inner { padding: 2px; }
 }
 
 .page-container.landscape-wide .main-area {
-    flex-direction: row;
+    flex-direction: row; /* 画布在左，控件在右 */
     flex: 1;
 }
 .page-container.landscape-wide .sidebar-wrapper {
-    width: 108px;
+    width: 108px; /* 侧边栏固定宽度 */
 }
 .page-container.landscape-wide .status-bar {
     flex-direction: column;
@@ -278,6 +279,7 @@ body {
     min-width: 80px;
 }
 
+/* --- 自定义 Windows XP 风格 MsgBox --- */
 .msgbox-overlay {
     position: fixed;
     top: 0;

@@ -7,7 +7,7 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50%' y='75' font-size='85' font-weight='900' fill='%23DAA520' text-anchor='middle' style='font-family: Arial, Helvetica, sans-serif;'>K</text></svg>">
     <style>
         html, body {
-            height: 100%; /* Ensure html and body take full viewport height */
+            height: 100%; /* 确保 html 和 body 占据整个视口高度 */
             overscroll-behavior: none; /* 1. 在根元素禁止，防止整个页面被下拉 */
         }
         :root {
@@ -26,20 +26,20 @@
             margin: 0;
             font-family: "Tahoma", sans-serif;
             overflow: hidden; /* 3. 确保 body 不滚动，只让 page-container 滚动 */
-            display: flex; /* Make body a flex container */
-            flex-direction: column; /* Stack page-container vertically */
+            display: flex; /* 使 body 成为 flex 容器 */
+            flex-direction: column; /* 垂直堆叠 page-container */
         }
         .page-container {
             display: flex;
             flex-direction: column;
-            flex-grow: 1; /* Allow page-container to grow and fill available space */
-            margin: 0 auto; /* Keep for horizontal centering */
-            overflow-y: auto; /* Allow page-container to scroll if its content overflows */
+            flex-grow: 1; /* 允许 page-container 增长并填充可用空间 */
+            margin: 0 auto; /* 用于水平居中 */
+            overflow-y: auto; /* 如果内容溢出，允许 page-container 滚动 */
             overscroll-behavior: none; /* 2. 在滚动容器上禁止，防止滚动到顶端时触发父级下拉 */
         }
         .main-area {
             display: flex;
-            flex-direction: column; /* Default: canvas above controls */
+            flex-direction: column; /* 默认：画布在控件上方 */
             flex-grow: 1;
         }
         .sidebar-wrapper {
@@ -67,7 +67,7 @@
         .game-canvas {
             position: relative;
             width: 100%;
-            flex-grow: 1; /* Canvas grows to fill space in main-area */
+            flex-grow: 1; /* 画布增长以填充 main-area 中的空间 */
             transition: min-height 0.2s ease-out; /* 添加高度变化的过渡动画 */
         }
         .status-bar {
@@ -248,11 +248,11 @@
 
         /* 宽屏横向布局 (e.g. 手机横屏) */
         .page-container.landscape-wide .main-area {
-            flex-direction: row; /* canvas is left, controls are right */
+            flex-direction: row; /* 画布在左，控件在右 */
             flex: 1;
         }
         .page-container.landscape-wide .sidebar-wrapper {
-            width: 108px; /* Fixed width for the side bar */
+            width: 108px; /* 侧边栏固定宽度 */
         }
         .page-container.landscape-wide .status-bar {
             flex-direction: column;
@@ -266,7 +266,7 @@
         }
         .page-container.landscape-wide .bottom-controls {
             flex-direction: column;
-            height: auto; /* Height will be determined by flex container */
+            height: auto; /* 高度将由 flex 容器决定 */
             padding: 10px 10px;
             gap: 14px;
             justify-content: center;
@@ -436,7 +436,8 @@
 
 <script>
 (function() {
-    // ---------- 工具函数：Canvas圆角矩形 (修复瀑布动画) ----------
+    const APP_VERSION = "1.0.72";
+
     const LANG = {
         zh: {
             title: "空当接龙 - 经典版",
@@ -455,7 +456,7 @@
             about: {
                 title: "关于",
                 header: "一款基于JavaScript的经典空当接龙游戏",
-                version: "v1.0.48 by XHBL",
+                version: `v${APP_VERSION} by XHBL`,
                 email: "newxhbl@hotmail.com"
             },
             newGameTitle: "新游戏",
@@ -518,7 +519,7 @@
             about: {
                 title: "About",
                 header: "A JavaScript-based classic FreeCell game",
-                version: "v1.0.48 by XHBL",
+                version: `v${APP_VERSION} by XHBL`,
                 email: "newxhbl@hotmail.com"
             },
             newGameTitle: "New Game",
@@ -743,7 +744,7 @@
                 if (callback) {
                     const checkboxEl = document.getElementById('msgbox-checkbox');
                     const checkboxChecked = checkboxEl ? checkboxEl.checked : false;
-                    // Pass an object to the callback for more flexibility
+                    // 向回调函数传递一个对象以提高灵活性
                     callback({ confirmed: val, checkboxChecked: checkboxChecked });
                 }
             };
@@ -919,7 +920,7 @@
             flyers.push({ el, index: i });
         }
 
-        // Force reflow
+        // 强制浏览器重排
         if (flyers.length > 0) flyers[0].el.getBoundingClientRect();
 
         flyers.forEach(({ el, index }) => {
@@ -983,7 +984,7 @@
             const hints = [];
             
             // 1. 优先检查能否移入回收区 (Found)
-            // From Cols
+            // 牌列
             for (let c = 0; c < 8; c++) {
                 if (this.cols[c].length > 0) {
                     let card = this.cols[c][this.cols[c].length - 1];
@@ -993,7 +994,7 @@
                     }
                 }
             }
-            // From Free
+            // 中转区
             for (let f = 0; f < 4; f++) {
                 if (this.free[f]) {
                     let card = this.free[f];
@@ -1254,21 +1255,13 @@
         const availableH = canvasVpHeight - layout.topBarH - (isLandscapeWide ? 0 : (layout.bottomBarH + layout.statusBarH));
         const verticalFixedSpace = basePaddingY + baseRowGap + basePaddingY;
 
-        // 2.3. 推导卡牌高度 (cardH) 的计算公式
-        // availableH = verticalFixedSpace + (上排卡牌高度) + (下排13张叠牌的高度)
-        // availableH = verticalFixedSpace + cardH + (cardH + 12 * stackYOffset)
-        // 因为 stackYOffset ≈ cardH * STACK_OFFSET_RATIO, 所以:
-        // availableH = verticalFixedSpace + cardH + (cardH + 12 * cardH * STACK_OFFSET_RATIO)
-        // availableH = verticalFixedSpace + cardH * (1 + 1 + 12 * STACK_OFFSET_RATIO)
-        // availableH = verticalFixedSpace + cardH * (2 + 12 * STACK_OFFSET_RATIO)
-        // 移项得到:
-        // cardH = (availableH - verticalFixedSpace) / (2 + 12 * STACK_OFFSET_RATIO)
-        const STACK_OFFSET_RATIO = 0.32; // 统一使用 33% 的间距，保证在各种尺寸下都能看清牌面
+        const STACK_OFFSET_RATIO = 0.32; // 统一使用 32% 的间距，保证在各种尺寸下都能看清牌面
         const cardHeightFactor = 2 + (12 * STACK_OFFSET_RATIO);
         
-        // 2.4. 计算出在当前高度限制下的卡牌高度
+        // 2.2. 计算出在当前高度限制下的卡牌高度
         let cardH_height = (availableH - verticalFixedSpace) / cardHeightFactor;
-        if (cardH_height <= 0) { cardH_height = 50; } // 增加一个健壮性检查，如果计算出的高度为负或无效，则回退到一个安全值
+        // 增加一个健壮性检查，如果计算出的高度为负或无效，则回退到一个安全值
+        if (cardH_height <= 0) { cardH_height = 50; }
         let cardW_height = cardH_height / cardAspectRatio;
 
         // 取较小值以适应屏幕，同时保证最小宽度
@@ -1464,9 +1457,9 @@
         const maxCardsInCol = Math.max(13, ...game.cols.map(c => c.length));
         const requiredCanvasHeight = colY + layout.cardH + ((maxCardsInCol - 1) * layout.stackYOffset) + layout.paddingY;
 
-        // The flex-grow property on .game-canvas will handle stretching it to the bottom of the viewport.
+        // .game-canvas 使用 flex-grow 属性来拉伸到视口底部
         canvas.style.minHeight = `${requiredCanvasHeight}px`;
-        canvas.style.height = ''; // Let CSS flex-grow take effect
+        canvas.style.height = ''; // 让 CSS flex-grow 生效
     }
 
     function updateAndRender() {
@@ -1607,10 +1600,14 @@
                     let top = targetCol[targetCol.length - 1];
                     if (top.isRed !== selectedCards[0].isRed && top.rank === selectedCards[0].rank + 1) {
                         // 移动有效！执行移动并清除选择。
-                        game.move(selectedCards, selectedFrom, dest); // 点击放置也需要飞牌动画
+                        game.move(selectedCards, selectedFrom, dest);
                         clearSelection();
                         return; // 操作完成
+                    } else {
+                        showInvalidMoveTip('colorRankMismatch');
                     }
+                } else {
+                    showInvalidMoveTip('tooManyCards');
                 }
             }
 
@@ -1754,7 +1751,7 @@
             if (drag.moved) {
                 finishDrag(ue);
             } else {
-                // This was a click, not a drag
+                // 这是点击，不是拖拽
                 handleCardClick(drag.cards[0], drag.from);
                 drag = null;
             }
@@ -2004,7 +2001,10 @@
     function quickMove(card, pos) {
         clearSelection();
         if (pos.type === 'found') return;
-        if (pos.type === 'cols' && game.cols[pos.idx][game.cols[pos.idx].length-1].id !== card.id) return;
+        if (pos.type === 'cols' && game.cols[pos.idx][game.cols[pos.idx].length-1].id !== card.id) {
+            showInvalidMoveTip('notLastCard');
+            return;
+        }
 
         let suitIdx = SUITS.indexOf(card.suit);
         if (card.rank === game.found[suitIdx] + 1) {
@@ -2392,19 +2392,19 @@
     document.getElementById('langToggle').onclick = () => { clearHint(); setLanguage(currentLang === 'zh' ? 'en' : 'zh'); };
 
     document.getElementById('canvas').addEventListener('click', e => {
-        // If the click is on a card, do nothing. The card's own handler will deal with it.
+        // 如果点击在牌上，什么都不做。牌自己的处理器会处理它。
         if (e.target.closest('.card')) return;
         
-        // If nothing is selected, clicking empty space does nothing.
+        // 如果什么都没选中，点击空白处什么都不做。
         if (!selection) return;
         
-        // Clicking empty space clears hint (handled by global listener usually, but good to be explicit if logic changes)
+        // 点击空白处清除提示（通常由全局监听器处理，但如果逻辑改变最好明确处理）
         clearHint();
 
         const dest = findDestFromCoords(e.clientX, e.clientY);
 
         if (dest) {
-            // Check if the destination is empty (for free cells and columns)
+            // 检查目标是否为空（中转区和牌列）
             const isDestEmpty = (dest.type === 'free' && !game.free[dest.idx]) || (dest.type === 'cols' && game.cols[dest.idx].length === 0);
             
             if (isDestEmpty || dest.type === 'found') {
@@ -2441,8 +2441,8 @@
 
     const handleResize = () => {
         clearTimeout(window.resizeTimer);
-        // Use a slightly longer delay to allow the browser to settle after orientation change
-        window.resizeTimer = setTimeout(() => { // Removed setViewportHeight call
+        // 使用稍长的延迟让浏览器在方向改变后稳定下来
+        window.resizeTimer = setTimeout(() => {
             updateAndRender();
         }, 250);
     };

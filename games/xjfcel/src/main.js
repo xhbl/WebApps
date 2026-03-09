@@ -1,3 +1,9 @@
+
+// ========== 空当接龙 FreeCell 经典版主入口 ========== 
+// 本文件为核心 JS 逻辑，涵盖算法、动画、布局、交互、兼容性等关键实现。
+// 主要模块：多语言、存档、统计、核心算法、动画、布局自适应、交互、提示、胜利动画等。
+// 兼容移动端与桌面端，支持响应式布局和触摸操作。
+
 import './style.css'
 
 import packageJson from '../package.json'
@@ -165,6 +171,7 @@ import packageJson from '../package.json'
         document.getElementById('hint-btn').textContent = t('buttons.hint');
         document.getElementById('undo-btn').textContent = t('buttons.undo');
 
+        // 尝试更新状态栏（使用 try-catch 防止在 game 对象初始化前调用报错）
         try { updateStatusBar(); } catch (e) {}
     }
 
@@ -395,6 +402,8 @@ import packageJson from '../package.json'
         showMessageBox({ title: about.title, message: message, type: 'info', buttons: 'ok' });
     }
 
+    // ---------- 工具函数：Canvas圆角矩形 (修复瀑布动画) ----------
+    // 兼容性处理：部分浏览器不支持 roundRect，需手动扩展 CanvasRenderingContext2D 原型。
     if (!CanvasRenderingContext2D.prototype.roundRect) {
         CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
             if (w < 2 * r) r = w / 2;
@@ -413,6 +422,8 @@ import packageJson from '../package.json'
         };
     }
 
+    // ---------- 伪随机数生成器 (Windows FreeCell 算法) ----------
+    // 采用微软经典 FreeCell 洗牌算法，保证与 Windows 版局面一致。
     class MSRand {
         constructor(seed) { this.seed = seed; }
         next() { this.seed = (this.seed * 214013 + 2531011) & 0xFFFFFFFF; return (this.seed >>> 16) & 0x7FFF; }
@@ -428,6 +439,8 @@ import packageJson from '../package.json'
         faceImages[k] = img;
     });
 
+    // 动画辅助函数
+    // getCardPosition：根据牌位置类型和索引，计算牌在画布上的精确坐标。
     function getCardPosition(pos, cardIndex) {
         let x = 0, y = 0;
         if (pos.type === 'free') {
@@ -444,6 +457,14 @@ import packageJson from '../package.json'
         return { x, y };
     }
 
+    /**
+     * animateMove - 执行飞牌动画，将一组牌从起点平滑移动到目标位置。
+     * @param {Array} cards - 需要移动的牌对象数组
+     * @param {Object} from - 起始位置描述
+     * @param {Object} to - 目标位置描述
+     * @returns {Promise} 动画完成后 resolve
+     * 细节：动态计算字体、隐藏原牌、动画结束后移除临时元素。
+     */
     async function animateMove(cards, from, to) {
         const duration = 150;
         const canvas = document.getElementById('canvas');
@@ -463,8 +484,12 @@ import packageJson from '../package.json'
             el.style.width = `${layout.cardW}px`;
             el.style.height = `${layout.cardH}px`;
             
+            // 动态计算字体大小：利用叠牌留空区域(30%高度)
+            // 兼容不同屏幕尺寸，防止溢出。
             let fontSize = Math.max(10, Math.floor(layout.stackYOffset * 0.90));
+            // 留出少量padding
             const paddingX = (window.innerWidth <= 600 || window.innerHeight <= 500) ? 4 : 8;
+            // 防止宽度溢出 (假设最大宽度为 "10" + 花色 + 间距)
             if (fontSize * 2.2 > layout.cardW - paddingX) {
                 fontSize = Math.floor((layout.cardW - paddingX) / 2.2);
             }
@@ -483,12 +508,14 @@ import packageJson from '../package.json'
             el.classList.add('selected');
 
             const originalEl = document.querySelector(`.card[data-id="${card.id}"]`);
+            // 隐藏原始卡牌，避免"分身"效果
             if (originalEl) originalEl.style.visibility = 'hidden';
 
             canvas.appendChild(el);
             flyers.push({ el, index: i });
         }
 
+        // 强制浏览器重排
         if (flyers.length > 0) flyers[0].el.getBoundingClientRect();
 
         flyers.forEach(({ el, index }) => {
@@ -501,12 +528,15 @@ import packageJson from '../package.json'
         flyers.forEach(f => f.el.remove());
     }
 
+    // updateStatusBar：刷新状态栏，显示当前局号和剩余牌数。
     function updateStatusBar() {
         document.getElementById('game-info').innerText = `${t('status.game')}: #${game.seed}`;
         const cardsOnBoard = game.cols.reduce((sum, col) => sum + col.length, 0) + game.free.filter(Boolean).length;
         document.getElementById('cards-left-info').innerText = `${t('status.left')}: ${cardsOnBoard}`;
     }
 
+    // ---------- 核心游戏逻辑类 ----------
+    // FreeCellLogic：封装所有游戏状态、操作、算法与历史记录。
     class FreeCellLogic {
         constructor() { 
             this.reset(Math.floor(Math.random() * 1000000) + 1); 
@@ -515,7 +545,14 @@ import packageJson from '../package.json'
             this.history = [];
         }
 
+        /**
+         * reset - 初始化/重置牌局。
+         * @param {number} seed - 局号（伪随机种子）
+         * 采用微软洗牌算法，生成 52 张牌并分配到 8 列。
+         * 支持任意局号复现。
+         */
         reset(seed) {
+            // Microsoft FreeCell 算法：初始化顺序为 K黑,K红,K方,K梅... (51 -> 0)
             this.seed = seed;
             this.free = Array(4).fill(null);
             this.found = [0, 0, 0, 0];
@@ -539,6 +576,12 @@ import packageJson from '../package.json'
             deck.forEach((card, i) => this.cols[i % 8].push(card));
         }
 
+        /**
+         * getMaxMovable - 计算当前可一次性移动的最大牌数。
+         * @param {boolean} toEmptyCol - 是否目标为新空列
+         * 公式：(空中转区数+1) * 2^空列数
+         * 用于判断多牌移动是否合法。
+         */
         getMaxMovable(toEmptyCol) {
             const freeCells = this.free.filter(c => !c).length;
             let emptyCols = this.cols.filter(c => c.length === 0).length;
@@ -546,9 +589,17 @@ import packageJson from '../package.json'
             return (freeCells + 1) * Math.pow(2, Math.max(0, emptyCols));
         }
 
+        /**
+         * getHints - 智能提示算法。
+         * 返回所有可行的移动建议，按优先级排序。
+         * 优先级：回收区 > 叠牌区 > 中转区。
+         * 支持多步提示和高亮。
+         */
         getHints() {
             const hints = [];
             
+            // 1. 优先检查能否移入回收区 (Found)
+            // 检查每列顶部是否有可直接回收的牌。
             for (let c = 0; c < 8; c++) {
                 if (this.cols[c].length > 0) {
                     let card = this.cols[c][this.cols[c].length - 1];
@@ -558,6 +609,10 @@ import packageJson from '../package.json'
                     }
                 }
             }
+            // 中转区
+            // 2. 检查能否移动到叠牌区 (Tableau)
+            // 2.1 从中转区 (Free) 移动
+            // 检查中转区顶部牌能否回收或叠放。
             for (let f = 0; f < 4; f++) {
                 if (this.free[f]) {
                     let card = this.free[f];
@@ -583,6 +638,7 @@ import packageJson from '../package.json'
                     }
                 }
             }
+            // 牌列
             for (let c1 = 0; c1 < 8; c1++) {
                 if (this.cols[c1].length === 0) continue;
                 let col = this.cols[c1];
@@ -590,11 +646,17 @@ import packageJson from '../package.json'
                 let card = col[col.length - 1];
                 
                 let validLen = 1;
+                // 检查移动单张牌
+                // 检查当前列顶部连续可移动序列（颜色交替且点数递减）。
                 for (let k = col.length - 2; k >= 0; k--) {
                     if (col[k].isRed !== col[k+1].isRed && col[k].rank === col[k+1].rank + 1) validLen++;
                     else break;
                 }
 
+                // 检查移动有效序列
+                // 从最深的可移动牌开始尝试
+                // 2.2 从其他列移动 (尝试移动最长有效序列)
+                // 支持多牌连移，优先长序列。
                 for (let j = 0; j < validLen; j++) {
                     let idx = col.length - validLen + j;
                     let cardToMove = col[idx];
@@ -624,18 +686,28 @@ import packageJson from '../package.json'
 
             const emptyFreeIndices = this.free.map((c, i) => c === null ? i : -1).filter(i => i !== -1);
             if (emptyFreeIndices.length > 0) {
+                // 3. 检查能否移动到中转区 (Cols -> Free)
                 for (let c = 0; c < 8; c++) {
                     if (this.cols[c].length > 0) {
                         let card = this.cols[c][this.cols[c].length - 1];
+                        // 建议移动到第一个可用的空闲位
                         hints.push({ src: { type: 'cols', idx: c, card }, dest: { type: 'free', idx: emptyFreeIndices[0] }, score: 10 });
                     }
                 }
             }
 
+            // 按分数降序排序
             hints.sort((a, b) => b.score - a.score);
             return hints;
         }
 
+        /**
+         * move - 执行一次移动（含动画、历史记录、胜负判定、提示等）。
+         * @param {Array} cards - 移动的牌
+         * @param {Object} from - 起点
+         * @param {Object} to - 终点
+         * @param {boolean} animate - 是否播放动画
+         */
         async move(cards, from, to, animate = true) {
             if (!this.hasMoved) {
                 this.hasMoved = true;
@@ -650,6 +722,7 @@ import packageJson from '../package.json'
             if (this.history.length > 100) this.history.shift();
 
             if (animate) {
+                // 播放飞牌动画
                 await animateMove(cards, from, to);
             }
 
@@ -683,6 +756,11 @@ import packageJson from '../package.json'
             }
         }
 
+        /**
+         * autoCollect - 自动收集可安全回收的牌。
+         * 实现 N-1 规则，确保只有安全牌才自动回收。
+         * 每次只收集一张，递归调用。
+         */
         async autoCollect() {
             const candidates = [
                 ...this.free.map((c, i) => c ? { card: c, pos: { type: 'free', idx: i } } : null),
@@ -692,30 +770,35 @@ import packageJson from '../package.json'
             for (let { card, pos } of candidates) {
                 const suitIdx = SUITS.indexOf(card.suit);
 
+                // 基础检查: 这张牌是否是其回收单元的下一张?
                 if (card.rank === this.found[suitIdx] + 1) {
-                    
+                    // 安全检查 (N-1 Rule):
                     let isSafeToMove = false;
 
                     if (card.rank <= 2) {
+                        // 规则 1: A 和 2 永远是安全的
                         isSafeToMove = true;
                     } else {
                         const rankToCompare = card.rank - 1;
+                        // 黑桃/梅花 vs 红桃/方块
                         const oppositeColorIndices = card.isRed ? [0, 3] : [1, 2];
 
                         if (this.found[oppositeColorIndices[0]] >= rankToCompare && 
                             this.found[oppositeColorIndices[1]] >= rankToCompare) {
+                            // 规则 2: 对于 3 及以上的牌 (N)，检查所有点数为 N-1 且颜色相反的牌是否已回收
                             isSafeToMove = true;
                         }
                     }
 
                     if (isSafeToMove) {
                         await this.move([card], pos, { type: 'found', idx: suitIdx }, true);
-                        return;
+                        return; // 每次只移动一张最安全的牌，然后重新开始检查
                     }
                 }
             }
         }
 
+        // checkWin：判断是否胜利，全部回收即胜利。
         checkWin() {
             if (this.isWon) return;
             if (this.found.every(r => r === 13)) {
@@ -724,6 +807,7 @@ import packageJson from '../package.json'
             }
         }
 
+        // undo：撤销一步操作，恢复历史状态。
         undo() {
             if (this.history.length === 0) return;
             let prev = JSON.parse(this.history.pop());
@@ -736,21 +820,32 @@ import packageJson from '../package.json'
         }
     }
 
+    // ---------- 核心游戏逻辑 ----------
+    // 实例化主游戏对象，管理所有状态。
     const game = new FreeCellLogic();
-    let drag = null;
-    let selection = null;
-    let currentHints = [];
-    let currentHintIndex = 0;
-    let lastTapTime = 0;
-    const DOUBLE_TAP_DELAY = 300;
-    const DRAG_THRESHOLD = 5;
+    let drag = null; // 当前拖拽状态
+    let selection = null; // 当前选中牌组
+    let currentHints = []; // 当前提示列表
+    let currentHintIndex = 0; // 当前提示索引
+    let lastTapTime = 0; // 用于检测双击
+    const DOUBLE_TAP_DELAY = 300; // 双击判定时间间隔(ms)
+    const DRAG_THRESHOLD = 5; // 拖拽阈值，鼠标移动超过此像素才算拖拽
+    // 支持移动端双击、拖拽手势。
+    // layout：全局布局参数，支持响应式自适应。
     let layout = {
         cardW: 71, cardH: 96, paddingX: 10, paddingY: 10, colGap: 10, rowGap: 20, statusBarH: 0,
         stackYOffset: 25, topBarH: 0, bottomBarH: 0, canvasW: 0, canvasH: 0,
         freeSlotsPos: [], foundSlotsPos: [], colsXPos: []
     };
 
+    /**
+     * calculateLayout - 动态计算并设置所有布局参数。
+     * 支持横竖屏、宽窄屏、侧边栏、按钮栏等多种场景。
+     * 保证所有元素自适应且对齐。
+     */
     function calculateLayout() {
+        // 修复：使用 clientWidth 排除滚动条宽度
+        // 兼容性处理，防止滚动条影响布局。
         const vw = document.documentElement.clientWidth;
         const vh = window.innerHeight;
         const pageContainer = document.querySelector('.page-container');
@@ -765,7 +860,7 @@ import packageJson from '../package.json'
         layout.statusBarH = statusBar.offsetHeight;
         const sidebarWrapper = document.querySelector('.sidebar-wrapper');
         layout.bottomBarH = sidebarWrapper.offsetHeight;
-        const bottomBarWidth = isLandscapeWide ? sidebarWrapper.offsetWidth : 0;
+        const bottomBarWidth = isLandscapeWide ? sidebarWrapper.offsetWidth : 0; // 侧边栏固定宽度108px，竖屏时不占用水平空间
         
         const canvasVpHeight = Math.max(400, vh);
         
@@ -775,8 +870,9 @@ import packageJson from '../package.json'
         if (vw < 480) mode = 'phone';
         else if (vw < 800) mode = 'tablet';
 
+        // 切换布局模式
         const basePaddingX = { phone: 1, tablet: 10, pc: 40 }[mode];
-        const baseColGap = { phone: 1, tablet: 8, pc: 16 }[mode];
+        const baseColGap = { phone: 1, tablet: 8, pc: 16 }[mode]; // 窄屏下缩小列间距
         const cardAspectRatio = 96 / 71;
         
         let vMode = 'pc';
@@ -787,21 +883,33 @@ import packageJson from '../package.json'
         const gapValues = { phone: 10, tablet: 15, pc: 20 };
         const baseRowGap = Math.min(gapValues[mode], gapValues[vMode]);
 
+        // 1. 根据宽度计算牌宽
         const availableW = Math.max(320, isLandscapeWide ? canvasVpWidth - bottomBarWidth : canvasVpWidth);
         let cardW_width = (availableW - (2 * basePaddingX) - (7 * baseColGap)) / 8;
 
+        // 2. 根据高度计算牌宽
+        // 这里的核心逻辑是：计算出在给定的垂直空间里，能容纳一个完整游戏布局（上层加13张叠牌）的最大牌张尺寸。
+        // 保证无论屏幕多小都能完整显示。
+
+        // 2.1. 计算可用于游戏画布的总垂直空间 (availableH)
+        // 在竖屏模式下，需要减去状态栏和按钮栏的高度
+        // 兼容移动端和横屏侧栏。
         const availableH = canvasVpHeight - layout.topBarH - (isLandscapeWide ? 0 : (layout.bottomBarH + layout.statusBarH));
         const verticalFixedSpace = basePaddingY + baseRowGap + basePaddingY;
 
-        const STACK_OFFSET_RATIO = 0.32;
+        const STACK_OFFSET_RATIO = 0.32; // 统一使用 32% 的间距，保证在各种尺寸下都能看清牌面
         const cardHeightFactor = 2 + (12 * STACK_OFFSET_RATIO);
         
+        // 2.2. 计算出在当前高度限制下的卡牌高度
         let cardH_height = (availableH - verticalFixedSpace) / cardHeightFactor;
+        // 增加一个健壮性检查，如果计算出的高度为负或无效，则回退到一个安全值
         if (cardH_height <= 0) { cardH_height = 50; }
         let cardW_height = cardH_height / cardAspectRatio;
 
         let cardW = Math.min(cardW_width, cardW_height);
-        cardW = Math.max(30, cardW);
+        // 取较小值以适应屏幕，同时保证最小宽度
+        cardW = Math.max(30, cardW); // 防止过小
+        // 兼容极小屏幕。
 
         let cardH = cardW * cardAspectRatio;
  
@@ -814,6 +922,7 @@ import packageJson from '../package.json'
         const containerWidth = isLandscapeWide ? gameAreaWidth + bottomBarWidth : gameAreaWidth;
         pageContainer.style.width = `${containerWidth}px`;
 
+        // 核心对齐修复：动态设置上下栏的内边距，使其与游戏区的内边距(basePaddingX)保持一致
         topBar.style.paddingLeft = `${basePaddingX}px`;
         topBar.style.paddingRight = `${basePaddingX}px`;
         statusBar.style.paddingLeft = `${basePaddingX}px`;
@@ -905,6 +1014,7 @@ import packageJson from '../package.json'
 
         const colY = layout.paddingY + layout.cardH + layout.rowGap;
         game.cols.forEach((col, i) => {
+            // 计算该列从哪里开始是有效的拖拽序列（符合颜色交替且点数递减）
             let draggableStartIndex = col.length - 1;
             for (let k = col.length - 2; k >= 0; k--) {
                 if (col[k].isRed !== col[k+1].isRed && col[k].rank === col[k+1].rank + 1) {
@@ -921,27 +1031,35 @@ import packageJson from '../package.json'
 
         updateStatusBar();
 
+        // 更新撤销按钮状态
         document.getElementById('undo-btn').disabled = game.history.length === 0 || game.isWon;
         document.getElementById('hint-btn').disabled = game.isWon;
 
+        // 修复：基于最坏情况（13张牌）计算画布的最小高度，确保从一开始就有足够的滚动空间
+        // 同时考虑当前牌局的实际高度（如果超过13张），防止长牌列被截断
+        // 兼容超长牌列。
         const maxCardsInCol = Math.max(13, ...game.cols.map(c => c.length));
         const requiredCanvasHeight = colY + layout.cardH + ((maxCardsInCol - 1) * layout.stackYOffset) + layout.paddingY;
 
         canvas.style.minHeight = `${requiredCanvasHeight}px`;
+        // .game-canvas 使用 flex-grow 属性来拉伸到视口底部
         canvas.style.height = '';
     }
 
+    // updateAndRender：重新计算布局并渲染所有内容。
     function updateAndRender() {
         calculateLayout();
         renderContent();
     }
 
+    // clearSelection：清除当前选中状态。
     function clearSelection() {
         if (!selection) return;
         selection.els.forEach(el => el.classList.remove('selected'));
         selection = null;
     }
 
+    // clearHint：清除当前提示高亮。
     function clearHint() {
         document.querySelectorAll('.hint-glow').forEach(el => el.classList.remove('hint-glow'));
         document.querySelectorAll('.col-hint-box').forEach(el => el.remove());
@@ -949,10 +1067,16 @@ import packageJson from '../package.json'
         currentHintIndex = 0;
     }
 
+    // invalidTipElement/invalidTipTimeout/invalidTipLock：用于管理无效操作提示。
     let invalidTipElement = null;
     let invalidTipTimeout = null;
     let invalidTipLock = false;
 
+    /**
+     * showInvalidMoveTip - 显示无效操作提示。
+     * @param {string} messageKey - 多语言 key
+     * 支持自动消失和多次触发。
+     */
     function showInvalidMoveTip(messageKey) {
         if (invalidTipElement) {
             invalidTipElement.remove();
@@ -982,6 +1106,7 @@ import packageJson from '../package.json'
         setTimeout(() => { invalidTipLock = false; }, 100);
     }
 
+    // hideInvalidMoveTip：隐藏无效操作提示。
     function hideInvalidMoveTip() {
         if (invalidTipElement) {
             invalidTipElement.classList.remove('visible');
@@ -998,6 +1123,8 @@ import packageJson from '../package.json'
         }
     }
 
+    // 全局交互监听：任何非"提示"按钮的操作都清除提示
+    // 兼容右键、触摸、点击等多种交互。
     function handleGlobalInteraction(e) {
         if (invalidTipElement && !invalidTipLock && !(e.target instanceof Element && e.target.closest('.invalid-move-tip'))) {
             if (e.type === 'mousedown' && e.button === 2) {
@@ -1013,7 +1140,12 @@ import packageJson from '../package.json'
     window.addEventListener('mousedown', handleGlobalInteraction);
     window.addEventListener('touchstart', handleGlobalInteraction, { passive: true });
 
+    /**
+     * showHint - 显示智能提示并高亮可移动牌。
+     * 支持循环多步提示。
+     */
     function showHint() {
+        // 仅清除视觉效果，不清除 currentHints 数据，以便循环显示
         document.querySelectorAll('.hint-glow').forEach(el => el.classList.remove('hint-glow'));
         document.querySelectorAll('.col-hint-box').forEach(el => el.remove());
 
@@ -1027,6 +1159,7 @@ import packageJson from '../package.json'
         const hint = currentHints[currentHintIndex];
         currentHintIndex = (currentHintIndex + 1) % currentHints.length;
 
+        // 高亮源牌
         if (hint.src.type === 'cols') {
             const col = game.cols[hint.src.idx];
             const startIdx = col.findIndex(c => c.id === hint.src.card.id);
@@ -1041,6 +1174,7 @@ import packageJson from '../package.json'
             if (srcEl) srcEl.classList.add('hint-glow');
         }
 
+        // 高亮目标
         let destEl;
         if (hint.dest.type === 'found') {
             destEl = document.getElementById('found-group').children[hint.dest.idx];
@@ -1055,6 +1189,7 @@ import packageJson from '../package.json'
                 destEl = document.querySelector(`.card[data-id="${card.id}"]`);
                 destEl.classList.add('hint-glow');
             } else {
+                // 空列高亮
                 const x = layout.colsXPos[hint.dest.idx];
                 const y = layout.paddingY + layout.cardH + layout.rowGap;
                 const hintBox = document.createElement('div');
@@ -1066,15 +1201,24 @@ import packageJson from '../package.json'
                 document.getElementById('canvas').appendChild(hintBox);
             }
         }
+        // 移除定时消失，提示将一直保留直到用户操作
     }
 
+    /**
+     * handleCardClick - 处理牌点击/放置/选择等所有交互。
+     * 支持多牌连选、取消、放置、规则校验。
+     */
     function handleCardClick(card, pos) {
         if (selection) {
+            // 如果有牌被选中...
+
+            // Case 1: 用户点击了当前已选中牌列中的任意一张牌，意图是取消选择。
             if (selection.els.some(el => el.dataset.id === card.id)) {
                 clearSelection();
                 return;
             }
 
+            // Case 2: 用户点击了另一张牌，意图是"放置"。
             const { cards: selectedCards, from: selectedFrom } = selection;
 
             if (pos.type === 'free') {
@@ -1109,14 +1253,16 @@ import packageJson from '../package.json'
             const dest = { type: 'cols', idx: pos.idx };
             const targetCol = game.cols[dest.idx];
 
+            // 检查目标是否是牌垛的最后一张，以及移动规则是否满足
             if (targetCol.length > 0 && targetCol[targetCol.length - 1].id === card.id) {
                 const maxMovable = game.getMaxMovable(false);
                 if (selectedCards.length <= maxMovable) {
                     let top = targetCol[targetCol.length - 1];
                     if (top.isRed !== selectedCards[0].isRed && top.rank === selectedCards[0].rank + 1) {
+                        // 移动有效！执行移动并清除选择。
                         game.move(selectedCards, selectedFrom, dest);
                         clearSelection();
-                        return;
+                        return; // 操作完成
                     } else {
                         showInvalidMoveTip('colorRankMismatch');
                     }
@@ -1124,10 +1270,14 @@ import packageJson from '../package.json'
                     showInvalidMoveTip('tooManyCards');
                 }
             }
+            // Case 3: “放置”尝试无效。根据您的反馈，现在只取消选择，不再重新选择。
             clearSelection();
-            return;
+            return; // 关键：在这里返回，阻止代码继续执行到下方的“选择逻辑”部分。
         }
 
+        // --- 选择逻辑 ---
+        // 如果之前没有选择，或"重新选择"时，会执行到这里。
+        // 支持多牌连选和规则校验。
         if (pos.type === 'found') {
             if (selection) {
                 const { cards: selectedCards } = selection;
@@ -1162,9 +1312,8 @@ import packageJson from '../package.json'
                 }
             }
 
-            if (!isStackValid && pos.cardIdx !== col.length - 1) {
-                return;
-            }
+            // 如果点击的不是一个有效的牌垛，则只允许选择最后一张牌
+            if (!isStackValid && pos.cardIdx !== col.length - 1) return;
             cardsToSelect = isStackValid ? potentialStack : [card];
 
             const maxMovable = game.getMaxMovable(false);
@@ -1201,8 +1350,9 @@ import packageJson from '../package.json'
             if (e.button === 0) startDrag(e, card, div.posData);
             if (e.button === 2) quickMove(card, div.posData);
         };
+        // 添加触摸事件监听
         div.ontouchstart = (e) => {
-            if (e.touches.length > 1) return;
+            if (e.touches.length > 1) return; // 忽略多指触控
             startTouchDrag(e, card, div.posData);
         };
         div.ondblclick = () => quickMove(card, div.posData);
@@ -1233,11 +1383,13 @@ import packageJson from '../package.json'
             ox: e.clientX - els[0].getBoundingClientRect().left,
             oy: e.clientY - els[0].getBoundingClientRect().top,
             moved: false,
+            // 记录鼠标按下时的初始位置
             startX: e.clientX,
             startY: e.clientY
         };
 
         const moveHandler = (me) => {
+            // 计算鼠标移动距离
             const dx = Math.abs(me.clientX - drag.startX);
             const dy = Math.abs(me.clientY - drag.startY);
 
@@ -1272,6 +1424,11 @@ import packageJson from '../package.json'
         document.addEventListener('mouseup', upHandler);
     }
 
+    /**
+     * startTouchDrag - 专门处理触摸拖拽的逻辑。
+     * 兼容单击、双击、拖拽手势。
+     * 解决了移动端滚动与拖拽的冲突。
+     */
     function startTouchDrag(e, card, pos) {
         if (pos.type === 'found') return;
         
@@ -1313,6 +1470,7 @@ import packageJson from '../package.json'
             }
 
             if (drag.moved) {
+                // 拖拽时必须阻止滚动
                 if (te.cancelable) te.preventDefault();
                 els.forEach((el, i) => {
                     el.classList.add('dragging');
@@ -1323,6 +1481,7 @@ import packageJson from '../package.json'
         };
 
         const touchEndHandler = (te) => {
+            // 阻止鼠标模拟事件，防止触发点击穿透
             if (te.cancelable) te.preventDefault();
             document.removeEventListener('touchmove', touchMoveHandler);
             document.removeEventListener('touchend', touchEndHandler);
@@ -1331,16 +1490,20 @@ import packageJson from '../package.json'
             if (!drag) return;
 
             if (drag.moved) {
+                // 拖拽结束
                 const t = te.changedTouches[0];
                 finishDrag({ clientX: t.clientX, clientY: t.clientY });
             } else {
+                // 点击 (Tap)
                 const currentTime = new Date().getTime();
                 const tapLength = currentTime - lastTapTime;
                 
                 if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
+                    // 双击
                     quickMove(card, pos);
                     lastTapTime = 0;
                 } else {
+                    // 单击
                     handleCardClick(card, pos);
                     lastTapTime = currentTime;
                 }
@@ -1354,7 +1517,7 @@ import packageJson from '../package.json'
             document.removeEventListener('touchcancel', touchCancelHandler);
             
             if (drag) {
-                renderContent();
+                renderContent(); // 重置视图，取消拖拽状态
                 drag = null;
             }
         };
@@ -1364,6 +1527,11 @@ import packageJson from '../package.json'
         document.addEventListener('touchcancel', touchCancelHandler);
     }
 
+    /**
+     * findDestFromCoords - 根据鼠标/触摸坐标查找目标放置区。
+     * @param {number} clientX - 屏幕 X 坐标
+     * @param {number} clientY - 屏幕 Y 坐标
+     */
     function findDestFromCoords(clientX, clientY) {
         const canvas = document.getElementById('canvas');
         const rect = canvas.getBoundingClientRect();
@@ -1401,12 +1569,18 @@ import packageJson from '../package.json'
         return dest;
     }
 
+    /**
+     * finishDrag - 拖拽结束时的处理函数。
+     * 判断目标位置，校验移动合法性，执行移动或弹回。
+     * @param {Event} e - 鼠标/触摸事件对象
+     */
     function finishDrag(e) {
         const { cards, from, els, moved, ox, oy } = drag;
         els.forEach(el => el.classList.remove('selected'));
         els.forEach(el => el.classList.remove('dragging'));
 
         if (!moved) {
+            // 这是点击，不是拖拽
             handleCardClick(cards[0], from);
             drag = null;
             return;
@@ -1519,6 +1693,11 @@ import packageJson from '../package.json'
         drag = null;
     }
 
+    /**
+     * quickMove - 快速移动（双击或右键）。
+     * @param {Object} card - 牌对象
+     * @param {Object} pos - 牌的位置
+     */
     function quickMove(card, pos) {
         clearSelection();
         if (pos.type === 'found') return;
@@ -1542,6 +1721,10 @@ import packageJson from '../package.json'
 
     let isAnimating = false;
 
+    /**
+     * animateDeal - 执行发牌动画。
+     * 所有牌从屏幕底部飞到各自位置。
+     */
     async function animateDeal() {
         if (isAnimating) return;
         isAnimating = true;
@@ -1549,6 +1732,7 @@ import packageJson from '../package.json'
         const canvas = document.getElementById('canvas');
         const rect = canvas.getBoundingClientRect();
         
+        // 计算发牌起始点：屏幕底部中央
         const startX = (window.innerWidth / 2) - (layout.cardW / 2) - rect.left;
         const startY = window.innerHeight - rect.top - layout.cardH - 40;
 
@@ -1572,17 +1756,19 @@ import packageJson from '../package.json'
             }
         }
 
+        // 禁用交互
         document.body.style.pointerEvents = 'none';
 
         dealingOrder.forEach(({ el }, i) => {
             el.style.transition = 'none';
             el.style.left = `${startX}px`;
             el.style.top = `${startY}px`;
-            el.style.zIndex = 100 + i;
+            el.style.zIndex = 100 + i; // 确保飞行的牌在上面
         });
 
         canvas.offsetHeight;
 
+        // 每张牌的间隔 (ms)
         const delay = 15;
         const duration = 250;
         
@@ -1594,6 +1780,7 @@ import packageJson from '../package.json'
                     item.el.style.top = item.targetTop;
                     
                     setTimeout(() => {
+                        // 动画结束后恢复 z-index (可选，或者就留着)
                         item.el.style.zIndex = ''; 
                         resolve();
                     }, duration);
@@ -1604,21 +1791,23 @@ import packageJson from '../package.json'
         await Promise.all(promises);
         
         isAnimating = false;
+        // 恢复交互
         document.body.style.pointerEvents = '';
     }
 
     async function startNewGame(seed) {
-        checkAbandonment();
+        checkAbandonment(); // 检查上一局是否中途放弃
         game.reset(seed);
-        saveGameState();
+        saveGameState(); // 保存新牌局的初始状态
         updateAndRender();
+        // 滚动到顶部，确保能看到发牌动画
         const container = document.querySelector('.page-container');
         if (container) container.scrollTop = 0;
         await animateDeal();
     }
 
     function newRandomGame(force = false) {
-        const _start = () => startNewGame(Math.floor(Math.random() * 1000000) + 1);
+        const _start = () => startNewGame(Math.floor(Math.random() * 1000000) + 1); // “新游戏”按钮功能：开始一个随机牌局
 
         if (!force && !game.isWon && game.hasMoved) {
             showMessageBox({
@@ -1643,6 +1832,7 @@ import packageJson from '../package.json'
     }
 
     function selectGame() {
+        // “选局”按钮功能：弹出对话框让用户选择牌局
         showInputBox({
             title: t('selectGameTitle'),
             message: t('selectGameMessage'),
@@ -1667,8 +1857,8 @@ import packageJson from '../package.json'
     function handleGameWin() {
         document.getElementById('undo-btn').disabled = true;
         document.getElementById('hint-btn').disabled = true;
-        updateStatsOnWin();
-        clearSavedGame();
+        updateStatsOnWin(); // 更新获胜统计
+        clearSavedGame(); // 游戏获胜后，清除本地存档
         
         const stopAnim = startVictoryDemo();
         
@@ -1691,6 +1881,10 @@ import packageJson from '../package.json'
         return victoryAnimation();
     }
 
+    /**
+     * victoryAnimation - 胜利时的瀑布流动画。
+     * 使用 Canvas 2D 实现物理模拟（重力、反弹）。
+     */
     function victoryAnimation() {
         let animFrameId;
         const vCanvas = document.getElementById('victory-canvas');
@@ -1728,6 +1922,7 @@ import packageJson from '../package.json'
         const bounce = -0.7;
 
         function drawCard(c) {
+            // 绘制卡牌基础样式
             ctx.fillStyle = 'white';
             ctx.strokeStyle = 'black';
             ctx.lineWidth = 1;
@@ -1738,6 +1933,7 @@ import packageJson from '../package.json'
 
             ctx.fillStyle = c.isRed ? '#ff0000' : '#000000';
             
+            // 计算字体大小，保持与 createCardEl 逻辑一致
             let fontSize = Math.max(10, Math.floor(layout.stackYOffset * 0.90));
             const paddingX = (window.innerWidth <= 600 || window.innerHeight <= 500) ? 4 : 8;
             if (fontSize * 2.2 > layout.cardW - paddingX) {
@@ -1745,14 +1941,17 @@ import packageJson from '../package.json'
             }
 
             ctx.font = `bold ${fontSize}px "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif`;
+            // 左上角点数
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
             ctx.fillText(c.rank, c.x + 4, c.y + 2);
 
             ctx.font = `${fontSize * 0.9}px "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif`;
+            // 右上角小花色
             ctx.textAlign = 'right';
             ctx.fillText(c.suit, c.x + layout.cardW - 4, c.y + 4);
 
+            // 底部大花色或SVG图案
             const isFace = ['J', 'Q', 'K'].includes(c.rank);
             const f = isFace ? c.rank.toString().toLowerCase() : null;
             if (isFace && faceImages[f] && faceImages[f].complete && faceImages[f].naturalWidth > 0) {
@@ -1771,11 +1970,13 @@ import packageJson from '../package.json'
         }
 
         function animate() {
+            // 动态调整画布大小以适应移动端地址栏变化
             if (vCanvas.width !== window.innerWidth || vCanvas.height !== window.innerHeight) {
                 resizeCanvas();
             }
 
             if (currentCardIndex < cards.length && Math.random() > 0.8) {
+                // 随机激活卡牌下落
                 cards[currentCardIndex].active = true;
                 currentCardIndex++;
             }
@@ -1784,6 +1985,7 @@ import packageJson from '../package.json'
             const floorY = vCanvas.height
             
             for (let i = cards.length - 1; i >= 0; i--) {
+                // 绘制静止在收牌区的牌 (从底层的A绘制到顶层的K，确保遮挡关系正确)
                 if (!cards[i].active) {
                     drawCard(cards[i]);
                 }
@@ -1795,6 +1997,7 @@ import packageJson from '../package.json'
                 c.x += c.vx;
                 
                 if (c.resting) {
+                    // 如果窗口变高导致卡牌悬空，恢复重力
                     if (c.y + layout.cardH < floorY - 2) c.resting = false;
                 }
                 
@@ -1807,6 +2010,7 @@ import packageJson from '../package.json'
                     c.y = floorY - layout.cardH;
                     c.vy *= bounce;
                     
+                    // 当反弹速度很小时，停止垂直运动，防止在底部抖动或穿模
                     if (Math.abs(c.vy) < gravity * 3) {
                         c.resting = true;
                         c.vy = 0;
@@ -1821,6 +2025,7 @@ import packageJson from '../package.json'
         }
         animate();
 
+        // 返回清理函数
         return () => {
             if (animFrameId) cancelAnimationFrame(animFrameId);
             vCanvas.style.display = 'none';
@@ -1828,6 +2033,9 @@ import packageJson from '../package.json'
         };
     }
 
+    /**
+     * showStats - 显示统计信息对话框。
+     */
     function showStats() {
         const winRate = gameStats.played > 0 ? ((gameStats.won / gameStats.played) * 100).toFixed(1) : 0;
         const currentStreak = gameStats.winStreak;
@@ -1862,7 +2070,7 @@ import packageJson from '../package.json'
 
         titleEl.textContent = t('stats.title');
         textEl.innerHTML = msg;
-        iconEl.style.display = 'none';
+        iconEl.style.display = 'none'; // 统计界面隐藏图标以节省空间
 
         btnsEl.innerHTML = '';
         
@@ -1878,7 +2086,7 @@ import packageJson from '../package.json'
         btnsEl.appendChild(createBtn(t('stats.reset'), () => {
             if (confirm(t('stats.confirmReset'))) {
                 gameStats = { played: 0, won: 0, winStreak: 0, maxWinStreak: 0, maxLoseStreak: 0 };
-                saveStats();
+                saveStats(); // 刷新显示
                 showStats();
             }
         }));
@@ -1887,6 +2095,7 @@ import packageJson from '../package.json'
         overlay.style.display = 'block';
     }
 
+    // 禁用右键菜单
     window.oncontextmenu = (e) => e.preventDefault();
 
     document.getElementById('new-game-btn').onclick = () => { clearHint(); newRandomGame(); };
@@ -1897,11 +2106,15 @@ import packageJson from '../package.json'
     document.getElementById('aboutLink').onclick = (e) => { e.preventDefault(); clearHint(); showAbout(); };
     document.getElementById('langToggle').onclick = () => { clearHint(); setLanguage(currentLang === 'zh' ? 'en' : 'zh'); };
 
+    // 处理在空白区域的点击（用于放置选中的牌）
     document.getElementById('canvas').addEventListener('click', e => {
+        // 如果点击在牌上，什么都不做。牌自己的处理器会处理它。
         if (e.target.closest('.card')) return;
         
+        // 如果什么都没选中，点击空白处什么都不做。
         if (!selection) return;
         
+        // 点击空白处清除提示（通常由全局监听器处理，但如果逻辑改变最好明确处理）
         clearHint();
 
         const dest = findDestFromCoords(e.clientX, e.clientY);
@@ -1909,6 +2122,7 @@ import packageJson from '../package.json'
         if (dest) {
             const isDestEmpty = (dest.type === 'free' && !game.free[dest.idx]) || (dest.type === 'cols' && game.cols[dest.idx].length === 0);
             
+            // 检查目标是否为空（中转区和牌列）
             if (isDestEmpty || dest.type === 'found') {
                 const { cards, from } = selection;
                 let valid = false;
@@ -1954,17 +2168,20 @@ import packageJson from '../package.json'
 
     const handleResize = () => {
         clearTimeout(window.resizeTimer);
+        // 使用稍长的延迟让浏览器在方向改变后稳定下来
         window.resizeTimer = setTimeout(() => {
             updateAndRender();
         }, 250);
     };
 
+    // 监听窗口大小和方向变化，重新布局。
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
 
+    // 解决iOS下 :active 伪类无效的问题
     document.body.addEventListener('touchstart', () => {}, { passive: true });
 
-    window.startVictoryDemo = startVictoryDemo;
+    window.startVictoryDemo = startVictoryDemo; // 保留用于调试
 
     loadStats();
     loadAndInitialize();
