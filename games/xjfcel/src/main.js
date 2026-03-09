@@ -222,6 +222,7 @@ import packageJson from '../package.json'
     }
 
     function loadAndInitialize() {
+        updateUIText();
         const savedData = localStorage.getItem(STORAGE_KEY);
         if (savedData) {
             try {
@@ -234,7 +235,6 @@ import packageJson from '../package.json'
                 if (state.hasMoved === undefined && game.history.length > 0) {
                     game.hasMoved = true;
                 }
-                updateUIText();
                 updateAndRender();
             } catch (e) {
                 newRandomGame(true);
