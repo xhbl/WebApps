@@ -52,6 +52,19 @@ import packageJson from '../package.json'
                 confirmReset: "确定要重置所有统计数据吗？",
                 winStreakTag: "连胜",
                 loseStreakTag: "连败"
+            },
+            invalidMove: {
+                fromFound: "不能从回收区移动牌",
+                stackInvalid: "只能移动颜色交替、点数递减的牌序列",
+                tooManyCards: "移动的牌数超过限制",
+                colorRankMismatch: "目标位置需要颜色交替且点数递减",
+                freeOccupied: "该中转区已有牌",
+                freeSingleOnly: "中转区只能放置单张牌",
+                foundSuitMismatch: "回收区只能放同花色的牌",
+                foundRankMismatch: "回收区需要从A开始按顺序放置",
+                foundSingleOnly: "回收区只能放置单张牌",
+                notLastCard: "只能移动列末尾的牌",
+                noFreeSlot: "没有可用的中转区"
             }
         },
         en: {
@@ -102,6 +115,19 @@ import packageJson from '../package.json'
                 confirmReset: "Are you sure you want to reset all statistics?",
                 winStreakTag: "Wins",
                 loseStreakTag: "Losses"
+            },
+            invalidMove: {
+                fromFound: "Cannot move cards from foundation",
+                stackInvalid: "Can only move alternating color, descending sequence",
+                tooManyCards: "Too many cards to move",
+                colorRankMismatch: "Target requires alternating color and descending rank",
+                freeOccupied: "Free cell is already occupied",
+                freeSingleOnly: "Free cell can only hold one card",
+                foundSuitMismatch: "Foundation requires matching suit",
+                foundRankMismatch: "Foundation requires ascending rank from Ace",
+                foundSingleOnly: "Foundation can only accept one card",
+                notLastCard: "Can only move the last card in column",
+                noFreeSlot: "No available free cell"
             }
         }
     };
@@ -717,7 +743,7 @@ import packageJson from '../package.json'
     let currentHintIndex = 0;
     let lastTapTime = 0;
     const DOUBLE_TAP_DELAY = 300;
-    const DRAG_THRESHOLD = 5;
+    const DRAG_THRESHOLD = 15;
     let layout = {
         cardW: 71, cardH: 96, paddingX: 10, paddingY: 10, colGap: 10, rowGap: 20, statusBarH: 0,
         stackYOffset: 25, topBarH: 0, bottomBarH: 0, canvasW: 0, canvasH: 0,
@@ -922,7 +948,63 @@ import packageJson from '../package.json'
         currentHintIndex = 0;
     }
 
+    let invalidTipElement = null;
+    let invalidTipTimeout = null;
+    let invalidTipLock = false;
+
+    function showInvalidMoveTip(messageKey) {
+        if (invalidTipElement) {
+            invalidTipElement.remove();
+        }
+        if (invalidTipTimeout) {
+            clearTimeout(invalidTipTimeout);
+        }
+
+        const tip = document.createElement('div');
+        tip.className = 'invalid-move-tip';
+        tip.innerHTML = `<span class="tip-icon">⚠</span><span class="tip-text">${t('invalidMove.' + messageKey)}</span>`;
+        
+        const bottomBar = document.querySelector('.bottom-controls');
+        bottomBar.insertAdjacentElement('beforebegin', tip);
+        
+        invalidTipElement = tip;
+        
+        requestAnimationFrame(() => {
+            tip.classList.add('visible');
+        });
+        
+        invalidTipTimeout = setTimeout(() => {
+            hideInvalidMoveTip();
+        }, 3000);
+
+        invalidTipLock = true;
+        setTimeout(() => { invalidTipLock = false; }, 100);
+    }
+
+    function hideInvalidMoveTip() {
+        if (invalidTipElement) {
+            invalidTipElement.classList.remove('visible');
+            setTimeout(() => {
+                if (invalidTipElement) {
+                    invalidTipElement.remove();
+                    invalidTipElement = null;
+                }
+            }, 200);
+        }
+        if (invalidTipTimeout) {
+            clearTimeout(invalidTipTimeout);
+            invalidTipTimeout = null;
+        }
+    }
+
     function handleGlobalInteraction(e) {
+        if (invalidTipElement && !invalidTipLock && !(e.target instanceof Element && e.target.closest('.invalid-move-tip'))) {
+            if (e.type === 'mousedown' && e.button === 2) {
+                // 右键点击不关闭提示
+            } else {
+                hideInvalidMoveTip();
+            }
+        }
         if (currentHints.length === 0) return;
         if (e.target instanceof Element && e.target.closest('#hint-btn')) return;
         clearHint();
@@ -993,6 +1075,36 @@ import packageJson from '../package.json'
             }
 
             const { cards: selectedCards, from: selectedFrom } = selection;
+
+            if (pos.type === 'free') {
+                if (selectedCards.length !== 1) {
+                    showInvalidMoveTip('freeSingleOnly');
+                } else if (game.free[pos.idx]) {
+                    showInvalidMoveTip('freeOccupied');
+                } else {
+                    game.move(selectedCards, selectedFrom, { type: 'free', idx: pos.idx });
+                }
+                clearSelection();
+                return;
+            }
+
+            if (pos.type === 'found') {
+                if (selectedCards.length !== 1) {
+                    showInvalidMoveTip('foundSingleOnly');
+                } else {
+                    const suitIdx = SUITS.indexOf(selectedCards[0].suit);
+                    if (pos.idx !== suitIdx) {
+                        showInvalidMoveTip('foundSuitMismatch');
+                    } else if (selectedCards[0].rank !== game.found[suitIdx] + 1) {
+                        showInvalidMoveTip('foundRankMismatch');
+                    } else {
+                        game.move(selectedCards, selectedFrom, { type: 'found', idx: suitIdx });
+                    }
+                }
+                clearSelection();
+                return;
+            }
+
             const dest = { type: 'cols', idx: pos.idx };
             const targetCol = game.cols[dest.idx];
 
@@ -1004,14 +1116,34 @@ import packageJson from '../package.json'
                         game.move(selectedCards, selectedFrom, dest);
                         clearSelection();
                         return;
+                    } else {
+                        showInvalidMoveTip('colorRankMismatch');
                     }
+                } else {
+                    showInvalidMoveTip('tooManyCards');
                 }
             }
             clearSelection();
             return;
         }
 
-        if (pos.type === 'found') return;
+        if (pos.type === 'found') {
+            if (selection) {
+                const { cards: selectedCards } = selection;
+                if (selectedCards.length !== 1) {
+                    showInvalidMoveTip('foundSingleOnly');
+                } else {
+                    const suitIdx = SUITS.indexOf(selectedCards[0].suit);
+                    if (pos.idx !== suitIdx) {
+                        showInvalidMoveTip('foundSuitMismatch');
+                    } else if (selectedCards[0].rank !== game.found[suitIdx] + 1) {
+                        showInvalidMoveTip('foundRankMismatch');
+                    }
+                }
+                clearSelection();
+            }
+            return;
+        }
 
         let cardsToSelect = [];
         let elementsToSelect = [];
@@ -1077,7 +1209,10 @@ import packageJson from '../package.json'
     }
 
     function startDrag(e, card, pos) {
-        if (pos.type === 'found') return;
+        if (pos.type === 'found') {
+            handleCardClick(card, pos);
+            return;
+        }
         let cards = [card], els = [];
         if (pos.type === 'cols') {
             const col = game.cols[pos.idx];
@@ -1266,32 +1401,114 @@ import packageJson from '../package.json'
     }
 
     function finishDrag(e) {
-        const { cards, from, els } = drag;
-        const dest = findDestFromCoords(e.clientX, e.clientY);
+        const { cards, from, els, moved, ox, oy } = drag;
         els.forEach(el => el.classList.remove('selected'));
         els.forEach(el => el.classList.remove('dragging'));
 
+        if (!moved) {
+            handleCardClick(cards[0], from);
+            drag = null;
+            return;
+        }
+
+        const canvas = document.getElementById('canvas');
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        const mouseX = e.clientX - canvasRect.left;
+        const mouseY = e.clientY - canvasRect.top;
+        
+        const cardLeft = mouseX - ox;
+        const cardTop = mouseY - oy;
+        const cardCenterX = cardLeft + layout.cardW / 2;
+        const cardCenterY = cardTop + layout.cardH / 2;
+
+        let dest = null;
+        let invalidReason = null;
+        
+        const topRowYEnd = layout.paddingY + layout.cardH;
+        
+        if (cardCenterY >= layout.paddingY && cardCenterY <= topRowYEnd) {
+            for (let i = 0; i < 4; i++) {
+                if (from.type === 'free' && from.idx === i) continue;
+                const pos = layout.freeSlotsPos[i];
+                if (cardCenterX >= pos.x && cardCenterX <= pos.x + layout.cardW) {
+                    dest = { type: 'free', idx: i };
+                    break;
+                }
+            }
+            if (!dest) {
+                for (let i = 0; i < 4; i++) {
+                    if (from.type === 'found' && from.idx === i) continue;
+                    const pos = layout.foundSlotsPos[i];
+                    if (cardCenterX >= pos.x && cardCenterX <= pos.x + layout.cardW) {
+                        dest = { type: 'found', idx: i };
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!dest) {
+            if (cardCenterY >= layout.paddingY + layout.cardH + layout.rowGap) {
+                for (let i = 0; i < 8; i++) {
+                    if (from.type === 'cols' && from.idx === i) continue;
+                    const x = layout.colsXPos[i];
+                    if (cardCenterX >= x && cardCenterX < x + layout.cardW) {
+                        dest = { type: 'cols', idx: i };
+                        break;
+                    }
+                }
+            }
+        }
+
         if (dest) {
             let valid = false;
+            
             if (dest.type === 'cols') {
                 const col = game.cols[dest.idx];
                 const maxMovable = game.getMaxMovable(col.length === 0);
-                if (cards.length <= maxMovable) {
-                    if (col.length === 0) valid = true;
-                    else {
+                if (cards.length > maxMovable) {
+                    invalidReason = 'tooManyCards';
+                } else {
+                    if (col.length === 0) {
+                        valid = true;
+                    } else {
                         let top = col[col.length-1];
-                        if (top.isRed !== cards[0].isRed && top.rank === cards[0].rank + 1) valid = true;
+                        if (top.isRed !== cards[0].isRed && top.rank === cards[0].rank + 1) {
+                            valid = true;
+                        } else {
+                            invalidReason = 'colorRankMismatch';
+                        }
                     }
                 }
-            } else if (dest.type === 'free' && cards.length === 1 && !game.free[dest.idx]) {
-                valid = true;
-            } else if (dest.type === 'found' && cards.length === 1) {
-                let suitIdx = SUITS.indexOf(cards[0].suit);
-                if (dest.idx === suitIdx && cards[0].rank === game.found[suitIdx] + 1) valid = true;
+            } else if (dest.type === 'free') {
+                if (cards.length !== 1) {
+                    invalidReason = 'freeSingleOnly';
+                } else if (game.free[dest.idx]) {
+                    invalidReason = 'freeOccupied';
+                } else {
+                    valid = true;
+                }
+            } else if (dest.type === 'found') {
+                if (cards.length !== 1) {
+                    invalidReason = 'foundSingleOnly';
+                } else {
+                    let suitIdx = SUITS.indexOf(cards[0].suit);
+                    if (dest.idx !== suitIdx) {
+                        invalidReason = 'foundSuitMismatch';
+                    } else if (cards[0].rank !== game.found[suitIdx] + 1) {
+                        invalidReason = 'foundRankMismatch';
+                    } else {
+                        valid = true;
+                    }
+                }
             }
 
             if (valid) {
                 game.move(cards, from, dest, false);
+            } else if (invalidReason) {
+                showInvalidMoveTip(invalidReason);
+                renderContent();
             } else {
                 renderContent();
             }
@@ -1304,7 +1521,10 @@ import packageJson from '../package.json'
     function quickMove(card, pos) {
         clearSelection();
         if (pos.type === 'found') return;
-        if (pos.type === 'cols' && game.cols[pos.idx][game.cols[pos.idx].length-1].id !== card.id) return;
+        if (pos.type === 'cols' && game.cols[pos.idx][game.cols[pos.idx].length-1].id !== card.id) {
+            showInvalidMoveTip('notLastCard');
+            return;
+        }
 
         let suitIdx = SUITS.indexOf(card.suit);
         if (card.rank === game.found[suitIdx] + 1) {
@@ -1313,6 +1533,8 @@ import packageJson from '../package.json'
             let emptyFree = game.free.indexOf(null);
             if (emptyFree !== -1) {
                 game.move([card], pos, { type: 'free', idx: emptyFree });
+            } else {
+                showInvalidMoveTip('noFreeSlot');
             }
         }
     }
@@ -1689,18 +1911,40 @@ import packageJson from '../package.json'
             if (isDestEmpty || dest.type === 'found') {
                 const { cards, from } = selection;
                 let valid = false;
+                let invalidReason = null;
+                
                 if (dest.type === 'cols') {
                     const maxMovable = game.getMaxMovable(true);
-                    if (cards.length <= maxMovable) valid = true;
-                } else if (dest.type === 'free' && cards.length === 1) {
-                    valid = true;
-                } else if (dest.type === 'found' && cards.length === 1) {
-                    let suitIdx = SUITS.indexOf(cards[0].suit);
-                    if (dest.idx === suitIdx && cards[0].rank === game.found[suitIdx] + 1) valid = true;
+                    if (cards.length <= maxMovable) {
+                        valid = true;
+                    } else {
+                        invalidReason = 'tooManyCards';
+                    }
+                } else if (dest.type === 'free') {
+                    if (cards.length === 1) {
+                        valid = true;
+                    } else {
+                        invalidReason = 'freeSingleOnly';
+                    }
+                } else if (dest.type === 'found') {
+                    if (cards.length !== 1) {
+                        invalidReason = 'foundSingleOnly';
+                    } else {
+                        let suitIdx = SUITS.indexOf(cards[0].suit);
+                        if (dest.idx !== suitIdx) {
+                            invalidReason = 'foundSuitMismatch';
+                        } else if (cards[0].rank !== game.found[suitIdx] + 1) {
+                            invalidReason = 'foundRankMismatch';
+                        } else {
+                            valid = true;
+                        }
+                    }
                 }
 
                 if (valid) {
                     game.move(cards, from, dest);
+                } else if (invalidReason) {
+                    showInvalidMoveTip(invalidReason);
                 }
             }
         }
