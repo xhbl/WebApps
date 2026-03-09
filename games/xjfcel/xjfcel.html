@@ -54,7 +54,7 @@
             color: white;
             height: 40px;
             padding: 0;
-            font-size: 12px;
+            font-size: 16px;
             flex-shrink: 0;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
         }
@@ -62,6 +62,7 @@
             font-size: 18px;
             font-weight: bold;
             line-height: 1;
+            margin-left: 2px;
         }
         .game-canvas {
             position: relative;
@@ -74,7 +75,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 4px 0;
-            font-size: 12px;
+            font-size: 14px;
             color: white;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
         }
@@ -99,12 +100,12 @@
             border: 2px solid;
             border-color: #ffffff #808080 #808080 #ffffff;
             padding: 3px 4px;
-            font-size: 14px;
+            font-size: 16px;
             font-weight: bold;
             cursor: pointer;
             font-family: 'Tahoma', sans-serif;
             min-width: 80px;
-            height: 30px;
+            height: auto;
             text-align: center;
             display: flex;
             justify-content: center;
@@ -225,6 +226,9 @@
             .top-info {
                 font-size: 14px;
             }
+            .status-bar {
+                font-size: 12px;
+            }
             #game-title {
                 font-size: 18px;
             }
@@ -237,6 +241,7 @@
                 min-width: 0; /* 覆盖PC端的min-width，允许按钮收缩 */
                 flex: 1; /* 让按钮平分剩余空间 */
                 padding: 5px 2px; /* 调整内边距以适应小屏幕 */
+                height: auto;
             }
             .card-inner { padding: 2px; }
         }
@@ -244,9 +249,10 @@
         /* 宽屏横向布局 (e.g. 手机横屏) */
         .page-container.landscape-wide .main-area {
             flex-direction: row; /* canvas is left, controls are right */
+            flex: 1;
         }
         .page-container.landscape-wide .sidebar-wrapper {
-            width: 95px; /* Fixed width for the side bar */
+            width: 108px; /* Fixed width for the side bar */
         }
         .page-container.landscape-wide .status-bar {
             flex-direction: column;
@@ -262,12 +268,64 @@
             flex-direction: column;
             height: auto; /* Height will be determined by flex container */
             padding: 10px 10px;
-            gap: 10px;
+            gap: 14px;
             justify-content: center;
+            align-items: center;
         }
         .page-container.landscape-wide .control-btn {
-            width: 100%;
-            flex: 0 1 auto; /* Reset mobile flex behavior */
+            min-width: 80px;
+        }
+
+        .invalid-move-tip {
+            position: fixed;
+            bottom: auto;
+            top: 2px;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background: #ffffcc;
+            border: 1px solid #808080;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 16px;
+            color: #000;
+            box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+            z-index: 9000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            pointer-events: none;
+            max-width: 400px;
+            word-break: break-word;
+        }
+
+        .invalid-move-tip.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .invalid-move-tip .tip-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .invalid-move-tip .tip-text {
+            line-height: 1.4;
+        }
+
+        @media (max-width: 400px) {
+            .invalid-move-tip {
+                top: 2px;
+                left: 4px;
+                right: 4px;
+                font-size: 14px;
+                max-width: none;
+            }
+
+            .invalid-move-tip.visible {
+                transform: translateY(0);
+            }
         }
 
         /* --- 自定义 Windows XP 风格 MsgBox --- */
@@ -295,13 +353,13 @@
         .msgbox-window .title-bar { background: #0a246a; color: white; padding: 4px 8px; margin-bottom: 6px; font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
         .msgbox-window .title-bar .title { display: flex; align-items: center; gap: 6px; }
         .msgbox-window .window-controls { display: flex; gap: 2px; }
-        .msgbox-window .win-btn { width: 20px; height: 20px; background: #ece9d8; border: 2px solid; border-color: #ffffff #808080 #808080 #ffffff; font-size: 12px; line-height: 16px; text-align: center; color: #000; cursor: default; }
+        .msgbox-window .win-btn { width: 20px; height: 20px; background: #ece9d8; border: 2px solid; border-color: #ffffff #808080 #808080 #ffffff; font-size: 14px; line-height: 16px; text-align: center; color: #000; cursor: default; }
         .msgbox-content { padding: 20px 15px; display: flex; align-items: flex-start; gap: 15px; }
         .msgbox-icon { font-size: 32px; line-height: 1; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.2)); }
-        .msgbox-text { font-size: 12px; line-height: 1.5; color: #000; flex: 1; white-space: pre-wrap; padding-top: 4px; }
+        .msgbox-text { font-size: 14px; line-height: 1.5; color: #000; flex: 1; white-space: pre-wrap; padding-top: 4px; }
         .msgbox-text a { color: #0000EE; }
         .msgbox-buttons { padding: 10px; display: flex; justify-content: center; gap: 10px; }
-        .msgbox-btn { min-width: 70px; padding: 2px 10px; background: #ece9d8; border: 2px solid; border-color: #ffffff #808080 #808080 #ffffff; font-family: 'Tahoma', sans-serif; font-size: 12px; cursor: pointer; }
+        .msgbox-btn { min-width: 70px; padding: 2px 10px; background: #ece9d8; border: 2px solid; border-color: #ffffff #808080 #808080 #ffffff; font-family: 'Tahoma', sans-serif; font-size: 14px; cursor: pointer; }
         .msgbox-btn:active { border-color: #808080 #ffffff #ffffff #808080; }
         .msgbox-btn:focus { outline: 1px dotted #000; outline-offset: -4px; }
         .msgbox-window.stats-mode .msgbox-content {
@@ -428,6 +486,19 @@
                 confirmReset: "确定要重置所有统计数据吗？",
                 winStreakTag: "连胜",
                 loseStreakTag: "连败"
+            },
+            invalidMove: {
+                fromFound: "不能从回收区移动牌",
+                stackInvalid: "只能移动颜色交替、点数递减的牌序列",
+                tooManyCards: "移动的牌数超过限制",
+                colorRankMismatch: "目标位置需要颜色交替且点数递减",
+                freeOccupied: "该中转空当已有牌",
+                freeSingleOnly: "中转空当只能放置单张牌",
+                foundSuitMismatch: "回收区只能放同花色的牌",
+                foundRankMismatch: "回收区需要从A开始按顺序放置",
+                foundSingleOnly: "回收区只能放置单张牌",
+                notLastCard: "只能移动列末尾的牌",
+                noFreeSlot: "没有可用的中转空当"
             }
         },
         en: {
@@ -478,6 +549,19 @@
                 confirmReset: "Are you sure you want to reset all statistics?",
                 winStreakTag: "Wins",
                 loseStreakTag: "Losses"
+            },
+            invalidMove: {
+                fromFound: "Cannot move cards from foundation",
+                stackInvalid: "Can only move alternating color descending sequences",
+                tooManyCards: "Too many cards to move",
+                colorRankMismatch: "Target requires alternating colors and descending ranks",
+                freeOccupied: "This free cell is occupied",
+                freeSingleOnly: "Free cells only accept single cards",
+                foundSuitMismatch: "Foundation requires matching suit",
+                foundRankMismatch: "Foundation requires ascending rank from Ace",
+                foundSingleOnly: "Foundation only accepts single cards",
+                notLastCard: "Can only move the last card in a column",
+                noFreeSlot: "No free cells available"
             }
         }
     };
@@ -1110,6 +1194,9 @@
     let lastTapTime = 0; // 用于检测双击
     const DOUBLE_TAP_DELAY = 300; // 双击判定时间间隔(ms)
     const DRAG_THRESHOLD = 5; // 拖拽阈值，鼠标移动超过此像素才算拖拽
+    let invalidTipElement = null;
+    let invalidTipTimeout = null;
+    let invalidTipLock = false;
     let layout = {
         cardW: 71, cardH: 96, paddingX: 10, paddingY: 10, colGap: 10, rowGap: 20, statusBarH: 0,
         stackYOffset: 25, topBarH: 0, bottomBarH: 0, canvasW: 0, canvasH: 0,
@@ -1131,7 +1218,8 @@
         layout.topBarH = topBar.offsetHeight;
         layout.statusBarH = statusBar.offsetHeight;
         layout.bottomBarH = bottomBar.offsetHeight;
-        const bottomBarWidth = isLandscapeWide ? 95 : 0; // 侧边栏固定宽度95px，竖屏时不占用水平空间
+        const sidebarWrapper = document.querySelector('.sidebar-wrapper');
+        const bottomBarWidth = isLandscapeWide ? sidebarWrapper.offsetWidth : 0; // 侧边栏固定宽度108px，竖屏时不占用水平空间
         
         const canvasVpHeight = Math.max(400, vh); // 保证最小高度
         
@@ -1142,8 +1230,8 @@
         else if (vw < 800) mode = 'tablet';
 
         // 定义响应式间距
-        const basePaddingX = { phone: 2, tablet: 10, pc: 50 }[mode];
-        const baseColGap = { phone: 2, tablet: 8, pc: 10 }[mode]; // 窄屏下缩小列间距
+        const basePaddingX = { phone: 1, tablet: 10, pc: 40 }[mode];
+        const baseColGap = { phone: 1, tablet: 8, pc: 16 }[mode]; // 窄屏下缩小列间距
         const cardAspectRatio = 96 / 71;
         
         let vMode = 'pc';
@@ -1226,6 +1314,66 @@
             layout.colsXPos[i] = layout.paddingX + i * (layout.cardW + layout.colGap);
         }
     }
+
+    function showInvalidMoveTip(messageKey) {
+        if (invalidTipElement) {
+            invalidTipElement.remove();
+        }
+        if (invalidTipTimeout) {
+            clearTimeout(invalidTipTimeout);
+        }
+
+        const tip = document.createElement('div');
+        tip.className = 'invalid-move-tip';
+        tip.innerHTML = `<span class="tip-icon">⚠</span><span class="tip-text">${t('invalidMove.' + messageKey)}</span>`;
+        
+        const bottomBar = document.querySelector('.bottom-controls');
+        bottomBar.insertAdjacentElement('beforebegin', tip);
+        
+        invalidTipElement = tip;
+        
+        requestAnimationFrame(() => {
+            tip.classList.add('visible');
+        });
+        
+        invalidTipTimeout = setTimeout(() => {
+            hideInvalidMoveTip();
+        }, 3000);
+
+        invalidTipLock = true;
+        setTimeout(() => { invalidTipLock = false; }, 100);
+    }
+
+    function hideInvalidMoveTip() {
+        if (invalidTipElement) {
+            invalidTipElement.classList.remove('visible');
+            setTimeout(() => {
+                if (invalidTipElement) {
+                    invalidTipElement.remove();
+                    invalidTipElement = null;
+                }
+            }, 200);
+        }
+        if (invalidTipTimeout) {
+            clearTimeout(invalidTipTimeout);
+            invalidTipTimeout = null;
+        }
+    }
+
+    function handleGlobalInteraction(e) {
+        if (invalidTipElement && !invalidTipLock && !(e.target instanceof Element && e.target.closest('.invalid-move-tip'))) {
+            if (e.type === 'mousedown' && e.button === 2) {
+                // 右键点击不关闭提示
+            } else {
+                hideInvalidMoveTip();
+            }
+        }
+        if (currentHints.length === 0) return;
+        if (e.target instanceof Element && e.target.closest('#hint-btn')) return;
+        clearHint();
+    }
+    window.addEventListener('mousedown', handleGlobalInteraction);
+    window.addEventListener('touchstart', handleGlobalInteraction, { passive: true });
 
     function renderContent() {
         const freeGroup = document.getElementById('free-group');
@@ -1417,8 +1565,38 @@
                 return;
             }
 
-            // Case 2: 用户点击了另一张牌，意图是“放置”。
+            // Case 2: 用户点击了另一张牌，意图是"放置"。
             const { cards: selectedCards, from: selectedFrom } = selection;
+
+            if (pos.type === 'free') {
+                if (selectedCards.length !== 1) {
+                    showInvalidMoveTip('freeSingleOnly');
+                } else if (game.free[pos.idx]) {
+                    showInvalidMoveTip('freeOccupied');
+                } else {
+                    game.move(selectedCards, selectedFrom, { type: 'free', idx: pos.idx });
+                }
+                clearSelection();
+                return;
+            }
+
+            if (pos.type === 'found') {
+                if (selectedCards.length !== 1) {
+                    showInvalidMoveTip('foundSingleOnly');
+                } else {
+                    const suitIdx = SUITS.indexOf(selectedCards[0].suit);
+                    if (pos.idx !== suitIdx) {
+                        showInvalidMoveTip('foundSuitMismatch');
+                    } else if (selectedCards[0].rank !== game.found[suitIdx] + 1) {
+                        showInvalidMoveTip('foundRankMismatch');
+                    } else {
+                        game.move(selectedCards, selectedFrom, { type: 'found', idx: suitIdx });
+                    }
+                }
+                clearSelection();
+                return;
+            }
+
             const dest = { type: 'cols', idx: pos.idx };
             const targetCol = game.cols[dest.idx];
 
@@ -1442,8 +1620,24 @@
         }
 
         // --- 选择逻辑 ---
-        // 如果之前没有选择，或“重新选择”时，会执行到这里。
-        if (pos.type === 'found') return; // 不能从回收单元选择
+        // 如果之前没有选择，或"重新选择"时，会执行到这里。
+        if (pos.type === 'found') {
+            if (selection) {
+                const { cards: selectedCards } = selection;
+                if (selectedCards.length !== 1) {
+                    showInvalidMoveTip('foundSingleOnly');
+                } else {
+                    const suitIdx = SUITS.indexOf(selectedCards[0].suit);
+                    if (pos.idx !== suitIdx) {
+                        showInvalidMoveTip('foundSuitMismatch');
+                    } else if (selectedCards[0].rank !== game.found[suitIdx] + 1) {
+                        showInvalidMoveTip('foundRankMismatch');
+                    }
+                }
+                clearSelection();
+            }
+            return;
+        }
 
         let cardsToSelect = [];
         let elementsToSelect = [];
@@ -1503,7 +1697,10 @@
     }
 
     function startDrag(e, card, pos) {
-        if (pos.type === 'found') return;
+        if (pos.type === 'found') {
+            handleCardClick(card, pos);
+            return;
+        }
         let cards = [card], els = [];
         if (pos.type === 'cols') {
             const col = game.cols[pos.idx];
@@ -1701,13 +1898,69 @@
     }
 
     function finishDrag(e) {
-        const { cards, from, els } = drag;
-        const dest = findDestFromCoords(e.clientX, e.clientY);
+        const { cards, from, els, moved } = drag;
         els.forEach(el => el.classList.remove('selected'));
         els.forEach(el => el.classList.remove('dragging'));
 
+        if (!moved) {
+            handleCardClick(cards[0], from);
+            drag = null;
+            return;
+        }
+
+        const canvas = document.getElementById('canvas');
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        const mouseX = e.clientX - canvasRect.left;
+        const mouseY = e.clientY - canvasRect.top;
+        
+        const cardLeft = mouseX - drag.ox;
+        const cardTop = mouseY - drag.oy;
+        const cardCenterX = cardLeft + layout.cardW / 2;
+        const cardCenterY = cardTop + layout.cardH / 2;
+
+        let dest = null;
+        
+        const topRowYEnd = layout.paddingY + layout.cardH;
+        
+        if (cardCenterY >= layout.paddingY && cardCenterY <= topRowYEnd) {
+            for (let i = 0; i < 4; i++) {
+                if (from.type === 'free' && from.idx === i) continue;
+                const pos = layout.freeSlotsPos[i];
+                if (cardCenterX >= pos.x && cardCenterX <= pos.x + layout.cardW) {
+                    dest = { type: 'free', idx: i };
+                    break;
+                }
+            }
+            if (!dest) {
+                for (let i = 0; i < 4; i++) {
+                    if (from.type === 'found' && from.idx === i) continue;
+                    const pos = layout.foundSlotsPos[i];
+                    if (cardCenterX >= pos.x && cardCenterX <= pos.x + layout.cardW) {
+                        dest = { type: 'found', idx: i };
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!dest) {
+            if (cardCenterY >= layout.paddingY + layout.cardH + layout.rowGap) {
+                for (let i = 0; i < 8; i++) {
+                    if (from.type === 'cols' && from.idx === i) continue;
+                    const x = layout.colsXPos[i];
+                    if (cardCenterX >= x && cardCenterX < x + layout.cardW) {
+                        dest = { type: 'cols', idx: i };
+                        break;
+                    }
+                }
+            }
+        }
+
         if (dest) {
             let valid = false;
+            let invalidReason = null;
+            
             if (dest.type === 'cols') {
                 const col = game.cols[dest.idx];
                 const maxMovable = game.getMaxMovable(col.length === 0);
@@ -1716,18 +1969,30 @@
                     else {
                         let top = col[col.length-1];
                         if (top.isRed !== cards[0].isRed && top.rank === cards[0].rank + 1) valid = true;
+                        else invalidReason = 'colorRankMismatch';
                     }
+                } else {
+                    invalidReason = 'tooManyCards';
                 }
-            } else if (dest.type === 'free' && cards.length === 1 && !game.free[dest.idx]) {
-                valid = true;
-            } else if (dest.type === 'found' && cards.length === 1) {
-                let suitIdx = SUITS.indexOf(cards[0].suit);
-                if (dest.idx === suitIdx && cards[0].rank === game.found[suitIdx] + 1) valid = true;
+            } else if (dest.type === 'free') {
+                if (cards.length === 1 && !game.free[dest.idx]) valid = true;
+                else if (cards.length !== 1) invalidReason = 'freeSingleOnly';
+                else if (game.free[dest.idx]) invalidReason = 'freeOccupied';
+            } else if (dest.type === 'found') {
+                if (cards.length === 1) {
+                    let suitIdx = SUITS.indexOf(cards[0].suit);
+                    if (dest.idx === suitIdx && cards[0].rank === game.found[suitIdx] + 1) valid = true;
+                    else if (dest.idx !== suitIdx) invalidReason = 'foundSuitMismatch';
+                    else invalidReason = 'foundRankMismatch';
+                } else {
+                    invalidReason = 'foundSingleOnly';
+                }
             }
 
             if (valid) {
-                game.move(cards, from, dest, false); // 拖拽放置不需要飞牌动画
+                game.move(cards, from, dest, false);
             } else {
+                if (invalidReason) showInvalidMoveTip(invalidReason);
                 renderContent();
             }
         } else {
@@ -1748,6 +2013,8 @@
             let emptyFree = game.free.indexOf(null);
             if (emptyFree !== -1) {
                 game.move([card], pos, { type: 'free', idx: emptyFree });
+            } else {
+                showInvalidMoveTip('noFreeSlot');
             }
         }
     }
@@ -2067,7 +2334,7 @@
         }
         
         const msg = `
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; text-align: left; font-size: 12px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; text-align: left; font-size: 14px;">
                 <div>${t('stats.played')}:</div><div style="text-align:right; font-weight:bold;">${gameStats.played}</div>
                 <div>${t('stats.won')}:</div><div style="text-align:right; font-weight:bold;">${gameStats.won}</div>
                 <div>${t('stats.rate')}:</div><div style="text-align:right; font-weight:bold;">${winRate}%</div>
@@ -2143,18 +2410,29 @@
             if (isDestEmpty || dest.type === 'found') {
                 const { cards, from } = selection;
                 let valid = false;
+                let invalidReason = null;
                 if (dest.type === 'cols') {
                     const maxMovable = game.getMaxMovable(true);
                     if (cards.length <= maxMovable) valid = true;
-                } else if (dest.type === 'free' && cards.length === 1) {
-                    valid = true;
-                } else if (dest.type === 'found' && cards.length === 1) {
-                    let suitIdx = SUITS.indexOf(cards[0].suit);
-                    if (dest.idx === suitIdx && cards[0].rank === game.found[suitIdx] + 1) valid = true;
+                    else invalidReason = 'tooManyCards';
+                } else if (dest.type === 'free') {
+                    if (cards.length === 1) valid = true;
+                    else invalidReason = 'freeSingleOnly';
+                } else if (dest.type === 'found') {
+                    if (cards.length === 1) {
+                        let suitIdx = SUITS.indexOf(cards[0].suit);
+                        if (dest.idx === suitIdx && cards[0].rank === game.found[suitIdx] + 1) valid = true;
+                        else if (dest.idx !== suitIdx) invalidReason = 'foundSuitMismatch';
+                        else invalidReason = 'foundRankMismatch';
+                    } else {
+                        invalidReason = 'foundSingleOnly';
+                    }
                 }
 
                 if (valid) {
                     game.move(cards, from, dest);
+                } else if (invalidReason) {
+                    showInvalidMoveTip(invalidReason);
                 }
             }
         }

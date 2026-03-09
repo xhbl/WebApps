@@ -58,13 +58,13 @@ import packageJson from '../package.json'
                 stackInvalid: "只能移动颜色交替、点数递减的牌序列",
                 tooManyCards: "移动的牌数超过限制",
                 colorRankMismatch: "目标位置需要颜色交替且点数递减",
-                freeOccupied: "该中转区已有牌",
-                freeSingleOnly: "中转区只能放置单张牌",
+                freeOccupied: "该中转空当区已有牌",
+                freeSingleOnly: "中转空当只能放置单张牌",
                 foundSuitMismatch: "回收区只能放同花色的牌",
                 foundRankMismatch: "回收区需要从A开始按顺序放置",
                 foundSingleOnly: "回收区只能放置单张牌",
                 notLastCard: "只能移动列末尾的牌",
-                noFreeSlot: "没有可用的中转区"
+                noFreeSlot: "没有可用的中转空当"
             }
         },
         en: {
@@ -743,7 +743,7 @@ import packageJson from '../package.json'
     let currentHintIndex = 0;
     let lastTapTime = 0;
     const DOUBLE_TAP_DELAY = 300;
-    const DRAG_THRESHOLD = 15;
+    const DRAG_THRESHOLD = 5;
     let layout = {
         cardW: 71, cardH: 96, paddingX: 10, paddingY: 10, colGap: 10, rowGap: 20, statusBarH: 0,
         stackYOffset: 25, topBarH: 0, bottomBarH: 0, canvasW: 0, canvasH: 0,
@@ -763,8 +763,9 @@ import packageJson from '../package.json'
 
         layout.topBarH = topBar.offsetHeight;
         layout.statusBarH = statusBar.offsetHeight;
-        layout.bottomBarH = bottomBar.offsetHeight;
-        const bottomBarWidth = isLandscapeWide ? 95 : 0;
+        const sidebarWrapper = document.querySelector('.sidebar-wrapper');
+        layout.bottomBarH = sidebarWrapper.offsetHeight;
+        const bottomBarWidth = isLandscapeWide ? sidebarWrapper.offsetWidth : 0;
         
         const canvasVpHeight = Math.max(400, vh);
         
@@ -774,8 +775,8 @@ import packageJson from '../package.json'
         if (vw < 480) mode = 'phone';
         else if (vw < 800) mode = 'tablet';
 
-        const basePaddingX = { phone: 2, tablet: 10, pc: 50 }[mode];
-        const baseColGap = { phone: 2, tablet: 8, pc: 10 }[mode];
+        const basePaddingX = { phone: 1, tablet: 10, pc: 40 }[mode];
+        const baseColGap = { phone: 1, tablet: 8, pc: 16 }[mode];
         const cardAspectRatio = 96 / 71;
         
         let vMode = 'pc';
@@ -1839,7 +1840,7 @@ import packageJson from '../package.json'
         }
         
         const msg = `
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; text-align: left; font-size: 12px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; text-align: left; font-size: 14px;">
                 <div>${t('stats.played')}:</div><div style="text-align:right; font-weight:bold;">${gameStats.played}</div>
                 <div>${t('stats.won')}:</div><div style="text-align:right; font-weight:bold;">${gameStats.won}</div>
                 <div>${t('stats.rate')}:</div><div style="text-align:right; font-weight:bold;">${winRate}%</div>
