@@ -4,8 +4,6 @@
   "description": "A classic FreeCell game based on JavaScript",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#017f01",
-  "theme_color": "#017f01",
   "lang": "en",
   "scope": "./",
   "icons": [

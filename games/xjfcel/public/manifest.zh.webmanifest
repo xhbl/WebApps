@@ -4,8 +4,6 @@
   "description": "一款基于JavaScript的经典空当接龙游戏",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#017f01",
-  "theme_color": "#017f01",
   "lang": "zh",
   "scope": "./",
   "icons": [
