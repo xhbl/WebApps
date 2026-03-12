@@ -14,7 +14,7 @@ export default defineConfig({
       manifest: false, // 禁用默认的manifest生成
       strategies: 'generateSW',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff}']
       }
     })
   ].filter(Boolean)

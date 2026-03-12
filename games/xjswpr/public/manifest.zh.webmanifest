@@ -4,8 +4,6 @@
   "description": "一款基于JavaScript的经典扫雷游戏",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#3a6ea5",
-  "theme_color": "#3a6ea5",
   "lang": "zh",
   "scope": "./",
   "icons": [

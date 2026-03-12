@@ -2,8 +2,9 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>扫雷 - 经典JS版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#3a6ea5" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💣</text></svg>">
     <style>
         * {
@@ -110,7 +111,7 @@
             letter-spacing: 2px;
             border: 1px solid;
             border-color: #808080 #ffffff #ffffff #808080;
-            min-width: 80px;
+            min-width: 70px;
             text-align: center;
             text-shadow: 0 0 5px #f00;
         }
@@ -126,7 +127,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 28px;
             transition: all 0.1s;
         }
         
@@ -163,7 +164,7 @@
             align-items: center;
             justify-content: center;
             font-family: 'Courier New', 'Arial', sans-serif;
-            font-size: 18px;
+            font-size: 22px;
             font-weight: bold;
             cursor: pointer;
             box-sizing: border-box;
@@ -202,7 +203,7 @@
         /* 旗子标记 */
         .cell.flagged::after {
             content: "🚩";
-            font-size: 18px;
+            font-size: 22px;
             line-height: 1;
         }
         
@@ -213,7 +214,7 @@
         
         .cell.mine.revealed::after {
             content: "💣";
-            font-size: 18px;
+            font-size: 22px;
         }
         
         /* 踩雷标记 */
@@ -237,7 +238,7 @@
             border: 2px solid;
             border-color: #ffffff #808080 #808080 #ffffff;
             padding: 3px 4px;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: bold;
             cursor: pointer;
             font-family: 'Tahoma', sans-serif;
@@ -340,7 +341,7 @@
         }
 
         .msgbox-text {
-            font-size: 12px;
+            font-size: 14px;
             line-height: 1.5;
             color: #000;
             flex: 1;
@@ -362,7 +363,7 @@
             border: 2px solid;
             border-color: #ffffff #808080 #808080 #ffffff;
             font-family: 'Tahoma', sans-serif;
-            font-size: 12px;
+            font-size: 14px;
             cursor: pointer;
         }
         .msgbox-btn:active { border-color: #808080 #ffffff #ffffff #808080; }
@@ -425,6 +426,8 @@
 
     <script>
         (function() {
+            // 程序版本
+            const APP_VERSION = "1.0.72";
             // 语言配置
             const LANG = {
                 zh: {
@@ -457,7 +460,7 @@
                     about: {
                         title: "关于",
                         header: "一款基于JavaScript的经典扫雷游戏",
-                        version: "v1.0.0 by XHBL",
+                        version: `v${APP_VERSION} by XHBL`,
                         email: "newxhbl@hotmail.com"
                     }
                 },
@@ -491,7 +494,7 @@
                     about: {
                         title: "About",
                         header: "A JavaScript-based classic Minesweeper game",
-                        version: "v1.0.0 by XHBL",
+                        version: `v${APP_VERSION} by XHBL`,
                         email: "newxhbl@hotmail.com"
                     }
                 }

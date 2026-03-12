@@ -1,4 +1,26 @@
-* {
+/* 加载自定义字体 */
+        @font-face {
+            font-family: 'XJSwprNum';
+            src: url('/xjswpr_num.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
+        @font-face {
+            font-family: 'XJSwprLed';
+            src: url('/xjswpr_led.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
+        @font-face {
+            font-family: 'XJSwprEmo';
+            src: url('/xjswpr_emo.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
+        * {
             box-sizing: border-box;
             user-select: none;
             -webkit-user-select: none; /* 兼容Safari：禁止文本选择 */
@@ -98,15 +120,15 @@
         .counter {
             background: #000;
             padding: 2px 4px;
-            font-family: 'Courier New', monospace;
+            font-family: 'XJSwprLed', 'Courier New', monospace;
             font-size: 28px;
-            font-weight: bold;
+            font-weight: normal;
             color: #ff0000;
             line-height: 1;
             letter-spacing: 2px;
             border: 1px solid;
             border-color: #808080 #ffffff #ffffff #808080;
-            min-width: 80px;
+            min-width: 70px;
             text-align: center;
             text-shadow: 0 0 5px #f00;
         }
@@ -122,7 +144,9 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-family: 'XJSwprEmo', sans-serif;
+            font-size: 28px;
+            font-weight: normal;
             transition: all 0.1s;
         }
         
@@ -158,9 +182,9 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: 'Courier New', 'Arial', sans-serif;
-            font-size: 18px;
-            font-weight: bold;
+            font-family: 'XJSwprNum', 'Courier New', 'Arial', sans-serif;
+            font-size: 22px;
+            font-weight: normal;
             cursor: pointer;
             box-sizing: border-box;
             line-height: 1;
@@ -198,7 +222,8 @@
         /* 旗子标记 */
         .cell.flagged::after {
             content: "🚩";
-            font-size: 18px;
+            font-family: 'XJSwprEmo', sans-serif;
+            font-size: 22px;
             line-height: 1;
         }
         
@@ -209,7 +234,8 @@
         
         .cell.mine.revealed::after {
             content: "💣";
-            font-size: 18px;
+            font-family: 'XJSwprEmo', sans-serif;
+            font-size: 22px;
         }
         
         /* 踩雷标记 */
@@ -218,6 +244,7 @@
         }
         .cell.mine.red-cross::after {
             content: "💥";
+            font-family: 'XJSwprEmo', sans-serif;
         }
         
         /* 难度选择栏 */
@@ -233,7 +260,7 @@
             border: 2px solid;
             border-color: #ffffff #808080 #808080 #ffffff;
             padding: 3px 4px;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: bold;
             cursor: pointer;
             font-family: 'Tahoma', sans-serif;
@@ -336,7 +363,7 @@
         }
 
         .msgbox-text {
-            font-size: 12px;
+            font-size: 14px;
             line-height: 1.5;
             color: #000;
             flex: 1;
@@ -358,7 +385,7 @@
             border: 2px solid;
             border-color: #ffffff #808080 #808080 #ffffff;
             font-family: 'Tahoma', sans-serif;
-            font-size: 12px;
+            font-size: 14px;
             cursor: pointer;
         }
         .msgbox-btn:active { border-color: #808080 #ffffff #ffffff #808080; }
