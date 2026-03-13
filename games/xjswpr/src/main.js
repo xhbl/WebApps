@@ -78,6 +78,7 @@ const CONSTANTS = {
     BEST_TIMES_KEY: 'xjswpr_best_times',
     LAST_DIFFICULTY_KEY: 'xjswpr_last_difficulty',
     LANG_KEY: 'xjswpr_language',
+    SAVE_KEY: 'xjswpr_save_data', // 新增：存档Key
     LONG_PRESS_MS: 350, // 稍微延长一点，避免由于惯性滚动导致的误判
     DOUBLE_CLICK_MS: 300,
     TOUCH_MOVE_TOLERANCE: 10
@@ -125,6 +126,7 @@ let currentDifficulty = 'beginner';
 // DOM 元素缓存
 const DOM = {
     board: document.getElementById('board'),
+    boardContainer: document.querySelector('.board-container'),
     mineCounter: document.getElementById('mineCounter'),
     timerCounter: document.getElementById('timerCounter'),
     faceButton: document.getElementById('faceButton'),
@@ -292,6 +294,76 @@ function showMessageBox(options) {
     overlay.style.display = 'block';
 }
 
+// --- 存档功能 ---
+function saveGame() {
+    // 只有游戏正在进行且未结束时才保存
+    if (gameState.gameOver || gameState.gameWin || !gameState.gameStarted) return;
+    
+    const saveData = {
+        difficulty: currentDifficulty,
+        gameState: {
+            ...gameState,
+            timerInterval: null // 剔除不可序列化的定时器对象
+        },
+        scrollState: {
+            left: DOM.boardContainer.scrollLeft,
+            top: DOM.boardContainer.scrollTop
+        },
+        timestamp: Date.now()
+    };
+    localStorage.setItem(CONSTANTS.SAVE_KEY, JSON.stringify(saveData));
+}
+
+function clearSavedGame() {
+    localStorage.removeItem(CONSTANTS.SAVE_KEY);
+}
+
+function loadGame() {
+    const saveJson = localStorage.getItem(CONSTANTS.SAVE_KEY);
+    if (!saveJson) return false;
+
+    try {
+        const save = JSON.parse(saveJson);
+        
+        // 恢复难度设置
+        currentDifficulty = save.difficulty;
+        
+        // 恢复游戏状态
+        gameState = {
+            ...save.gameState,
+            timerInterval: null
+        };
+        
+        // 恢复 UI 状态
+        DOM.diffBtns.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.diff === currentDifficulty);
+        });
+        
+        renderBoard();
+
+        // 恢复滚动位置
+        if (save.scrollState) {
+            DOM.boardContainer.scrollLeft = save.scrollState.left;
+            DOM.boardContainer.scrollTop = save.scrollState.top;
+        }
+
+        updateMineCounter();
+        DOM.timerCounter.textContent = gameState.timer.toString().padStart(3, '0');
+        updateBestTimeDisplay();
+        DOM.faceButton.textContent = '😊';
+        DOM.gameStatus.textContent = t('status.playing');
+        
+        // 恢复计时器
+        startTimer();
+        
+        return true;
+    } catch (e) {
+        console.error("Failed to load saved game:", e);
+        clearSavedGame(); // 存档损坏，清除
+        return false;
+    }
+}
+
 // 初始化游戏
 function initGame() {
     stopTimer();
@@ -308,6 +380,7 @@ function initGame() {
         minesPlaced: false
     });
 
+    clearSavedGame(); // 新游戏开始，清除旧存档
     createEmptyBoard();
     renderBoard();
     updateMineCounter();
@@ -466,6 +539,7 @@ function revealCell(row, col) {
     
     // 检查胜利
     checkWin();
+    saveGame(); // 操作后保存
     renderBoard();
 }
 
@@ -490,6 +564,8 @@ function revealCellForChord(row, col) {
         // 这是我们期望的行为
         revealEmptyCells(row, col);
     }
+    
+    saveGame(); // 操作后保存（chord逻辑外层会调用checkWin，但这里是内部递归，可以在外部保存）
 }
 
 // 空格扩散算法（深度优先）
@@ -553,6 +629,8 @@ function toggleFlag(row, col) {
     // 只有在胜利时才重绘（为了显示被自动挖开的剩余安全格子），平时只更新单个DOM以保持事件链完整
     if (gameState.gameWin) {
         renderBoard();
+    } else {
+        saveGame(); // 操作后保存
     }
 }
 
@@ -633,6 +711,7 @@ function handleWin() {
     gameState.gameWin = true;
     gameState.gameOver = true;
     DOM.faceButton.textContent = '😎';
+    clearSavedGame(); // 游戏结束，清除存档
     stopTimer();
     
     revealAllMines();
@@ -664,6 +743,7 @@ function handleLoss() {
     gameState.gameOver = true;
     DOM.faceButton.textContent = '😵';
     DOM.gameStatus.textContent = t('status.gameOver');
+    clearSavedGame(); // 游戏结束，清除存档
     stopTimer();
     revealAllMines();
     setTimeout(() => showMessageBox({
@@ -730,6 +810,7 @@ function chord(row, col) {
         });
         // 在所有逻辑操作完成后，进行一次检查和一次渲染
         checkWin();
+        saveGame(); // 操作后保存
         renderBoard();
     } else {
         // 如果旗子数量不匹配，则提供一个快速的视觉反馈
@@ -1122,12 +1203,15 @@ DOM.aboutLink.addEventListener('click', e => {
 
 // 游戏启动
 loadBestTimes();
-const lastDifficulty = localStorage.getItem(CONSTANTS.LAST_DIFFICULTY_KEY) || 'beginner';
-setDifficulty(lastDifficulty);
-updateUI();
 
-// 解决iOS下 :active 伪类无效的问题
-document.body.addEventListener('touchstart', () => {}, { passive: true });
+// 尝试加载存档，如果失败或无存档，则按常规流程初始化
+if (!loadGame()) {
+    const lastDifficulty = localStorage.getItem(CONSTANTS.LAST_DIFFICULTY_KEY) || 'beginner';
+    setDifficulty(lastDifficulty);
+}
+
+// 确保在加载或初始化后，UI文本始终根据当前语言设置进行更新
+updateUI();
 
 // 监听窗口大小变化，为初级难度动态调整布局
 (() => {
@@ -1139,3 +1223,7 @@ document.body.addEventListener('touchstart', () => {}, { passive: true });
         }, 100); // 防抖
     });
 })();
+
+// 页面关闭/隐藏时保存一次，以捕获最新的计时器时间
+window.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveGame(); });
+window.addEventListener('beforeunload', () => saveGame());
