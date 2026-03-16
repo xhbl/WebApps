@@ -1,0 +1,18 @@
+{
+  "name": "xjsoli",
+  "private": true,
+  "version": "1.0.64",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "npm run bump:version && vite build",
+    "build:pwa": "cross-env VITE_BUILD_PWA=true npm run build",
+    "preview": "vite preview",
+    "bump:version": "node -e \"const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json'));const v=p.version.split('.');v[2]=parseInt(v[2])+1;p.version=v.join('.');fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Version bumped to:',p.version)\""
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "vite": "^7.3.1",
+    "vite-plugin-pwa": "^1.2.0"
+  }
+}

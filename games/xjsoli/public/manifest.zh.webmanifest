@@ -1,0 +1,23 @@
+{
+  "name": "纸牌",
+  "short_name": "纸牌",
+  "description": "一款基于JavaScript的经典纸牌游戏",
+  "start_url": "./",
+  "display": "standalone",
+  "lang": "zh",
+  "scope": "./",
+  "icons": [
+    {
+      "src": "xjsoli.svg",
+      "sizes": "72x72 96x96 128x128 144x144 152x152 192x192 384x384 512x512 any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "xjsoli.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
