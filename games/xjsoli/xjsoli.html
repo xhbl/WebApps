@@ -427,7 +427,7 @@
         };
     }
 
-    const APP_VERSION = "1.0.64";
+    const APP_VERSION = "1.0.72";
 
     const LANG = {
         zh: {
@@ -802,12 +802,82 @@
                 await animateFlip(cardToFlip.id);
             }
             
+            // 自动收牌
+            await this.autoCollect();
+            
             // 简单的胜利检测
-            if (this.found.every(x => x === 13)) {
+            if (!this.isWon && this.found.every(x => x === 13)) {
                 this.isWon = true;
                 handleGameWin();
             }
             saveGameState();
+        }
+
+        /**
+         * isSafeToAutoCollect - 判断是否可以安全启动自动收牌
+         * 条件: stock=0, waste=0, 全翻面
+         */
+        isSafeToAutoCollect() {
+            // 条件1: 发牌区为空
+            if (this.stock.length > 0) return false;
+            
+            // 条件2: 收牌区为空
+            if (this.waste.length > 0) return false;
+            
+            // 条件3: 所有牌都已翻开
+            for (const col of this.cols) {
+                for (const card of col) {
+                    if (!card.faceUp) return false;
+                }
+            }
+            
+            return true;
+        }
+
+        /**
+         * findMovableToFound - 查找可移动到回收区的牌
+         * 优先级: 按花色顺序查找
+         */
+        findMovableToFound() {
+            // 遍历所有叠牌区
+            for (let i = 0; i < 7; i++) {
+                if (this.cols[i].length > 0) {
+                    const card = this.cols[i][this.cols[i].length - 1];
+                    const suitIdx = SUITS.indexOf(card.suit);
+                    
+                    // 检查是否可以移到回收区
+                    if (card.rank === this.found[suitIdx] + 1) {
+                        return {
+                            card: card,
+                            from: { type: 'cols', idx: i, cardIdx: this.cols[i].length - 1 },
+                            to: { type: 'found', idx: suitIdx }
+                        };
+                    }
+                }
+            }
+            
+            return null;  // 没有可移动的牌
+        }
+
+        /**
+         * autoCollect - 自动收牌
+         * 条件: stock=0, waste=0, 全翻面
+         * 递归调用,每次移动一张牌
+         */
+        async autoCollect() {
+            // 检查条件
+            if (!this.isSafeToAutoCollect()) {
+                return;
+            }
+            
+            // 查找可移动到回收区的牌
+            const movable = this.findMovableToFound();
+            
+            if (movable) {
+                // 移动牌 (会触发递归)
+                await this.move([movable.card], movable.from, movable.to, true);
+            }
+            // 没有可移动的牌,递归结束
         }
     }
 
