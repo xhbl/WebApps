@@ -431,7 +431,7 @@
     <script>
         (function() {
             // 程序版本
-            const APP_VERSION = "1.0.76";
+            const APP_VERSION = "1.0.80";
             // 语言配置
             const LANG = {
                 zh: {
@@ -553,6 +553,7 @@
             
             let bestTimes = { beginner: null, intermediate: null, expert: null };
             let currentDifficulty = 'beginner';
+            let timerStartTime = 0; // 计时器开始时间（用于精确计时）
             
             // DOM 元素缓存
             const DOM = {
@@ -777,7 +778,8 @@
                     DOM.faceButton.textContent = '😊';
                     DOM.gameStatus.textContent = t('status.playing');
                     
-                    // 恢复计时器
+                    // 恢复计时器（设置 timerStartTime 以便恢复后继续准确计时）
+                    timerStartTime = Date.now() - gameState.timer * 1000;
                     startTimer();
                     
                     return true;
@@ -828,36 +830,29 @@
             
             // 随机布雷（确保首次点击安全）
             function placeMines(firstRow, firstCol) {
-                let minesPlaced = 0;
-                const totalMines = gameState.config.mines;
-                const maxAttempts = 1000;
-                let attempts = 0;
+                const availableCells = [];
                 
-                while (minesPlaced < totalMines && attempts < maxAttempts) {
-                    const row = Math.floor(Math.random() * gameState.config.rows);
-                    const col = Math.floor(Math.random() * gameState.config.cols);
-                    
-                    // 首次点击位置及其周围不能有雷
-                    const isNearFirst = Math.abs(row - firstRow) <= 1 && Math.abs(col - firstCol) <= 1;
-                    
-                    if (!gameState.board[row][col].mine && !isNearFirst) {
-                        gameState.board[row][col].mine = true;
-                        minesPlaced++;
-                    }
-                    attempts++;
-                }
-                
-                // 如果放不满（理论上不会发生），在剩余格子补充
-                if (minesPlaced < totalMines) {
-                    for (let r = 0; r < gameState.config.rows; r++) {
-                        for (let c = 0; c < gameState.config.cols; c++) {
-                            if (minesPlaced >= totalMines) break;
-                            if (!gameState.board[r][c].mine && (Math.abs(r - firstRow) > 1 || Math.abs(c - firstCol) > 1)) {
-                                gameState.board[r][c].mine = true;
-                                minesPlaced++;
-                            }
+                // 收集所有可用位置（排除首次点击周围 3×3 区域）
+                for (let r = 0; r < gameState.config.rows; r++) {
+                    for (let c = 0; c < gameState.config.cols; c++) {
+                        const isNearFirst = Math.abs(r - firstRow) <= 1 && Math.abs(c - firstCol) <= 1;
+                        if (!isNearFirst) {
+                            availableCells.push({ r, c });
                         }
                     }
+                }
+                
+                // Fisher-Yates 洗牌算法
+                for (let i = availableCells.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [availableCells[i], availableCells[j]] = [availableCells[j], availableCells[i]];
+                }
+                
+                // 放置雷（确保不超过可用格子数）
+                const minesToPlace = Math.min(gameState.config.mines, availableCells.length);
+                for (let i = 0; i < minesToPlace; i++) {
+                    const { r, c } = availableCells[i];
+                    gameState.board[r][c].mine = true;
                 }
                 
                 calculateNeighbors();
@@ -902,11 +897,6 @@
                 const best = bestTimes[currentDifficulty];
                 const bestTimeText = best !== null ? `${best.toString().padStart(3, '0')}` : (currentLang === 'zh' ? '无' : 'None');
                 DOM.bestTimeDisplay.innerHTML = `<a href="#" id="bestTimeLink">${t('labels.bestTime')}</a>: ${bestTimeText}`;
-                
-                document.getElementById('bestTimeLink').addEventListener('click', e => {
-                    e.preventDefault();
-                    showAllBestTimes();
-                });
             }
 
             function showAllBestTimes() {
@@ -1317,11 +1307,21 @@
             // 计时器
             function startTimer() {
                 if (gameState.timerInterval) stopTimer();
+                
+                // 基于当前 timer 值计算开始时间
+                timerStartTime = Date.now() - gameState.timer * 1000;
+                
+                // 使用更高频率更新，但基于精确时间计算
                 gameState.timerInterval = setInterval(() => {
-                    gameState.timer++;
-                    if (gameState.timer > 999) gameState.timer = 999;
-                    DOM.timerCounter.textContent = gameState.timer.toString().padStart(3, '0');
-                }, 1000);
+                    const elapsed = Math.floor((Date.now() - timerStartTime) / 1000);
+                    const newTimer = Math.min(elapsed, 999);
+                    
+                    // 只在值变化时更新 DOM
+                    if (newTimer !== gameState.timer) {
+                        gameState.timer = newTimer;
+                        DOM.timerCounter.textContent = gameState.timer.toString().padStart(3, '0');
+                    }
+                }, 100); // 100ms 检查一次，确保精度
             }
             
             function stopTimer() {
@@ -1634,29 +1634,55 @@
             // 游戏启动
             loadBestTimes();
 
-            if (!loadGame()) {
-                const lastDifficulty = localStorage.getItem(CONSTANTS.LAST_DIFFICULTY_KEY) || 'beginner';
-                setDifficulty(lastDifficulty);
-            }
-            updateUI();
-
-            // 解决iOS下 :active 伪类无效的问题
-            document.body.addEventListener('touchstart', () => {}, { passive: true });
-
-            // 监听窗口大小变化，为初级难度动态调整布局
-            (() => {
-                let resizeTimer;
-                window.addEventListener('resize', () => {
-                    clearTimeout(resizeTimer);
-                    resizeTimer = setTimeout(() => {
-                        renderBoard();
-                    }, 100); // 防抖
+            // 确保在 DOM 完全加载且布局计算完成后再初始化游戏
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    // 使用 requestAnimationFrame 确保布局已计算
+                    requestAnimationFrame(() => {
+                        initializeGame();
+                    });
                 });
-            })();
+            } else {
+                // DOM 已加载，但仍需等待布局计算
+                requestAnimationFrame(() => {
+                    initializeGame();
+                });
+            }
 
-            // 页面关闭/隐藏时保存一次，以捕获最新的计时器时间
-            window.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveGame(); });
-            window.addEventListener('beforeunload', () => saveGame());
+            function initializeGame() {
+                if (!loadGame()) {
+                    const lastDifficulty = localStorage.getItem(CONSTANTS.LAST_DIFFICULTY_KEY) || 'beginner';
+                    setDifficulty(lastDifficulty);
+                }
+                updateUI();
+
+                // 使用事件委托处理最佳时间链接点击（避免内存泄漏）
+                DOM.bestTimeDisplay.addEventListener('click', e => {
+                    const link = e.target.closest('#bestTimeLink');
+                    if (link) {
+                        e.preventDefault();
+                        showAllBestTimes();
+                    }
+                });
+
+                // 解决iOS下 :active 伪类无效的问题
+                document.body.addEventListener('touchstart', () => {}, { passive: true });
+
+                // 监听窗口大小变化，为初级难度动态调整布局
+                (() => {
+                    let resizeTimer;
+                    window.addEventListener('resize', () => {
+                        clearTimeout(resizeTimer);
+                        resizeTimer = setTimeout(() => {
+                            renderBoard();
+                        }, 100); // 防抖
+                    });
+                })();
+
+                // 页面关闭/隐藏时保存一次，以捕获最新的计时器时间
+                window.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveGame(); });
+                window.addEventListener('beforeunload', () => saveGame());
+            }
         })();
     </script>
 </body>

@@ -5,44 +5,38 @@
       <stop offset="50%" stop-color="#444" />
       <stop offset="100%" stop-color="#111" />
     </linearGradient>
-    
     <radialGradient id="sphereBase" cx="40%" cy="40%" r="70%" fx="40%" fy="40%">
       <stop offset="0%" stop-color="#666" />
       <stop offset="80%" stop-color="#111" />
       <stop offset="100%" stop-color="#000" />
     </radialGradient>
-    
     <radialGradient id="softHighlight" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
       <stop offset="0%" stop-color="#FFF" stop-opacity="0.9" />
       <stop offset="100%" stop-color="#FFF" stop-opacity="0" />
     </radialGradient>
-    
     <radialGradient id="ambientReflect" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
       <stop offset="0%" stop-color="#ACE" stop-opacity="0.3" />
       <stop offset="100%" stop-color="#ACE" stop-opacity="0" />
     </radialGradient>
-    
     <filter id="soften" x="-20%" y="-20%" width="140%" height="140%">
       <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" />
     </filter>
   </defs>
 
-  <ellipse cx="51" cy="85" rx="25" ry="8" fill="#000" opacity="0.4" filter="url(#soften)"></ellipse>
+  <rect width="100" height="100" fill="#ece9d8"/>
 
+  <ellipse cx="51" cy="85" rx="25" ry="8" fill="#000" opacity="0.4" filter="url(#soften)"/>
   <g fill="url(#spikeMetallic)">
-    <rect x="47" y="10" width="8" height="18"></rect>
-    <rect x="47" y="72" width="8" height="18"></rect>
-    <rect x="8" y="49" width="18" height="8"></rect>
-    <rect x="74" y="49" width="18" height="8"></rect>
-    <rect x="47" y="10" width="8" height="18" transform="rotate(45 51 53)"></rect>
-    <rect x="47" y="10" width="8" height="18" transform="rotate(135 51 53)"></rect>
-    <rect x="47" y="10" width="8" height="18" transform="rotate(225 51 53)"></rect>
-    <rect x="47" y="10" width="8" height="18" transform="rotate(315 51 53)"></rect>
+    <rect x="47" y="10" width="8" height="18"/>
+    <rect x="47" y="72" width="8" height="18"/>
+    <rect x="8" y="49" width="18" height="8"/>
+    <rect x="74" y="49" width="18" height="8"/>
+    <rect x="47" y="10" width="8" height="18" transform="rotate(45 51 53)"/>
+    <rect x="47" y="10" width="8" height="18" transform="rotate(135 51 53)"/>
+    <rect x="47" y="10" width="8" height="18" transform="rotate(225 51 53)"/>
+    <rect x="47" y="10" width="8" height="18" transform="rotate(315 51 53)"/>
   </g>
-
-  <circle cx="51" cy="53" r="32" fill="url(#sphereBase)"></circle>
-
-  <ellipse cx="51" cy="78" rx="20" ry="8" fill="url(#ambientReflect)" filter="url(#soften)" transform="rotate(-10 51 78)"></ellipse>
-
-  <ellipse cx="40" cy="38" rx="12" ry="7" fill="url(#softHighlight)" filter="url(#soften)" transform="rotate(-25 40 38)"></ellipse>
+  <circle cx="51" cy="53" r="32" fill="url(#sphereBase)"/>
+  <ellipse cx="51" cy="78" rx="20" ry="8" fill="url(#ambientReflect)" filter="url(#soften)" transform="rotate(-10 51 78)"/>
+  <ellipse cx="40" cy="38" rx="12" ry="7" fill="url(#softHighlight)" filter="url(#soften)" transform="rotate(-25 40 38)"/>
 </svg>
