@@ -42,7 +42,7 @@ import packageJson from '../package.json'
             yes: "是",
             no: "否",
             close: "关闭",
-            winTitle: "恭喜",
+            winTitle: "游戏胜利",
             winMessage: "恭喜你获胜了！\n再玩新的一局吗？",
             noMovesTitle: "无路可走",
             noMovesMessage: "当前已无路可走。\n您可以撤销上一步或开始新游戏。",
@@ -105,7 +105,7 @@ import packageJson from '../package.json'
             yes: "Yes",
             no: "No",
             close: "Close",
-            winTitle: "Congratulations",
+            winTitle: "Game Won",
             winMessage: "You Win!\nPlay a new game?",
             noMovesTitle: "No Moves Left",
             noMovesMessage: "No more moves available.\nYou can undo or start a new game.",
@@ -466,6 +466,8 @@ import packageJson from '../package.json'
      * 细节：动态计算字体、隐藏原牌、动画结束后移除临时元素。
      */
     async function animateMove(cards, from, to) {
+        // 移动开始时，确保清除任何现有的手动选择状态，防止逻辑冲突
+        if (typeof clearSelection === 'function') clearSelection();
         const duration = 150;
         const canvas = document.getElementById('canvas');
         const flyers = [];
@@ -810,6 +812,8 @@ import packageJson from '../package.json'
         // undo：撤销一步操作，恢复历史状态。
         undo() {
             if (this.history.length === 0) return;
+            clearSelection(); // 撤销时清除选中高亮
+            clearHint();      // 撤销时清除提示高亮
             let prev = JSON.parse(this.history.pop());
             this.free = prev.free.map(f => f ? {...f} : null);
             this.found = [...prev.found];
@@ -828,6 +832,7 @@ import packageJson from '../package.json'
     let currentHints = []; // 当前提示列表
     let currentHintIndex = 0; // 当前提示索引
     let lastTapTime = 0; // 用于检测双击
+    let lastTapCardId = null; // 用于确保双击的是同一张牌
     const DOUBLE_TAP_DELAY = 300; // 双击判定时间间隔(ms)
     const DRAG_THRESHOLD = 5; // 拖拽阈值，鼠标移动超过此像素才算拖拽
     // 支持移动端双击、拖拽手势。
@@ -1123,9 +1128,10 @@ import packageJson from '../package.json'
         }
     }
 
-    // 全局交互监听：任何非"提示"按钮的操作都清除提示
+    // 全局交互监听：任何非"提示"按钮的操作都清除提示，同时处理无效移动提示的关闭
     // 兼容右键、触摸、点击等多种交互。
     function handleGlobalInteraction(e) {
+        // 处理无效移动提示的关闭
         if (invalidTipElement && !invalidTipLock && !(e.target instanceof Element && e.target.closest('.invalid-move-tip'))) {
             if (e.type === 'mousedown' && e.button === 2) {
                 // 右键点击不关闭提示
@@ -1133,7 +1139,8 @@ import packageJson from '../package.json'
                 hideInvalidMoveTip();
             }
         }
-        if (currentHints.length === 0) return;
+        // 处理提示高亮的清除
+        if (currentHints.length === 0) return; // 优化：只有在提示开启时才尝试清除
         if (e.target instanceof Element && e.target.closest('#hint-btn')) return;
         clearHint();
     }
@@ -1498,14 +1505,17 @@ import packageJson from '../package.json'
                 const currentTime = new Date().getTime();
                 const tapLength = currentTime - lastTapTime;
                 
-                if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
+                // 只有在指定时间内连续点击同一张牌才判定为双击
+                if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0 && lastTapCardId === card.id) {
                     // 双击
                     quickMove(card, pos);
                     lastTapTime = 0;
+                    lastTapCardId = null;
                 } else {
                     // 单击
                     handleCardClick(card, pos);
                     lastTapTime = currentTime;
+                    lastTapCardId = card.id;
                 }
                 drag = null;
             }
