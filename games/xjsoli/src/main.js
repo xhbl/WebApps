@@ -463,6 +463,17 @@ import packageJson from '../package.json'
                 this.isWon = true;
                 handleGameWin();
             }
+            
+            // 死局检测
+            if (!this.isWon && this.getHints().length === 0) {
+                showMessageBox({
+                    title: t('noMovesTitle'),
+                    message: t('noMovesMessage'),
+                    type: 'error',
+                    buttons: 'ok'
+                });
+            }
+            
             saveGameState();
         }
 
