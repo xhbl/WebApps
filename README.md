@@ -13,6 +13,7 @@ All applications in this project are designed to be cross-platform and accessibl
 | [vnbook](vnbook) | A vocabulary notebook for word logging and review | Vue3 / PHP |
 | [xjswpr](games/xjswpr) | A JavaScript-based classic Minesweeper game | JavaScript |
 | [xjfcel](games/xjfcel) | A JavaScript-based classic FreeCell game | JavaScript |
+| [xjsoli](games/xjsoli) | A JavaScript-based classic Solitaire game | JavaScript |
 
 ---
 
