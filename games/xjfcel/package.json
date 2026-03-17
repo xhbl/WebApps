@@ -1,11 +1,11 @@
 {
   "name": "xjfcel",
   "private": true,
-  "version": "1.0.76",
+  "version": "1.0.80",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "npm run bump:version && vite build",
+    "build": "vite build",
     "build:pwa": "cross-env VITE_BUILD_PWA=true npm run build",
     "preview": "vite preview",
     "bump:version": "node -e \"const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json'));const v=p.version.split('.');v[2]=parseInt(v[2])+1;p.version=v.join('.');fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Version bumped to:',p.version)\""

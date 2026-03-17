@@ -8,6 +8,18 @@ import './style.css'
 
 import packageJson from '../package.json'
 
+// 导入 SVG 资源
+import pkp_j from './assets/pkp_j.svg'
+import pkp_q from './assets/pkp_q.svg'
+import pkp_k from './assets/pkp_k.svg'
+
+// 创建映射对象用于动态获取图片路径
+const faceImageSrcs = {
+    j: pkp_j,
+    q: pkp_q,
+    k: pkp_k
+};
+
 (function() {
     const LANG = {
         zh: {
@@ -435,7 +447,7 @@ import packageJson from '../package.json'
     const faceImages = {};
     ['j', 'q', 'k'].forEach(k => {
         const img = new Image();
-        img.src = `./pkp_${k}.svg`;
+        img.src = faceImageSrcs[k];
         faceImages[k] = img;
     });
 
@@ -1347,7 +1359,7 @@ import packageJson from '../package.json'
         
         if (card.rank > 10) {
             const f = card.rank === 11 ? 'j' : card.rank === 12 ? 'q' : 'k';
-            div.innerHTML = `<img src="./pkp_${f}.svg" class="face-img" alt="${f}">` +
+            div.innerHTML = `<img src="${faceImageSrcs[f]}" class="face-img" alt="${f}">` +
                             `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div></div>`;
         } else {
             div.innerHTML = `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div><div class="suit-l">${SYMBOLS[card.suit]}</div></div>`;
