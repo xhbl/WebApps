@@ -7,6 +7,10 @@
 import './style.css'
 
 import packageJson from '../package.json'
+import pkpJ from './assets/pkp_j.svg'
+import pkpQ from './assets/pkp_q.svg'
+import pkpK from './assets/pkp_k.svg'
+import pkpBack from './assets/pkp_back.svg'
 
 (function() {
     // 为 Canvas 添加 roundRect 方法，用于绘制圆角矩形
@@ -223,15 +227,16 @@ import packageJson from '../package.json'
     
     // 预加载脸牌图片资源
     const faceImages = {};
+    const faceImageSrcs = { j: pkpJ, q: pkpQ, k: pkpK };
     ['j', 'q', 'k'].forEach(k => {
         const img = new Image();
-        img.src = `./pkp_${k}.svg`;
+        img.src = faceImageSrcs[k];
         faceImages[k] = img;
     });
-    
+
     // 预加载牌背图片资源
     const backImage = new Image();
-    backImage.src = './pkp_back.svg';
+    backImage.src = pkpBack;
 
     // ---------- 核心游戏逻辑类 ----------
     // SolitaireLogic：封装所有游戏状态、操作、算法与历史记录。
@@ -722,7 +727,7 @@ import packageJson from '../package.json'
                 // 脸牌使用图片，普通牌使用花色符号
                 if (card.rank > 10) {
                     const f = card.rank === 11 ? 'j' : card.rank === 12 ? 'q' : 'k';
-                    el.innerHTML = `<img src="./pkp_${f}.svg" class="face-img" alt="${f}">` +
+                    el.innerHTML = `<img src="${faceImageSrcs[f]}" class="face-img" alt="${f}">` +
                                    `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div></div>`;
                 } else {
                     const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
@@ -1090,7 +1095,7 @@ import packageJson from '../package.json'
         
         if (card.rank > 10) {
             const f = card.rank === 11 ? 'j' : card.rank === 12 ? 'q' : 'k';
-            div.innerHTML = `<img src="./pkp_${f}.svg" class="face-img" alt="${f}">` +
+            div.innerHTML = `<img src="${faceImageSrcs[f]}" class="face-img" alt="${f}">` +
                             `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div></div>`;
         } else {
             const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
@@ -1133,7 +1138,7 @@ import packageJson from '../package.json'
             
             if (card.rank > 10) {
                 const f = card.rank === 11 ? 'j' : card.rank === 12 ? 'q' : 'k';
-                div.innerHTML = `<img src="./pkp_${f}.svg" class="face-img" alt="${f}">` +
+                div.innerHTML = `<img src="${faceImageSrcs[f]}" class="face-img" alt="${f}">` +
                                 `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div></div>`;
             } else {
                 const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
