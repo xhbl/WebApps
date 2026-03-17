@@ -1,21 +1,21 @@
 /* 加载自定义字体 */
         @font-face {
             font-family: 'XJSwprNum';
-            src: url('/xjswpr_num.woff') format('woff');
+            src: url('./assets/xjswpr_num.woff') format('woff');
             font-weight: normal;
             font-style: normal;
         }
         
         @font-face {
             font-family: 'XJSwprLed';
-            src: url('/xjswpr_led.woff') format('woff');
+            src: url('./assets/xjswpr_led.woff') format('woff');
             font-weight: normal;
             font-style: normal;
         }
         
         @font-face {
             font-family: 'XJSwprEmo';
-            src: url('/xjswpr_emo.woff') format('woff');
+            src: url('./assets/xjswpr_emo.woff') format('woff');
             font-weight: normal;
             font-style: normal;
         }
