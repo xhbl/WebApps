@@ -7,9 +7,18 @@
 import './style.css'
 
 import packageJson from '../package.json'
-import pkpJ from './assets/pkp_j.svg'
-import pkpQ from './assets/pkp_q.svg'
-import pkpK from './assets/pkp_k.svg'
+import pkpJc from './assets/pkp_jc.svg'
+import pkpJd from './assets/pkp_jd.svg'
+import pkpJh from './assets/pkp_jh.svg'
+import pkpJs from './assets/pkp_js.svg'
+import pkpQc from './assets/pkp_qc.svg'
+import pkpQd from './assets/pkp_qd.svg'
+import pkpQh from './assets/pkp_qh.svg'
+import pkpQs from './assets/pkp_qs.svg'
+import pkpKc from './assets/pkp_kc.svg'
+import pkpKd from './assets/pkp_kd.svg'
+import pkpKh from './assets/pkp_kh.svg'
+import pkpKs from './assets/pkp_ks.svg'
 import pkpBack from './assets/pkp_back.svg'
 
 (function() {
@@ -227,12 +236,24 @@ import pkpBack from './assets/pkp_back.svg'
     
     // 预加载脸牌图片资源
     const faceImages = {};
-    const faceImageSrcs = { j: pkpJ, q: pkpQ, k: pkpK };
-    ['j', 'q', 'k'].forEach(k => {
+    const faceImageSrcs = {
+        'jc': pkpJc, 'jd': pkpJd, 'jh': pkpJh, 'js': pkpJs,
+        'qc': pkpQc, 'qd': pkpQd, 'qh': pkpQh, 'qs': pkpQs,
+        'kc': pkpKc, 'kd': pkpKd, 'kh': pkpKh, 'ks': pkpKs
+    };
+    Object.keys(faceImageSrcs).forEach(k => {
         const img = new Image();
         img.src = faceImageSrcs[k];
         faceImages[k] = img;
     });
+
+    // 获取脸牌图片键的辅助函数
+    function getFaceImageKey(card) {
+        if (card.rank <= 10) return null;
+        const rankChar = card.rank === 11 ? 'j' : card.rank === 12 ? 'q' : 'k';
+        const suitChar = card.suit.charAt(0); // 'c', 'd', 'h', 's'
+        return rankChar + suitChar;
+    }
 
     // 预加载牌背图片资源
     const backImage = new Image();
@@ -723,10 +744,10 @@ import pkpBack from './assets/pkp_back.svg'
                 el.style.fontSize = `${fontSize}px`;
                 
                 const rank = card.rank === 1 ? 'A' : card.rank === 11 ? 'J' : card.rank === 12 ? 'Q' : card.rank === 13 ? 'K' : card.rank;
-                
+
                 // 脸牌使用图片，普通牌使用花色符号
                 if (card.rank > 10) {
-                    const f = card.rank === 11 ? 'j' : card.rank === 12 ? 'q' : 'k';
+                    const f = getFaceImageKey(card);
                     el.innerHTML = `<img src="${faceImageSrcs[f]}" class="face-img" alt="${f}">` +
                                    `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div></div>`;
                 } else {
@@ -1092,16 +1113,16 @@ import pkpBack from './assets/pkp_back.svg'
         div.dataset.id = card.id;
         div.dataset.type = pos.type;
         const rank = card.rank === 1 ? 'A' : card.rank === 11 ? 'J' : card.rank === 12 ? 'Q' : card.rank === 13 ? 'K' : card.rank;
-        
+
         if (card.rank > 10) {
-            const f = card.rank === 11 ? 'j' : card.rank === 12 ? 'q' : 'k';
+            const f = getFaceImageKey(card);
             div.innerHTML = `<img src="${faceImageSrcs[f]}" class="face-img" alt="${f}">` +
                             `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div></div>`;
         } else {
             const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
             div.innerHTML = `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div><div class="suit-l" style="font-size:${bigSuitSize}px">${SYMBOLS[card.suit]}</div></div>`;
         }
-        
+
         return div;
     }
 
@@ -1135,9 +1156,9 @@ import pkpBack from './assets/pkp_back.svg'
             div.style.fontSize = `${fontSize}px`;
 
             const rank = card.rank === 1 ? 'A' : card.rank === 11 ? 'J' : card.rank === 12 ? 'Q' : card.rank === 13 ? 'K' : card.rank;
-            
+
             if (card.rank > 10) {
-                const f = card.rank === 11 ? 'j' : card.rank === 12 ? 'q' : 'k';
+                const f = getFaceImageKey(card);
                 div.innerHTML = `<img src="${faceImageSrcs[f]}" class="face-img" alt="${f}">` +
                                 `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div></div>`;
             } else {
@@ -2188,7 +2209,7 @@ import pkpBack from './assets/pkp_back.svg'
 
             // 底部大花色或SVG图案
             const isFace = ['J', 'Q', 'K'].includes(c.rank);
-            const f = isFace ? c.rank.toString().toLowerCase() : null;
+            const f = isFace ? getFaceImageKey({ rank: c.rank === 'A' ? 1 : c.rank === 'J' ? 11 : c.rank === 'Q' ? 12 : c.rank === 'K' ? 13 : c.rank, suit: c.suit === '♥' ? 'hearts' : c.suit === '♦' ? 'diamonds' : c.suit === '♣' ? 'clubs' : 'spades' }) : null;
             if (isFace && faceImages[f] && faceImages[f].complete && faceImages[f].naturalWidth > 0) {
                 const img = faceImages[f];
                 const iH = layout.cardW * (img.naturalHeight / img.naturalWidth);

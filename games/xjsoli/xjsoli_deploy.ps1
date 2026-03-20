@@ -41,9 +41,18 @@ $BackupPath = Join-Path $ProjectRoot ".deploy_backup"
 
 # SVG file mapping (source filename -> destination filename)
 $SvgMap = @{
-    'pkp_j_yy_256.svg' = 'pkp_j.svg'
-    'pkp_q_zc_256.svg' = 'pkp_q.svg'
-    'pkp_k_yw_256.svg' = 'pkp_k.svg'
+    'fam-pkp_jc.svg' = 'pkp_jc.svg'
+    'fam-pkp_jd.svg' = 'pkp_jd.svg'
+    'fam-pkp_jh.svg' = 'pkp_jh.svg'
+    'fam-pkp_js.svg' = 'pkp_js.svg'
+    'fam-pkp_kc.svg' = 'pkp_kc.svg'
+    'fam-pkp_kd.svg' = 'pkp_kd.svg'
+    'fam-pkp_kh.svg' = 'pkp_kh.svg'
+    'fam-pkp_ks.svg' = 'pkp_ks.svg'
+    'fam-pkp_qc.svg' = 'pkp_qc.svg'
+    'fam-pkp_qd.svg' = 'pkp_qd.svg'
+    'fam-pkp_qh.svg' = 'pkp_qh.svg'
+    'fam-pkp_qs.svg' = 'pkp_qs.svg'
 }
 
 # Output functions
