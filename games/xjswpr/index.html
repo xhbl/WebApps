@@ -12,11 +12,11 @@
       function detectBrowserLanguage() {
         const storedLang = localStorage.getItem('xjswpr_language');
         if (storedLang) return storedLang;
-        
+
         const browserLang = navigator.language || navigator.userLanguage;
         return browserLang.includes('zh') ? 'zh' : 'en';
       }
-      
+
       const lang = detectBrowserLanguage();
       const manifestLink = document.createElement('link');
       manifestLink.rel = 'manifest';
@@ -25,7 +25,7 @@
     </script>
     <script type="module" src="/src/main.js"></script>
   </head>
-  <body>
+  <body class="loading">
     <div id="app">
       <div class="mine-window">
         <!-- 游戏主区域 -->
@@ -36,7 +36,7 @@
                 <div class="face-button" id="faceButton">😊</div>
                 <div class="counter" id="timerCounter">000</div>
             </div>
-            
+
             <!-- 雷区容器 -->
             <div class="board-container">
                 <div class="board" id="board"></div>

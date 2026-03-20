@@ -839,7 +839,7 @@ function renderBoard() {
 
     DOM.board.style.gridTemplateColumns = `repeat(${gameState.config.cols}, ${cellSize}px)`;
     DOM.board.innerHTML = '';
-    
+
     for (let r = 0; r < gameState.config.rows; r++) {
         for (let c = 0; c < gameState.config.cols; c++) {
             const cell = gameState.board[r][c];
@@ -847,14 +847,14 @@ function renderBoard() {
             cellDiv.className = 'cell';
             cellDiv.dataset.row = r;
             cellDiv.dataset.col = c;
-            
+
             // 应用计算后的单元格尺寸
             cellDiv.style.width = `${cellSize}px`;
             cellDiv.style.height = `${cellSize}px`;
-            
+
             if (cell.revealed) {
                 cellDiv.classList.add('revealed');
-                
+
                 if (cell.mine) {
                     cellDiv.classList.add('mine');
                     if (cell.exploded) {
@@ -869,10 +869,13 @@ function renderBoard() {
                     cellDiv.classList.add('flagged');
                 }
             }
-            
+
             DOM.board.appendChild(cellDiv);
         }
     }
+
+    // 渲染完成后移除body的loading状态
+    document.body.classList.remove('loading');
 }
 
 // 更新雷数计数器
