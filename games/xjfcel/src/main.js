@@ -8,16 +8,39 @@ import './style.css'
 
 import packageJson from '../package.json'
 
-// 导入 SVG 资源
-import pkp_j from './assets/pkp_j.svg'
-import pkp_q from './assets/pkp_q.svg'
-import pkp_k from './assets/pkp_k.svg'
+// 导入 SVG 资源 - 独立文件方案
+import pkp_jc from './assets/pkp_jc.svg'
+import pkp_jd from './assets/pkp_jd.svg'
+import pkp_jh from './assets/pkp_jh.svg'
+import pkp_js from './assets/pkp_js.svg'
+
+import pkp_qc from './assets/pkp_qc.svg'
+import pkp_qd from './assets/pkp_qd.svg'
+import pkp_qh from './assets/pkp_qh.svg'
+import pkp_qs from './assets/pkp_qs.svg'
+
+import pkp_kc from './assets/pkp_kc.svg'
+import pkp_kd from './assets/pkp_kd.svg'
+import pkp_kh from './assets/pkp_kh.svg'
+import pkp_ks from './assets/pkp_ks.svg'
 
 // 创建映射对象用于动态获取图片路径
 const faceImageSrcs = {
-    j: pkp_j,
-    q: pkp_q,
-    k: pkp_k
+    // J牌
+    'j-clubs': pkp_jc,
+    'j-diamonds': pkp_jd,
+    'j-hearts': pkp_jh,
+    'j-spades': pkp_js,
+    // Q牌
+    'q-clubs': pkp_qc,
+    'q-diamonds': pkp_qd,
+    'q-hearts': pkp_qh,
+    'q-spades': pkp_qs,
+    // K牌
+    'k-clubs': pkp_kc,
+    'k-diamonds': pkp_kd,
+    'k-hearts': pkp_kh,
+    'k-spades': pkp_ks
 };
 
 (function() {
@@ -445,10 +468,15 @@ const faceImageSrcs = {
     const SYMBOLS = { 'hearts':'♥', 'diamonds':'♦', 'clubs':'♣', 'spades':'♠' };
     
     const faceImages = {};
+    // 为每个脸牌和花色创建Image对象
     ['j', 'q', 'k'].forEach(k => {
-        const img = new Image();
-        img.src = faceImageSrcs[k];
-        faceImages[k] = img;
+        const suits = ['clubs', 'diamonds', 'hearts', 'spades'];
+        suits.forEach(suit => {
+            const suitKey = `${k}-${suit}`;
+            const img = new Image();
+            img.src = faceImageSrcs[suitKey];
+            faceImages[suitKey] = img;
+        });
     });
 
     // 动画辅助函数
@@ -1359,7 +1387,10 @@ const faceImageSrcs = {
         
         if (card.rank > 10) {
             const f = card.rank === 11 ? 'j' : card.rank === 12 ? 'q' : 'k';
-            div.innerHTML = `<img src="${faceImageSrcs[f]}" class="face-img" alt="${f}">` +
+            // 直接使用花色特定的SVG文件
+            const suitKey = `${f}-${card.suit}`;
+            const imgSrc = faceImageSrcs[suitKey];
+            div.innerHTML = `<img src="${imgSrc}" class="face-img" alt="${f}">` +
                             `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div></div>`;
         } else {
             div.innerHTML = `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div><div class="suit-l">${SYMBOLS[card.suit]}</div></div>`;
@@ -1976,10 +2007,24 @@ const faceImageSrcs = {
             // 底部大花色或SVG图案
             const isFace = ['J', 'Q', 'K'].includes(c.rank);
             const f = isFace ? c.rank.toString().toLowerCase() : null;
-            if (isFace && faceImages[f] && faceImages[f].complete && faceImages[f].naturalWidth > 0) {
-                const img = faceImages[f];
-                const iH = layout.cardW * (img.naturalHeight / img.naturalWidth);
-                ctx.drawImage(img, c.x, c.y + layout.cardH - iH, layout.cardW, iH);
+            if (isFace && f) {
+                // 直接使用花色特定的Image对象
+                const suitKey = `${f}-${SUITS[c.suitIndex]}`;
+                const img = faceImages[suitKey];
+
+                if (img && img.complete && img.naturalWidth > 0) {
+                    const iH = layout.cardW * (img.naturalHeight / img.naturalWidth);
+                    ctx.drawImage(img, c.x, c.y + layout.cardH - iH, layout.cardW, iH);
+                } else {
+                    // 图像未加载完成，回退到花色符号
+                    const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
+                    ctx.font = `${bigSuitSize}px "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'alphabetic';
+                    ctx.globalAlpha = 0.8;
+                    ctx.fillText(c.suit, c.x + layout.cardW / 2, c.y + layout.cardH - 5);
+                    ctx.globalAlpha = 1.0;
+                }
             } else {
                 const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
                 ctx.font = `${bigSuitSize}px "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif`;
