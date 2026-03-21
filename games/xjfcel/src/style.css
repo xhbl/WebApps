@@ -1,6 +1,6 @@
 @font-face {
      font-family: 'XJCard';
-     src: url('./assets/xjcard.woff') format('woff');
+     src: url('@common/fonts/xjcard.woff') format('woff');
      font-weight: normal;
      font-style: normal;
  }

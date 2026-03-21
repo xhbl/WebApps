@@ -9,20 +9,20 @@ import './style.css'
 import packageJson from '../package.json'
 
 // 导入 SVG 资源 - 独立文件方案
-import pkp_jc from './assets/pkp_jc.svg'
-import pkp_jd from './assets/pkp_jd.svg'
-import pkp_jh from './assets/pkp_jh.svg'
-import pkp_js from './assets/pkp_js.svg'
+import pkp_jc from '@common/images/pkp_jc.svg'
+import pkp_jd from '@common/images/pkp_jd.svg'
+import pkp_jh from '@common/images/pkp_jh.svg'
+import pkp_js from '@common/images/pkp_js.svg'
 
-import pkp_qc from './assets/pkp_qc.svg'
-import pkp_qd from './assets/pkp_qd.svg'
-import pkp_qh from './assets/pkp_qh.svg'
-import pkp_qs from './assets/pkp_qs.svg'
+import pkp_qc from '@common/images/pkp_qc.svg'
+import pkp_qd from '@common/images/pkp_qd.svg'
+import pkp_qh from '@common/images/pkp_qh.svg'
+import pkp_qs from '@common/images/pkp_qs.svg'
 
-import pkp_kc from './assets/pkp_kc.svg'
-import pkp_kd from './assets/pkp_kd.svg'
-import pkp_kh from './assets/pkp_kh.svg'
-import pkp_ks from './assets/pkp_ks.svg'
+import pkp_kc from '@common/images/pkp_kc.svg'
+import pkp_kd from '@common/images/pkp_kd.svg'
+import pkp_kh from '@common/images/pkp_kh.svg'
+import pkp_ks from '@common/images/pkp_ks.svg'
 
 // 创建映射对象用于动态获取图片路径
 const faceImageSrcs = {
@@ -42,6 +42,67 @@ const faceImageSrcs = {
     'k-hearts': pkp_kh,
     'k-spades': pkp_ks
 };
+
+// ========== 声音管理系统 ==========
+// 导入音频资源
+import carddealUrl from '@common/audio/pka_carddeal.mp3'
+import cardselsetUrl from '@common/audio/pka_cardselset.mp3'
+import hintnomoveUrl from '@common/audio/pka_hintnomove.mp3'
+import hintshownUrl from '@common/audio/pka_hintshown.mp3'
+import illegalmoveUrl from '@common/audio/pka_illegalmove.mp3'
+import liftoffUrl from '@common/audio/pka_liftoff.mp3'
+import tofoundUrl from '@common/audio/pka_tofound.mp3'
+import undoUrl from '@common/audio/pka_undo.mp3'
+import winUrl from '@common/audio/pka_win.mp3'
+
+// 声音管理器
+class SoundManager {
+    constructor() {
+        this.sounds = {
+            carddeal: new Audio(carddealUrl),
+            cardselset: new Audio(cardselsetUrl),
+            hintnomove: new Audio(hintnomoveUrl),
+            hintshown: new Audio(hintshownUrl),
+            illegalmove: new Audio(illegalmoveUrl),
+            liftoff: new Audio(liftoffUrl),
+            tofound: new Audio(tofoundUrl),
+            undo: new Audio(undoUrl),
+            win: new Audio(winUrl)
+        };
+        this.enabled = true;
+        this.loadSettings();
+    }
+
+    loadSettings() {
+        const saved = localStorage.getItem('xjfcel-sound');
+        if (saved !== null) {
+            this.enabled = saved === 'true';
+        }
+    }
+
+    saveSettings() {
+        localStorage.setItem('xjfcel-sound', this.enabled.toString());
+    }
+
+    toggle() {
+        this.enabled = !this.enabled;
+        this.saveSettings();
+        return this.enabled;
+    }
+
+    play(soundName) {
+        if (!this.enabled) return;
+        const sound = this.sounds[soundName];
+        if (sound) {
+            sound.currentTime = 0;
+            sound.play().catch(e => {
+                // 忽略自动播放限制错误
+            });
+        }
+    }
+}
+
+const soundManager = new SoundManager();
 
 (function() {
     const LANG = {
@@ -776,11 +837,17 @@ const faceImageSrcs = {
 
             if (to.type === 'cols') {
                 this.cols[to.idx].push(...cards);
+                // 播放放置音效
+                soundManager.play('cardselset');
             } else if (to.type === 'free') {
                 this.free[to.idx] = cards[0];
+                // 播放放置音效
+                soundManager.play('cardselset');
             } else if (to.type === 'found') {
                 this.found[to.idx] = cards[0].rank;
                 this.score += 10;
+                // 播放到foundation音效
+                soundManager.play('tofound');
             }
 
             renderContent();
@@ -852,6 +919,8 @@ const faceImageSrcs = {
         // undo：撤销一步操作，恢复历史状态。
         undo() {
             if (this.history.length === 0) return;
+            // 播放撤销音效
+            soundManager.play('undo');
             clearSelection(); // 撤销时清除选中高亮
             clearHint();      // 撤销时清除提示高亮
             let prev = JSON.parse(this.history.pop());
@@ -1134,6 +1203,9 @@ const faceImageSrcs = {
         tip.className = 'invalid-move-tip';
         tip.innerHTML = `<span class="tip-icon">⚠</span><span class="tip-text">${t('invalidMove.' + messageKey)}</span>`;
         
+        // 播放无效移动音效
+        soundManager.play('illegalmove');
+        
         const bottomBar = document.querySelector('.bottom-controls');
         bottomBar.insertAdjacentElement('beforebegin', tip);
         
@@ -1201,7 +1273,14 @@ const faceImageSrcs = {
             currentHintIndex = 0;
         }
 
-        if (currentHints.length === 0) return;
+        if (currentHints.length === 0) {
+            // 无可用提示时播放音效
+            soundManager.play('hintnomove');
+            return;
+        }
+        
+        // 播放提示显示音效
+        soundManager.play('hintshown');
 
         const hint = currentHints[currentHintIndex];
         currentHintIndex = (currentHintIndex + 1) % currentHints.length;
@@ -1375,6 +1454,8 @@ const faceImageSrcs = {
         if (cardsToSelect.length > 0) {
             selection = { cards: cardsToSelect, from: pos, els: elementsToSelect };
             elementsToSelect.forEach(el => el.classList.add('selected'));
+            // 播放选中音效
+            soundManager.play('cardselset');
         }
     }
 
@@ -1445,6 +1526,8 @@ const faceImageSrcs = {
 
             if (!drag.moved && (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD)) {
                 drag.moved = true;
+                // 播放拖拽音效
+                soundManager.play('liftoff');
                 clearSelection();
                 els.forEach(el => el.classList.add('selected'));
             }
@@ -1515,6 +1598,8 @@ const faceImageSrcs = {
 
             if (!drag.moved && (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD)) {
                 drag.moved = true;
+                // 播放拖拽音效
+                soundManager.play('liftoff');
                 clearSelection();
                 els.forEach(el => el.classList.add('selected'));
             }
@@ -1782,6 +1867,13 @@ const faceImageSrcs = {
         if (isAnimating) return;
         isAnimating = true;
 
+        // 播放发牌音效
+        const dealSound = soundManager.sounds.carddeal;
+        if (soundManager.enabled && dealSound) {
+            dealSound.currentTime = 0;
+            dealSound.play().catch(e => {});
+        }
+
         const canvas = document.getElementById('canvas');
         const rect = canvas.getBoundingClientRect();
         
@@ -1822,7 +1914,7 @@ const faceImageSrcs = {
         canvas.offsetHeight;
 
         // 每张牌的间隔 (ms)
-        const delay = 15;
+        const delay = 30;
         const duration = 250;
         
         const promises = dealingOrder.map((item, i) => {
@@ -1842,6 +1934,12 @@ const faceImageSrcs = {
         });
 
         await Promise.all(promises);
+        
+        // 停止发牌音效
+        if (dealSound) {
+            dealSound.pause();
+            dealSound.currentTime = 0;
+        }
         
         isAnimating = false;
         // 恢复交互
@@ -1913,6 +2011,13 @@ const faceImageSrcs = {
         updateStatsOnWin(); // 更新获胜统计
         clearSavedGame(); // 游戏获胜后，清除本地存档
         
+        // 播放胜利音效
+        const winSound = soundManager.sounds.win;
+        if (soundManager.enabled && winSound) {
+            winSound.currentTime = 0;
+            winSound.play().catch(e => {});
+        }
+        
         const stopAnim = startVictoryDemo();
         
         showMessageBox({
@@ -1921,6 +2026,11 @@ const faceImageSrcs = {
             type: 'win',
             buttons: 'yes-no',
             callback: (result) => {
+                // 停止胜利音效
+                if (winSound) {
+                    winSound.pause();
+                    winSound.currentTime = 0;
+                }
                 stopAnim();
                 if (result.confirmed) {
                     newRandomGame(true);
@@ -2172,6 +2282,16 @@ const faceImageSrcs = {
     document.getElementById('stats-btn').onclick = showStats;
     document.getElementById('aboutLink').onclick = (e) => { e.preventDefault(); clearHint(); showAbout(); };
     document.getElementById('langToggle').onclick = () => { clearHint(); setLanguage(currentLang === 'zh' ? 'en' : 'zh'); };
+    
+    // 声音开关按钮
+    const soundToggle = document.getElementById('soundToggle');
+    if (soundToggle) {
+        soundToggle.textContent = soundManager.enabled ? '🔊' : '🔇';
+        soundToggle.onclick = () => {
+            const enabled = soundManager.toggle();
+            soundToggle.textContent = enabled ? '🔊' : '🔇';
+        };
+    }
 
     // 处理在空白区域的点击（用于放置选中的牌）
     document.getElementById('canvas').addEventListener('click', e => {

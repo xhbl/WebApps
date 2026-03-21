@@ -1,35 +1,52 @@
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import path from 'path'
 import pkg from './package.json' with { type: 'json' }
 
-// ¼ì²âÊÇ·ñÎª PWA ´ò°üÄ£Ê½
+// æ£€æµ‹æ˜¯å¦ä¸º PWA æ„å»ºæ¨¡å¼
 const isPwaBuild = process.env.VITE_BUILD_PWA === 'true'
 const version = pkg.version
 
 export default defineConfig({
   base: './',
+  
+  // é…ç½®è·¯å¾„åˆ«åï¼Œå¼•ç”¨commonèµ„æº
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+      '@common': path.resolve(__dirname, '../common')
+    }
+  },
+  
+  // å¼€å‘æœåŠ¡å™¨é…ç½®ï¼Œå…è®¸è®¿é—®ä¸Šçº§ç›®å½•
+  server: {
+    fs: {
+      allow: ['..']
+    }
+  },
+  
   plugins: [
-    // ½öÔÚ PWA ´ò°üÄ£Ê½ÏÂÆôÓÃ PWA ²å¼ş
+    // ä»…åœ¨ PWA æ„å»ºæ¨¡å¼ä¸‹å¯ç”¨ PWA æ’ä»¶
     isPwaBuild && VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['xjfcel.svg'],
-      manifest: false, // ½ûÓÃÄ¬ÈÏµÄmanifestÉú³É
+      manifest: false, // ç¦ç”¨é»˜è®¤çš„manifestç”Ÿæˆ
       strategies: 'generateSW',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,mp3}']
       }
     }),
-    // ¹¹½¨Ê±Îª public Ä¿Â¼ÏÂµÄ¾²Ì¬×ÊÔ´Ìí¼Ó°æ±¾ºÅ£¬½â¾öä¯ÀÀÆ÷»º´æÎÊÌâ
+    // æ„å»ºæ—¶ä¸º public ç›®å½•ä¸‹çš„é™æ€èµ„æºæ·»åŠ ç‰ˆæœ¬å·ï¼Œç”¨äºç¼“å­˜ç®¡ç†
     {
       name: 'static-version-plugin',
       transformIndexHtml(html) {
-        // Æ¥Åä href »ò src ÊôĞÔÒıÓÃ public Ä¿Â¼ÏÂµÄ×ÊÔ´
-        // ÅÅ³ı ./assets/ Â·¾¶£¨ÓÉ Vite ×Ô¶¯´¦Àí£¬ÒÑÓĞ¹şÏ££©
-        // Ö§³Ö #hash ºó×º£¨Èç SVG sprite: ./icons.svg#icon-name£©
+        // åŒ¹é… href å’Œ src å±æ€§ï¼Œä»…å¤„ç† public ç›®å½•ä¸‹çš„èµ„æº
+        // æ’é™¤ ./assets/ è·¯å¾„ï¼Œå› ä¸º Vite è‡ªåŠ¨å¤„ç†è¿™äº›èµ„æºå¹¶æ·»åŠ å“ˆå¸Œ
+        // æ”¯æŒ #hash åç¼€ï¼Œä¾‹å¦‚ SVG sprite: ./icons.svg#icon-name
         return html.replace(
           /(href|src)="(\.\/(?!assets\/)[^"?#]+)([^"]*)"/g,
           (match, attr, path, suffix) => {
-            // ±ÜÃâÖØ¸´Ìí¼Ó°æ±¾ºÅ
+            // é¿å…é‡å¤æ·»åŠ ç‰ˆæœ¬å·
             if (suffix.includes('v=')) return match
             return `${attr}="${path}?v=${version}${suffix}"`
           }
