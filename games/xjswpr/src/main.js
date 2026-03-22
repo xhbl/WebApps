@@ -585,16 +585,21 @@ function revealCell(row, col) {
     if (gameState.board[row][col].mine) {
         gameState.board[row][col].exploded = true;
         handleLoss();
-        renderBoard();
+        renderBoard(); // 游戏结束时需要全量重绘以显示所有地雷
         return; // 提前返回
     }
     
     // 统计翻开的格子数（用于音效）
     let revealedCount = 1;
     
+    // 收集所有需要更新的格子坐标
+    const cellsToUpdate = [{ r: row, c: col }];
+    
     // 如果是空格，递归翻开周围
     if (gameState.board[row][col].neighborMines === 0) {
-        revealedCount += revealEmptyCells(row, col);
+        const additionalCells = revealEmptyCellsCollect(row, col);
+        revealedCount += additionalCells.length;
+        cellsToUpdate.push(...additionalCells);
     }
     
     // 播放音效：单格或多格
@@ -607,32 +612,41 @@ function revealCell(row, col) {
     // 检查胜利
     checkWin();
     saveGame(); // 操作后保存
-    renderBoard();
+    
+    // 优化：使用增量更新而非全量重绘
+    if (gameState.gameWin) {
+        // 胜利时需要全量重绘以显示所有地雷
+        renderBoard();
+    } else {
+        // 普通情况：增量更新翻开的格子
+        updateCellsDOMBatch(cellsToUpdate);
+    }
 }
 
-// 为组合点击优化的翻开逻辑（不触发渲染）
+// 为组合点击优化的翻开逻辑（不触发渲染，返回翻开的格子坐标）
 function revealCellForChord(row, col) {
-    if (gameState.gameOver || gameState.gameWin) return;
+    if (gameState.gameOver || gameState.gameWin) return [];
     const cell = gameState.board[row][col];
-    if (cell.revealed || cell.flagged) return;
+    if (cell.revealed || cell.flagged) return [];
 
     cell.revealed = true;
+    const cellsToUpdate = [{ r: row, c: col }];
 
     // 踩到雷
     if (cell.mine) {
         cell.exploded = true;
         handleLoss();
-        return;
+        return cellsToUpdate;
     }
 
     // 如果是空格，递归翻开周围
     if (cell.neighborMines === 0) {
-        // 注意：revealEmptyCells 也会修改 board 数据，但不会触发渲染
-        // 这是我们期望的行为
-        revealEmptyCells(row, col);
+        // 使用收集坐标版本
+        cellsToUpdate.push(...revealEmptyCellsCollect(row, col));
     }
     
     saveGame(); // 操作后保存（chord逻辑外层会调用checkWin，但这里是内部递归，可以在外部保存）
+    return cellsToUpdate;
 }
 
 // 空格扩散算法（深度优先）
@@ -657,6 +671,67 @@ function revealEmptyCells(row, col) {
         }
     }
     return count;
+}
+
+// 优化：空格扩散算法（收集坐标版本，用于增量更新）
+function revealEmptyCellsCollect(row, col) {
+    const cells = [];
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = row + dr;
+            const nc = col + dc;
+            
+            if (nr >= 0 && nr < gameState.config.rows && nc >= 0 && nc < gameState.config.cols) {
+                const cell = gameState.board[nr][nc];
+                if (!cell.revealed && !cell.flagged && !cell.mine) {
+                    cell.revealed = true;
+                    cells.push({ r: nr, c: nc });
+                    if (cell.neighborMines === 0) {
+                        cells.push(...revealEmptyCellsCollect(nr, nc));
+                    }
+                }
+            }
+        }
+    }
+    return cells;
+}
+
+// 优化：增量更新单个格子的 DOM（不重建整个棋盘）
+function updateCellDOM(row, col) {
+    const cell = gameState.board[row][col];
+    const cellEl = DOM.board.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+    if (!cellEl) return;
+
+    // 重置状态
+    cellEl.className = 'cell';
+    cellEl.textContent = '';
+
+    if (cell.revealed) {
+        cellEl.classList.add('revealed');
+
+        if (cell.mine) {
+            cellEl.classList.add('mine');
+            if (cell.exploded) {
+                cellEl.classList.add('red-cross');
+            }
+        } else if (cell.neighborMines > 0) {
+            cellEl.textContent = cell.neighborMines;
+            cellEl.classList.add(`num${cell.neighborMines}`);
+        }
+    } else {
+        if (cell.flagged) {
+            cellEl.classList.add('flagged');
+        }
+    }
+}
+
+// 优化：批量增量更新多个格子（用于空格扩散）
+function updateCellsDOMBatch(cells) {
+    // 使用 requestAnimationFrame 批量更新，避免多次重排
+    requestAnimationFrame(() => {
+        cells.forEach(({ r, c }) => updateCellDOM(r, c));
+    });
 }
 
 // 标记/取消标记旗子
@@ -878,11 +953,12 @@ function chord(row, col) {
     });
 
     if (flaggedNeighbors === cell.neighborMines) {
-        // 批量翻开格子
-        // 使用不带渲染的优化版本
+        // 批量翻开格子，收集所有需要更新的格子
+        const allCellsToUpdate = [];
         neighborsToReveal.forEach(({ r, c }) => {
             if (!gameState.gameOver) { // 如果中途踩雷，停止翻开
-                revealCellForChord(r, c);
+                const cells = revealCellForChord(r, c);
+                allCellsToUpdate.push(...cells);
             }
         });
         
@@ -895,10 +971,18 @@ function chord(row, col) {
             }
         }
         
-        // 在所有逻辑操作完成后，进行一次检查和一次渲染
+        // 在所有逻辑操作完成后，进行一次检查
         checkWin();
         saveGame(); // 操作后保存
-        renderBoard();
+        
+        // 优化：使用增量更新而非全量重绘
+        if (gameState.gameOver || gameState.gameWin) {
+            // 游戏结束时需要全量重绘以显示所有地雷
+            renderBoard();
+        } else {
+            // 普通情况：增量更新翻开的格子
+            updateCellsDOMBatch(allCellsToUpdate);
+        }
     } else {
         // 播放无效操作音效
         soundManager.play('invalid');
@@ -938,7 +1022,9 @@ function renderBoard() {
     cellSize = Math.max(MIN_CELL_SIZE, Math.min(calculatedSize, MAX_CELL_SIZE));
 
     DOM.board.style.gridTemplateColumns = `repeat(${gameState.config.cols}, ${cellSize}px)`;
-    DOM.board.innerHTML = '';
+
+    // 优化：使用 DocumentFragment 批量添加 DOM，减少重排次数
+    const fragment = document.createDocumentFragment();
 
     for (let r = 0; r < gameState.config.rows; r++) {
         for (let c = 0; c < gameState.config.cols; c++) {
@@ -970,9 +1056,13 @@ function renderBoard() {
                 }
             }
 
-            DOM.board.appendChild(cellDiv);
+            fragment.appendChild(cellDiv);
         }
     }
+
+    // 一次性清空并添加，减少闪烁
+    DOM.board.innerHTML = '';
+    DOM.board.appendChild(fragment);
 
     // 渲染完成后移除body的loading状态
     document.body.classList.remove('loading');
