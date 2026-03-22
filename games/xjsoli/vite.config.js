@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import path from 'path'
 import pkg from './package.json' with { type: 'json' }
 
 // 检测是否为 PWA 打包模式
@@ -8,6 +9,18 @@ const version = pkg.version
 
 export default defineConfig({
   base: './',
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+      '@common': path.resolve(__dirname, '../common')
+    }
+  },
+  // 允许访问项目外的common目录
+  server: {
+    fs: {
+      allow: ['..']
+    }
+  },
   plugins: [
     // 仅在 PWA 打包模式下启用 PWA 插件
     isPwaBuild && VitePWA({
@@ -16,7 +29,7 @@ export default defineConfig({
       manifest: false, // 禁用默认的manifest生成
       strategies: 'generateSW',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,mp3}']
       }
     }),
     // 构建时为 public 目录下的静态资源添加版本号，解决浏览器缓存问题

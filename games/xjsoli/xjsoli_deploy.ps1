@@ -36,7 +36,7 @@ $ProjectRoot = $PSScriptRoot
 $DistPath = Join-Path $ProjectRoot "dist"
 $TargetRoot = "\\MSV\web\games\xjsoli"
 $ImagePathSrc = Join-Path $ProjectRoot "..\res\images"
-$ImagePathDst = Join-Path $ProjectRoot "src\assets"
+$ImagePathDst = Join-Path $ProjectRoot "..\common\images"
 $BackupPath = Join-Path $ProjectRoot ".deploy_backup"
 
 # SVG file mapping (source filename -> destination filename)

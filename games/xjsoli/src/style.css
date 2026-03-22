@@ -1,6 +1,6 @@
 @font-face {
      font-family: 'XJCard';
-     src: url('./assets/xjcard.woff') format('woff');
+     src: url('@common/fonts/xjcard.woff') format('woff');
      font-weight: normal;
      font-style: normal;
 }
@@ -180,7 +180,7 @@ body {
     touch-action: pinch-zoom; /* 可拖拽的牌禁止浏览器平移，由JS接管 */
 }
 .card.back {
-    background-image: url('./assets/pkp_back.svg');
+    background-image: url('@common/images/pkp_back.svg');
     background-size: 100% 100%;
     background-repeat: no-repeat;
     background-position: center;
