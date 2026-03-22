@@ -1,6 +1,61 @@
 import './style.css'
 import packageJson from '../package.json'
 
+// 音频文件导入
+import startUrl from './assets/audio/xjswpr_start.mp3'
+import tileSingleUrl from './assets/audio/xjswpr_tilesingle.mp3'
+import tileMultipleUrl from './assets/audio/xjswpr_tilemultiple.mp3'
+import invalidUrl from './assets/audio/xjswpr_invalid.mp3'
+import winUrl from './assets/audio/xjswpr_win.mp3'
+import loseUrl from './assets/audio/xjswpr_lose.mp3'
+
+// 声音管理器
+class SoundManager {
+    constructor() {
+        this.sounds = {
+            start: new Audio(startUrl),
+            tileSingle: new Audio(tileSingleUrl),
+            tileMultiple: new Audio(tileMultipleUrl),
+            invalid: new Audio(invalidUrl),
+            win: new Audio(winUrl),
+            lose: new Audio(loseUrl)
+        };
+        this.enabled = true;
+        this.loadSettings();
+    }
+
+    loadSettings() {
+        const saved = localStorage.getItem('xjswpr-sound');
+        if (saved !== null) {
+            this.enabled = saved === 'true';
+        }
+    }
+
+    saveSettings() {
+        localStorage.setItem('xjswpr-sound', this.enabled.toString());
+    }
+
+    toggle() {
+        this.enabled = !this.enabled;
+        this.saveSettings();
+        return this.enabled;
+    }
+
+    play(soundName) {
+        if (!this.enabled) return;
+        const sound = this.sounds[soundName];
+        if (sound) {
+            sound.currentTime = 0;
+            sound.volume = 0.5;
+            sound.play().catch(e => {
+                // 忽略自动播放限制错误
+            });
+        }
+    }
+}
+
+const soundManager = new SoundManager();
+
 // 语言配置
 const LANG = {
     zh: {
@@ -90,6 +145,9 @@ const DIFFICULTY = {
     intermediate: { rows: 16, cols: 16, mines: 40 },
     expert: { rows: 16, cols: 30, mines: 99 }
 };
+
+// 记录是否是首次加载
+let isFirstLoad = true;
 
 // 游戏核心状态
 let gameState = {
@@ -358,6 +416,9 @@ function loadGame() {
         timerStartTime = Date.now() - gameState.timer * 1000;
         startTimer();
         
+        // 标记为非首次加载（恢复了游戏）
+        isFirstLoad = false;
+        
         return true;
     } catch (e) {
         console.error("Failed to load saved game:", e);
@@ -389,6 +450,12 @@ function initGame() {
     DOM.timerCounter.textContent = '000';
     DOM.faceButton.textContent = '😊';
     updateGameStatus();
+    
+    // 播放新游戏音效（首次加载时不播放）
+    if (!isFirstLoad) {
+        soundManager.play('start');
+    }
+    isFirstLoad = false; // 标记为非首次加载
 }
 
 // 创建空棋盘
@@ -522,9 +589,19 @@ function revealCell(row, col) {
         return; // 提前返回
     }
     
+    // 统计翻开的格子数（用于音效）
+    let revealedCount = 1;
+    
     // 如果是空格，递归翻开周围
     if (gameState.board[row][col].neighborMines === 0) {
-        revealEmptyCells(row, col);
+        revealedCount += revealEmptyCells(row, col);
+    }
+    
+    // 播放音效：单格或多格
+    if (revealedCount === 1) {
+        soundManager.play('tileSingle');
+    } else {
+        soundManager.play('tileMultiple');
     }
     
     // 检查胜利
@@ -560,6 +637,7 @@ function revealCellForChord(row, col) {
 
 // 空格扩散算法（深度优先）
 function revealEmptyCells(row, col) {
+    let count = 0;
     for (let dr = -1; dr <= 1; dr++) {
         for (let dc = -1; dc <= 1; dc++) {
             if (dr === 0 && dc === 0) continue;
@@ -570,13 +648,15 @@ function revealEmptyCells(row, col) {
                 const cell = gameState.board[nr][nc];
                 if (!cell.revealed && !cell.flagged && !cell.mine) {
                     cell.revealed = true;
+                    count++;
                     if (cell.neighborMines === 0) {
-                        revealEmptyCells(nr, nc);
+                        count += revealEmptyCells(nr, nc);
                     }
                 }
             }
         }
     }
+    return count;
 }
 
 // 标记/取消标记旗子
@@ -704,6 +784,9 @@ function handleWin() {
     clearSavedGame(); // 游戏结束，清除存档
     stopTimer();
     
+    // 播放胜利音效
+    soundManager.play('win');
+    
     revealAllMines();
     gameState.minesRemaining = 0;
     updateMineCounter();
@@ -735,6 +818,10 @@ function handleLoss() {
     DOM.gameStatus.textContent = t('status.gameOver');
     clearSavedGame(); // 游戏结束，清除存档
     stopTimer();
+    
+    // 播放失败音效
+    soundManager.play('lose');
+    
     revealAllMines();
     setTimeout(() => showMessageBox({
         message: t('messages.lose'),
@@ -798,11 +885,24 @@ function chord(row, col) {
                 revealCellForChord(r, c);
             }
         });
+        
+        // 播放音效：根据翻开的格子数量
+        if (neighborsToReveal.length > 0) {
+            if (neighborsToReveal.length === 1) {
+                soundManager.play('tileSingle');
+            } else {
+                soundManager.play('tileMultiple');
+            }
+        }
+        
         // 在所有逻辑操作完成后，进行一次检查和一次渲染
         checkWin();
         saveGame(); // 操作后保存
         renderBoard();
     } else {
+        // 播放无效操作音效
+        soundManager.play('invalid');
+        
         // 如果旗子数量不匹配，则提供一个快速的视觉反馈
         showChordPreview(row, col, true);
         setTimeout(() => {
@@ -1197,6 +1297,16 @@ DOM.langToggle.addEventListener('click', () => {
     const newLang = currentLang === 'zh' ? 'en' : 'zh';
     setLanguage(newLang);
 });
+
+// 添加音效开关按钮事件
+const soundToggle = document.getElementById('soundToggle');
+if (soundToggle) {
+    soundToggle.textContent = soundManager.enabled ? '🔊' : '🔇';
+    soundToggle.addEventListener('click', () => {
+        const enabled = soundManager.toggle();
+        soundToggle.textContent = enabled ? '🔊' : '🔇';
+    });
+}
 
 // 添加关于链接点击事件
 DOM.aboutLink.addEventListener('click', e => {

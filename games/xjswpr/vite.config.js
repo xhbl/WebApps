@@ -16,7 +16,7 @@ export default defineConfig({
       manifest: false, // 禁用默认的manifest生成
       strategies: 'generateSW',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,mp3}']
       }
     }),
     // 构建时为 public 目录下的静态资源添加版本号，解决浏览器缓存问题
