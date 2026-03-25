@@ -932,17 +932,24 @@ import winUrl from '@common/audio/pka_win.mp3'
      */
     function calculateLayout() {
         const vw = document.documentElement.clientWidth;
-        const vh = window.innerHeight;
+        const vh = document.documentElement.clientHeight;
+        
         const pageContainer = document.querySelector('.page-container');
         const topBar = document.querySelector('.top-info');
         const bottomBar = document.querySelector('.bottom-controls');
         const statusBar = document.querySelector('.status-bar');
+        
+        // 先切换CSS类
+        const isLandscapeWide = (vw / vh >= 2) && (vh < 500);
+        pageContainer.classList.toggle('landscape-wide', isLandscapeWide);
+        
+        // 强制重排，确保CSS样式已应用
+        void bottomBar.offsetHeight;
+        
+        // 再获取高度（在切换CSS类之后）
         const topBarH = topBar.offsetHeight;
         const bottomBarH = bottomBar.offsetHeight;
         const statusBarH = statusBar.offsetHeight;
-        
-        const isLandscapeWide = (vw / vh >= 2) && (vh < 500);
-        pageContainer.classList.toggle('landscape-wide', isLandscapeWide);
 
         const canvasVpHeight = Math.max(400, vh);
         const sidebarWrapper = document.querySelector('.sidebar-wrapper');
@@ -972,8 +979,17 @@ import winUrl from '@common/audio/pka_win.mp3'
 
         const availableH = canvasVpHeight - topBarH - (isLandscapeWide ? 0 : (bottomBarH + statusBarH));
 
-        // 修正重复声明，统一计算逻辑
-        const STACK_OFFSET_RATIO = 0.32;
+        // 动态计算STACK_OFFSET_RATIO
+        let STACK_OFFSET_RATIO;
+        if (canvasVpHeight < 500) {
+            STACK_OFFSET_RATIO = 0.24;
+        } else if (canvasVpHeight < 600) {
+            // 500-600之间线性插值：0.24 -> 0.32
+            STACK_OFFSET_RATIO = 0.24 + (0.32 - 0.24) * (canvasVpHeight - 500) / (600 - 500);
+        } else {
+            STACK_OFFSET_RATIO = 0.32;
+        }
+
         const verticalFixedSpace = basePaddingY + baseRowGap + basePaddingY;
         const verticalFactor = 2 + (12 * STACK_OFFSET_RATIO);
 
@@ -1007,9 +1023,18 @@ import winUrl from '@common/audio/pka_win.mp3'
 
         // 使用缓存的 DOM 引用，避免重复查询
         topBar.style.paddingLeft = `${basePaddingX}px`;
-        topBar.style.paddingRight = `${basePaddingX}px`;
-        statusBar.style.paddingLeft = `${basePaddingX}px`;
-        statusBar.style.paddingRight = `${basePaddingX}px`;
+        if (isLandscapeWide) {
+            topBar.style.paddingRight = '4px';
+        } else {
+            topBar.style.paddingRight = `${basePaddingX}px`;
+        }
+        if (!isLandscapeWide) {
+            statusBar.style.paddingLeft = `${basePaddingX}px`;
+            statusBar.style.paddingRight = `${basePaddingX}px`;
+        } else {
+            statusBar.style.paddingLeft = '0px';
+            statusBar.style.paddingRight = '0px';
+        }
         if (!isLandscapeWide) {
             bottomBar.style.paddingLeft = `${basePaddingX}px`;
             bottomBar.style.paddingRight = `${basePaddingX}px`;
@@ -1166,8 +1191,12 @@ import winUrl from '@common/audio/pka_win.mp3'
             colHeight += layout.cardH; // 加上最后一张牌的全高
             if (colHeight > maxColHeight) maxColHeight = colHeight;
         });
-        const minH = colY + Math.max(layout.cardH, maxColHeight) + 50;
-        canvas.style.minHeight = `${minH}px`;
+
+        // 确保最少按 13 张牌计算（托底，与 xjfcel 保持一致）
+        const maxCardsInCol = Math.max(13, ...game.cols.map(c => c.length));
+        const minHeight13Cards = colY + layout.cardH + ((maxCardsInCol - 1) * layout.stackYOffsetUp);
+        const minH = colY + Math.max(layout.cardH, maxColHeight);
+        canvas.style.minHeight = `${Math.max(minHeight13Cards, minH) + 5}px`;
     }
 
     function createCardEl(card, pos) {
@@ -1986,9 +2015,7 @@ import winUrl from '@common/audio/pka_win.mp3'
     
     const handleResize = () => {
         clearTimeout(window.resizeTimer);
-        window.resizeTimer = setTimeout(() => {
-            updateAndRender();
-        }, 250);
+        window.resizeTimer = setTimeout(updateAndRender, 300);
     };
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
