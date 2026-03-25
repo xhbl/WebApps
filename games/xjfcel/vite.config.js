@@ -29,7 +29,6 @@ export default defineConfig({
     // 仅在 PWA 构建模式下启用 PWA 插件
     isPwaBuild && VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['xjfcel.svg'],
       manifest: false, // 禁用默认的manifest生成
       strategies: 'generateSW',
       workbox: {
