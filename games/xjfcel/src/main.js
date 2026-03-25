@@ -958,10 +958,8 @@ const soundManager = new SoundManager();
      * 保证所有元素自适应且对齐。
      */
     function calculateLayout() {
-        // 修复：使用 clientWidth 排除滚动条宽度
-        // 兼容性处理，防止滚动条影响布局。
         const vw = document.documentElement.clientWidth;
-        const vh = window.innerHeight;
+        const vh = document.documentElement.clientHeight;
         const pageContainer = document.querySelector('.page-container');
         const topBar = document.querySelector('.top-info');
         const bottomBar = document.querySelector('.bottom-controls');
@@ -969,7 +967,10 @@ const soundManager = new SoundManager();
 
         const isLandscapeWide = (vw / vh >= 2) && (vh < 500);
         pageContainer.classList.toggle('landscape-wide', isLandscapeWide);
-
+        
+        // 强制重排，确保CSS样式已应用
+        void bottomBar.offsetHeight;
+        
         layout.topBarH = topBar.offsetHeight;
         layout.statusBarH = statusBar.offsetHeight;
         const sidebarWrapper = document.querySelector('.sidebar-wrapper');
@@ -1011,7 +1012,17 @@ const soundManager = new SoundManager();
         const availableH = canvasVpHeight - layout.topBarH - (isLandscapeWide ? 0 : (layout.bottomBarH + layout.statusBarH));
         const verticalFixedSpace = basePaddingY + baseRowGap + basePaddingY;
 
-        const STACK_OFFSET_RATIO = 0.32; // 统一使用 32% 的间距，保证在各种尺寸下都能看清牌面
+        // 动态计算STACK_OFFSET_RATIO
+        let STACK_OFFSET_RATIO;
+        if (canvasVpHeight < 500) {
+            STACK_OFFSET_RATIO = 0.24;
+        } else if (canvasVpHeight < 600) {
+            // 500-600之间线性插值：0.24 -> 0.32
+            STACK_OFFSET_RATIO = 0.24 + (0.32 - 0.24) * (canvasVpHeight - 500) / (600 - 500);
+        } else {
+            STACK_OFFSET_RATIO = 0.32;
+        }
+
         const cardHeightFactor = 2 + (12 * STACK_OFFSET_RATIO);
         
         // 2.2. 计算出在当前高度限制下的卡牌高度
@@ -1038,17 +1049,24 @@ const soundManager = new SoundManager();
 
         // 核心对齐修复：动态设置上下栏的内边距，使其与游戏区的内边距(basePaddingX)保持一致
         topBar.style.paddingLeft = `${basePaddingX}px`;
-        topBar.style.paddingRight = `${basePaddingX}px`;
-        statusBar.style.paddingLeft = `${basePaddingX}px`;
-        statusBar.style.paddingRight = `${basePaddingX}px`;
+        if (isLandscapeWide) {
+            topBar.style.paddingRight = '4px';
+        } else {
+            topBar.style.paddingRight = `${basePaddingX}px`;
+        }
+        if (!isLandscapeWide) {
+            statusBar.style.paddingLeft = `${basePaddingX}px`;
+            statusBar.style.paddingRight = `${basePaddingX}px`;
+        } else {
+            statusBar.style.paddingLeft = '0px';
+            statusBar.style.paddingRight = '0px';
+        }
         if (!isLandscapeWide) {
             bottomBar.style.paddingLeft = `${basePaddingX}px`;
             bottomBar.style.paddingRight = `${basePaddingX}px`;
         } else {
             bottomBar.style.paddingLeft = '';
             bottomBar.style.paddingRight = '';
-            statusBar.style.paddingLeft = '';
-            statusBar.style.paddingRight = '';
         }
 
         layout.paddingX = basePaddingX;
@@ -2358,7 +2376,7 @@ const soundManager = new SoundManager();
         // 使用稍长的延迟让浏览器在方向改变后稳定下来
         window.resizeTimer = setTimeout(() => {
             updateAndRender();
-        }, 250);
+        }, 300);
     };
 
     // 监听窗口大小和方向变化，重新布局。
