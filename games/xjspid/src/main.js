@@ -20,6 +20,17 @@ import pkpKh from '@common/images/pkp_kh.svg'
 import pkpKs from '@common/images/pkp_ks.svg'
 import pkpBack from '@common/images/pkp_back.svg'
 
+// 音效资源
+import carddealUrl from '@common/audio/pka_carddeal.mp3'
+import cardselsetUrl from '@common/audio/pka_cardselset.mp3'
+import hintnomoveUrl from '@common/audio/pka_hintnomove.mp3'
+import hintshownUrl from '@common/audio/pka_hintshown.mp3'
+import illegalmoveUrl from '@common/audio/pka_illegalmove.mp3'
+import liftoffUrl from '@common/audio/pka_liftoff.mp3'
+import tofoundUrl from '@common/audio/pka_tofound.mp3'
+import undoUrl from '@common/audio/pka_undo.mp3'
+import winUrl from '@common/audio/pka_win.mp3'
+
 (function() {
     // 为 Canvas 添加 roundRect 方法，用于绘制圆角矩形
     // 兼容性处理：部分浏览器不支持 roundRect，需手动扩展 CanvasRenderingContext2D 原型。
@@ -37,6 +48,66 @@ import pkpBack from '@common/images/pkp_back.svg'
             return this;
         };
     }
+
+    // ========== 音效管理器 ==========
+    class SoundManager {
+        constructor() {
+            this.sounds = {
+                carddeal: new Audio(carddealUrl),      // 发牌
+                cardselset: new Audio(cardselsetUrl),  // 选牌/放牌
+                hintnomove: new Audio(hintnomoveUrl),  // 无可用提示
+                hintshown: new Audio(hintshownUrl),    // 显示提示
+                illegalmove: new Audio(illegalmoveUrl),// 非法移动
+                liftoff: new Audio(liftoffUrl),        // 拖起牌
+                tofound: new Audio(tofoundUrl),        // 放入完成区
+                undo: new Audio(undoUrl),              // 撤销
+                win: new Audio(winUrl)                 // 胜利
+            };
+            
+            // 设置音量
+            Object.values(this.sounds).forEach(sound => {
+                sound.volume = 1.0;
+            });
+            
+            this.enabled = true;
+            this.loadSettings();
+        }
+
+        loadSettings() {
+            const saved = localStorage.getItem('xjspid-sound');
+            if (saved !== null) {
+                this.enabled = saved === 'true';
+            }
+        }
+
+        saveSettings() {
+            localStorage.setItem('xjspid-sound', this.enabled.toString());
+        }
+
+        toggle() {
+            this.enabled = !this.enabled;
+            this.saveSettings();
+            return this.enabled;
+        }
+
+        play(soundName) {
+            if (!this.enabled) return;
+            const sound = this.sounds[soundName];
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play().catch(e => { /* 忽略自动播放限制错误 */ });
+            }
+        }
+
+        stop(soundName) {
+            const sound = this.sounds[soundName];
+            if (sound) {
+                sound.pause();
+                sound.currentTime = 0;
+            }
+        }
+    }
+    const soundManager = new SoundManager();
 
     // 从 package.json 获取版本号
     const APP_VERSION = packageJson.version;
@@ -335,6 +406,7 @@ import pkpBack from '@common/images/pkp_back.svg'
             
             // 发10张牌到各列（先计算动画位置，再移除牌）
             const cardsToDeal = this.stock.slice(0, 10);
+            soundManager.play('carddeal');
             await animateDealStock(cardsToDeal);
             
             // 动画完成后才真正移除牌
@@ -384,6 +456,7 @@ import pkpBack from '@common/images/pkp_back.svg'
                     // 移除这13张牌
                     const removedCards = col.splice(-13);
                     this.score += 100;
+                    soundManager.play('tofound');
 
                     // 找到对应花色的可用slot
                     const suit = removedCards[0].suit;
@@ -547,6 +620,7 @@ import pkpBack from '@common/images/pkp_back.svg'
             // 添加到目标位置
             if (to.type === 'cols') {
                 this.cols[to.idx].push(...cards);
+                soundManager.play('cardselset');
             }
 
             // 翻牌得分
@@ -569,6 +643,7 @@ import pkpBack from '@common/images/pkp_back.svg'
             
             // 死局检测
             if (!this.isWon && this.getHints().length === 0) {
+                soundManager.play('hintnomove');
                 showMessageBox({
                     title: t('noMovesTitle'),
                     message: t('noMovesMessage'),
@@ -794,6 +869,9 @@ import pkpBack from '@common/images/pkp_back.svg'
 
         await new Promise(r => setTimeout(r, duration));
         flyers.forEach(f => f.el.remove());
+        
+        // 停止发牌音效
+        soundManager.stop('carddeal');
     }
 
     // 收牌到foundation动画 - 从A到K逐张飞入收牌区
@@ -1189,6 +1267,7 @@ import pkpBack from '@common/images/pkp_back.svg'
         const move = (ev) => {
             if (!drag.moved && (Math.abs(ev.clientX - drag.startX) > 5 || Math.abs(ev.clientY - drag.startY) > 5)) {
                 drag.moved = true;
+                soundManager.play('liftoff'); // 只在真正拖拽移动时播放
                 clearSelection();
                 els.forEach(el => { el.classList.add('dragging'); el.classList.add('selected'); });
             }
@@ -1254,6 +1333,7 @@ import pkpBack from '@common/images/pkp_back.svg'
             const tt = ev.touches[0];
             if (!drag.moved && (Math.abs(tt.clientX - drag.startX) > 5 || Math.abs(tt.clientY - drag.startY) > 5)) {
                 drag.moved = true;
+                soundManager.play('liftoff'); // 只在真正拖拽移动时播放
                 clearSelection();
                 els.forEach(el => { el.classList.add('dragging'); el.classList.add('selected'); });
             }
@@ -1484,6 +1564,8 @@ import pkpBack from '@common/images/pkp_back.svg'
     }
 
     function showInvalidMoveTip(messageKey) {
+        soundManager.play('illegalmove');
+        
         if (invalidTipElement) {
             invalidTipElement.remove();
         }
@@ -1669,6 +1751,9 @@ import pkpBack from '@common/images/pkp_back.svg'
 
         await Promise.all(promises);
         
+        // 停止发牌音效
+        soundManager.stop('carddeal');
+        
         isAnimating = false;
         document.body.style.pointerEvents = '';
     }
@@ -1679,6 +1764,7 @@ import pkpBack from '@common/images/pkp_back.svg'
         startGameTimer();
         saveGameState();
         updateAndRender();
+        soundManager.play('carddeal');
         animateDeal();
     }
     function saveGameState() {
@@ -1756,7 +1842,7 @@ import pkpBack from '@common/images/pkp_back.svg'
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
     document.getElementById('new-game-btn').onclick = () => { clearHint(); newRandomGame(); };
-    document.getElementById('undo-btn').onclick = () => { clearHint(); game.undo(); };
+    document.getElementById('undo-btn').onclick = () => { clearHint(); game.undo(); soundManager.play('undo'); };
     document.getElementById('aboutLink').onclick = (e) => { e.preventDefault(); clearHint(); showAbout(); };
     document.getElementById('langToggle').onclick = () => {
         clearHint();
@@ -1769,6 +1855,7 @@ import pkpBack from '@common/images/pkp_back.svg'
             currentHints = game.getHints();
         }
         if (currentHints.length > 0) {
+            soundManager.play('hintshown');
             document.querySelectorAll('.hint-glow').forEach(e=>e.classList.remove('hint-glow'));
             document.querySelectorAll('.col-hint-box').forEach(e=>e.remove());
             
@@ -1919,6 +2006,13 @@ import pkpBack from '@common/images/pkp_back.svg'
         updateStatsOnWin();
         stopGameTimer();
         
+        // 播放胜利音效
+        const winSound = soundManager.sounds.win;
+        if (soundManager.enabled && winSound) {
+            winSound.currentTime = 0;
+            winSound.play().catch(e => {});
+        }
+        
         const formatTime = (seconds) => {
             const h = Math.floor(seconds / 3600);
             const m = Math.floor((seconds % 3600) / 60);
@@ -1941,6 +2035,11 @@ import pkpBack from '@common/images/pkp_back.svg'
             title: t('winTitle'),
             message: message, buttons: 'yes-no',
             callback: (r) => { 
+                // 停止胜利音效
+                if (winSound) {
+                    winSound.pause();
+                    winSound.currentTime = 0;
+                }
                 stopAnim();
                 if(r.confirmed) newRandomGame(true); 
             }
@@ -2108,5 +2207,15 @@ import pkpBack from '@common/images/pkp_back.svg'
 
     // 初始化
     loadGame();
+
+    // 音效开关按钮
+    const soundToggle = document.getElementById('soundToggle');
+    if (soundToggle) {
+        soundToggle.textContent = soundManager.enabled ? '🔊' : '🔇';
+        soundToggle.onclick = () => {
+            const enabled = soundManager.toggle();
+            soundToggle.textContent = enabled ? '🔊' : '🔇';
+        };
+    }
 
 })();
