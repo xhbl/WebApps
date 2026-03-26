@@ -507,7 +507,6 @@ import winUrl from '@common/audio/pka_win.mp3'
                     // 收牌动画后再翻牌
                     if (cardToFlip) {
                         cardToFlip.faceUp = true;
-                        this.score += 5;
                         renderContent(); // 重新渲染,显示正面
                         await animateFlip(cardToFlip.id); // 播放翻牌动画
                     }
@@ -623,10 +622,9 @@ import winUrl from '@common/audio/pka_win.mp3'
                 soundManager.play('cardselset');
             }
 
-            // 翻牌得分
+            // 翻牌
             if (cardToFlip) {
                 cardToFlip.faceUp = true;
-                this.score += 5;
             }
             
             this.moves++;
@@ -1842,7 +1840,14 @@ import winUrl from '@common/audio/pka_win.mp3'
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
     document.getElementById('new-game-btn').onclick = () => { clearHint(); newRandomGame(); };
-    document.getElementById('undo-btn').onclick = () => { clearHint(); game.undo(); soundManager.play('undo'); };
+    document.getElementById('undo-btn').onclick = () => { 
+        clearHint(); 
+        game.undo(); 
+        game.score = Math.max(0, game.score - 1); // 撤销扣1分
+        updateStatusBar();
+        saveGameState();
+        soundManager.play('undo'); 
+    };
     document.getElementById('aboutLink').onclick = (e) => { e.preventDefault(); clearHint(); showAbout(); };
     document.getElementById('langToggle').onclick = () => {
         clearHint();
@@ -1995,11 +2000,7 @@ import winUrl from '@common/audio/pka_win.mp3'
     
     // 胜利处理
     function handleGameWin() {
-        if (game.time > 0) {
-            const timeBonus = Math.floor(700000 / game.time);
-            game.score += timeBonus;
-            updateStatusBar();
-        }
+        // 无胜利奖励分
         
         const isNewHighScore = gameStats.highScores.length === 0 || game.score > gameStats.highScores[0].score;
         
