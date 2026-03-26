@@ -6,6 +6,19 @@
 import './style.css'
 
 import packageJson from '../package.json'
+import pkpJc from '@common/images/pkp_jc.svg'
+import pkpJd from '@common/images/pkp_jd.svg'
+import pkpJh from '@common/images/pkp_jh.svg'
+import pkpJs from '@common/images/pkp_js.svg'
+import pkpQc from '@common/images/pkp_qc.svg'
+import pkpQd from '@common/images/pkp_qd.svg'
+import pkpQh from '@common/images/pkp_qh.svg'
+import pkpQs from '@common/images/pkp_qs.svg'
+import pkpKc from '@common/images/pkp_kc.svg'
+import pkpKd from '@common/images/pkp_kd.svg'
+import pkpKh from '@common/images/pkp_kh.svg'
+import pkpKs from '@common/images/pkp_ks.svg'
+import pkpBack from '@common/images/pkp_back.svg'
 
 (function() {
     // 为 Canvas 添加 roundRect 方法，用于绘制圆角矩形
@@ -191,6 +204,31 @@ import packageJson from '../package.json'
 
     const SUITS = ['spades', 'hearts', 'diamonds', 'clubs'];
     const SYMBOLS = { 'hearts':'♥', 'diamonds':'♦', 'clubs':'♣', 'spades':'♠' };
+    
+    // 预加载脸牌图片资源
+    const faceImages = {};
+    const faceImageSrcs = {
+        'jc': pkpJc, 'jd': pkpJd, 'jh': pkpJh, 'js': pkpJs,
+        'qc': pkpQc, 'qd': pkpQd, 'qh': pkpQh, 'qs': pkpQs,
+        'kc': pkpKc, 'kd': pkpKd, 'kh': pkpKh, 'ks': pkpKs
+    };
+    Object.keys(faceImageSrcs).forEach(k => {
+        const img = new Image();
+        img.src = faceImageSrcs[k];
+        faceImages[k] = img;
+    });
+
+    // 获取脸牌图片键的辅助函数
+    function getFaceImageKey(card) {
+        if (card.rank <= 10) return null;
+        const rankChar = card.rank === 11 ? 'j' : card.rank === 12 ? 'q' : 'k';
+        const suitChar = card.suit.charAt(0); // 'c', 'd', 'h', 's'
+        return rankChar + suitChar;
+    }
+
+    // 预加载牌背图片资源
+    const backImage = new Image();
+    backImage.src = pkpBack;
 
     class SpiderLogic {
         constructor() { this.reset(1); }
@@ -607,8 +645,15 @@ import packageJson from '../package.json'
             el.style.fontSize = `${fontSize}px`;
             
             const rank = card.rank === 1 ? 'A' : card.rank === 11 ? 'J' : card.rank === 12 ? 'Q' : card.rank === 13 ? 'K' : card.rank;
-            const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
-            el.innerHTML = `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div><div class="suit-l" style="font-size:${bigSuitSize}px">${SYMBOLS[card.suit]}</div></div>`;
+
+            if (card.rank > 10) {
+                const f = getFaceImageKey(card);
+                el.innerHTML = `<img src="${faceImageSrcs[f]}" class="face-img" alt="${f}">` +
+                                `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div></div>`;
+            } else {
+                const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
+                el.innerHTML = `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div><div class="suit-l" style="font-size:${bigSuitSize}px">${SYMBOLS[card.suit]}</div></div>`;
+            }
 
             const originalEl = document.querySelector(`.card[data-id="${card.id}"]`);
             if (originalEl) originalEl.style.visibility = 'hidden';
@@ -682,8 +727,15 @@ import packageJson from '../package.json'
             el.style.fontSize = `${fontSize}px`;
             
             const rank = cards[0].rank === 1 ? 'A' : cards[0].rank === 11 ? 'J' : cards[0].rank === 12 ? 'Q' : cards[0].rank === 13 ? 'K' : cards[0].rank;
-            const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
-            el.innerHTML = `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[cards[0].suit]}</span></div><div class="suit-l" style="font-size:${bigSuitSize}px">${SYMBOLS[cards[0].suit]}</div></div>`;
+
+            if (cards[0].rank > 10) {
+                const f = getFaceImageKey(cards[0]);
+                el.innerHTML = `<img src="${faceImageSrcs[f]}" class="face-img" alt="${f}">` +
+                                `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[cards[0].suit]}</span></div></div>`;
+            } else {
+                const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
+                el.innerHTML = `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[cards[0].suit]}</span></div><div class="suit-l" style="font-size:${bigSuitSize}px">${SYMBOLS[cards[0].suit]}</div></div>`;
+            }
         }, 100);
 
         // 等待翻转完成
@@ -716,8 +768,15 @@ import packageJson from '../package.json'
             cardEl.style.fontSize = `${fontSize}px`;
             
             const rank = card.rank === 1 ? 'A' : card.rank === 11 ? 'J' : card.rank === 12 ? 'Q' : card.rank === 13 ? 'K' : card.rank;
-            const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
-            cardEl.innerHTML = `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div><div class="suit-l" style="font-size:${bigSuitSize}px">${SYMBOLS[card.suit]}</div></div>`;
+
+            if (card.rank > 10) {
+                const f = getFaceImageKey(card);
+                cardEl.innerHTML = `<img src="${faceImageSrcs[f]}" class="face-img" alt="${f}">` +
+                                  `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div></div>`;
+            } else {
+                const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
+                cardEl.innerHTML = `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div><div class="suit-l" style="font-size:${bigSuitSize}px">${SYMBOLS[card.suit]}</div></div>`;
+            }
 
             canvas.appendChild(cardEl);
             flyers.push({ el: cardEl, card, index: i });
@@ -767,8 +826,15 @@ import packageJson from '../package.json'
             cardEl.style.fontSize = `${fontSize}px`;
 
             const rank = card.rank === 1 ? 'A' : card.rank === 11 ? 'J' : card.rank === 12 ? 'Q' : card.rank === 13 ? 'K' : card.rank;
-            const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
-            cardEl.innerHTML = `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div><div class="suit-l" style="font-size:${bigSuitSize}px">${SYMBOLS[card.suit]}</div></div>`;
+
+            if (card.rank > 10) {
+                const f = getFaceImageKey(card);
+                cardEl.innerHTML = `<img src="${faceImageSrcs[f]}" class="face-img" alt="${f}">` +
+                                  `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div></div>`;
+            } else {
+                const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
+                cardEl.innerHTML = `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div><div class="suit-l" style="font-size:${bigSuitSize}px">${SYMBOLS[card.suit]}</div></div>`;
+            }
 
             canvas.appendChild(cardEl);
             flyers.push({ el: cardEl, card, index: i });
@@ -1061,8 +1127,15 @@ import packageJson from '../package.json'
             div.style.fontSize = `${fontSize}px`;
 
             const rank = card.rank === 1 ? 'A' : card.rank === 11 ? 'J' : card.rank === 12 ? 'Q' : card.rank === 13 ? 'K' : card.rank;
-            const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
-            div.innerHTML = `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div><div class="suit-l" style="font-size:${bigSuitSize}px">${SYMBOLS[card.suit]}</div></div>`;
+
+            if (card.rank > 10) {
+                const f = getFaceImageKey(card);
+                div.innerHTML = `<img src="${faceImageSrcs[f]}" class="face-img" alt="${f}">` +
+                                `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div></div>`;
+            } else {
+                const bigSuitSize = Math.max(20, Math.floor(layout.cardW * 0.9));
+                div.innerHTML = `<div class="card-inner"><div class="card-header"><span class="rank">${rank}</span><span class="suit-s">${SYMBOLS[card.suit]}</span></div><div class="suit-l" style="font-size:${bigSuitSize}px">${SYMBOLS[card.suit]}</div></div>`;
+            }
             
             if (isDraggable) {
                 div.classList.add('draggable');
