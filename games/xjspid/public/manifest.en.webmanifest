@@ -1,0 +1,23 @@
+{
+  "name": "Spider Solitaire",
+  "short_name": "Spider Solitaire",
+  "description": "A classic Spider Solitaire game based on JavaScript",
+  "start_url": "./",
+  "display": "standalone",
+  "lang": "en",
+  "scope": "./",
+  "icons": [
+    {
+      "src": "xjspid-512.png",
+      "sizes": "72x72 96x96 128x128 144x144 152x152 192x192 384x384 512x512 any",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "xjspid-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

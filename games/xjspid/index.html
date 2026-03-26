@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <title>蜘蛛纸牌 - 经典JS版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0E5C2B">
+    <link rel="icon" type="image/png" href="./xjspid.png" />
+    <link rel="apple-touch-icon" href="./xjspid.png" />
+    <script>
+      function detectBrowserLanguage() {
+        const storedLang = localStorage.getItem('xjspid-lang');
+        if (storedLang) return storedLang;
+        
+        const browserLang = navigator.language || navigator.userLanguage;
+        return browserLang.includes('zh') ? 'zh' : 'en';
+      }
+      
+      const lang = detectBrowserLanguage();
+      const manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      manifestLink.href = `./manifest.${lang}.webmanifest`;
+      document.head.appendChild(manifestLink);
+    </script>
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <div class="page-container">
+          <div class="top-info">
+              <div style="flex: 1; display: flex; align-items: center;">
+                  <img src="./xjspid.png" style="height: 20px; width: 20px;">
+              </div>
+              <span id="game-title">蜘蛛纸牌</span>
+              <div style="flex: 1; text-align: right;">
+                  <button class="lang-btn" id="langToggle">中</button>
+              </div>
+          </div>
+
+          <div class="main-area">
+              <div class="game-canvas" id="canvas">
+                  <div class="slot-row" id="bg-slots">
+                      <div class="group" id="stock-group">
+                          <div class="slot" id="stock-slot"></div>
+                      </div>
+                      <div class="group" id="complete-group"></div>
+                  </div>
+              </div>
+          
+              <div class="sidebar-wrapper">
+                  <div class="bottom-controls">
+                  <button class="control-btn" id="stats-btn">统计</button>
+                      <button class="control-btn" id="options-btn">选项</button>
+                      <button class="control-btn" id="new-game-btn">新游戏</button>
+                      <button class="control-btn" id="hint-btn">提示</button>
+                      <button class="control-btn" id="undo-btn">撤销</button>
+                  </div>
+                  <div class="status-bar">
+                      <div>
+                          <span id="time-info"></span>
+                      </div>
+                      <div>
+                          <span id="score-info"></span>
+                      </div>
+                      <div>
+                          <span><a href="#" id="aboutLink">XHBL</a> © 2026</span>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+    </div>
+
+      <div id="msgbox-overlay" class="msgbox-overlay" style="display: none;">
+          <div class="msgbox-window">
+              <div class="title-bar">
+                  <div class="title">
+                      <span>蜘蛛纸牌</span>
+                  </div>
+                  <div class="window-controls">
+                      <div class="win-btn" id="msgbox-close">✕</div>
+                  </div>
+              </div>
+              <div class="msgbox-content">
+                  <div class="msgbox-icon" id="msgbox-icon"></div>
+                  <div class="msgbox-text" id="msgbox-text"></div>
+              </div>
+              <div class="msgbox-buttons" id="msgbox-buttons"></div>
+          </div>
+      </div>
+
+      <canvas id="victory-canvas"></canvas>
+  </body>
+</html>
