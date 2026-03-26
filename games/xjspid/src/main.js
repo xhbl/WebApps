@@ -145,9 +145,12 @@ import winUrl from '@common/audio/pka_win.mp3'
             options: {
                 title: "选项",
                 difficulty: "难度",
-                suit1: "单花色 (简单)",
-                suit2: "双花色 (中等)",
-                suit4: "四花色 (困难)",
+                suit1: "初级 (单花色)",
+                suit2: "中级 (双花色)",
+                suit4: "高级 (四花色)",
+                suit1Short: "初级",
+                suit2Short: "中级",
+                suit4Short: "高级",
                 newGameConfirm: "更改此选项将开始新游戏。\n是否继续？"
             },
             invalidMove: {
@@ -190,9 +193,12 @@ import winUrl from '@common/audio/pka_win.mp3'
             options: {
                 title: "Options",
                 difficulty: "Difficulty",
-                suit1: "1 Suit (Easy)",
-                suit2: "2 Suits (Medium)",
-                suit4: "4 Suits (Hard)",
+                suit1: "Beginner (1 Suit)",
+                suit2: "Intermediate (2 Suits)",
+                suit4: "Advanced (4 Suits)",
+                suit1Short: "Beginner",
+                suit2Short: "Intermediate",
+                suit4Short: "Advanced",
                 newGameConfirm: "Changing this option will start a new game.\nContinue?"
             },
             invalidMove: {
@@ -227,30 +233,42 @@ import winUrl from '@common/audio/pka_win.mp3'
         try { updateStatusBar(); } catch (e) {}
     }
 
-    let gameStats = { played: 0, won: 0, winStreak: 0, maxWinStreak: 0, maxLoseStreak: 0, highScores: [] };
+    let gameStats = { 
+        suit1: { played: 0, won: 0, winStreak: 0, maxWinStreak: 0, maxLoseStreak: 0, highScores: [] }, 
+        suit2: { played: 0, won: 0, winStreak: 0, maxWinStreak: 0, maxLoseStreak: 0, highScores: [] }, 
+        suit4: { played: 0, won: 0, winStreak: 0, maxWinStreak: 0, maxLoseStreak: 0, highScores: [] } 
+    };
     try { Object.assign(gameStats, JSON.parse(localStorage.getItem(STATS_KEY) || '{}')); } catch(e){}
 
     function saveStats() { localStorage.setItem(STATS_KEY, JSON.stringify(gameStats)); }
     function updateStatsOnWin() {
-        gameStats.played++; gameStats.won++;
-        gameStats.winStreak = gameStats.winStreak > 0 ? gameStats.winStreak + 1 : 1;
-        gameStats.maxWinStreak = Math.max(gameStats.maxWinStreak, gameStats.winStreak);
+        const suitKey = `suit${gameSettings.suitCount}`;
+        const stats = gameStats[suitKey];
+        
+        stats.played++; 
+        stats.won++;
+        stats.winStreak = stats.winStreak > 0 ? stats.winStreak + 1 : 1;
+        stats.maxWinStreak = Math.max(stats.maxWinStreak, stats.winStreak);
 
         const now = new Date();
         const dateStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`;
-        gameStats.highScores.push({ score: game.score, date: dateStr });
-        gameStats.highScores.sort((a, b) => b.score - a.score);
-        if (gameStats.highScores.length > 3) {
-            gameStats.highScores.length = 3;
+        
+        stats.highScores.push({ score: game.score, date: dateStr });
+        stats.highScores.sort((a, b) => b.score - a.score);
+        if (stats.highScores.length > 3) {
+            stats.highScores.length = 3;
         }
 
         saveStats();
     }
     function checkAbandonment() {
         if (game.hasMoved && !game.isWon) {
-            gameStats.played++;
-            gameStats.winStreak = gameStats.winStreak < 0 ? gameStats.winStreak - 1 : -1;
-            gameStats.maxLoseStreak = Math.max(gameStats.maxLoseStreak, Math.abs(gameStats.winStreak));
+            const suitKey = `suit${gameSettings.suitCount}`;
+            const stats = gameStats[suitKey];
+            
+            stats.played++;
+            stats.winStreak = stats.winStreak < 0 ? stats.winStreak - 1 : -1;
+            stats.maxLoseStreak = Math.max(stats.maxLoseStreak, Math.abs(stats.winStreak));
             saveStats();
         }
     }
@@ -1909,34 +1927,6 @@ import winUrl from '@common/audio/pka_win.mp3'
     };
 
     function showStats() {
-        const winRate = gameStats.played > 0 ? ((gameStats.won / gameStats.played) * 100).toFixed(1) : 0;
-        const currentStreak = gameStats.winStreak;
-        
-        let streakText = '0';
-        if (currentStreak > 0) {
-            streakText = `${currentStreak} ${t('stats.winStreakTag')}`;
-        } else if (currentStreak < 0) {
-            streakText = `${Math.abs(currentStreak)} ${t('stats.loseStreakTag')}`;
-        }
-        
-        const msg = `
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; text-align: left; font-size: 14px;">
-                <div>${t('stats.played')}:</div><div style="text-align:right; font-weight:bold;">${gameStats.played}</div>
-                <div>${t('stats.won')}:</div><div style="text-align:right; font-weight:bold;">${gameStats.won}</div>
-                <div>${t('stats.rate')}:</div><div style="text-align:right; font-weight:bold;">${winRate}%</div>
-                <div style="grid-column: span 2; height: 1px; background: #ccc; margin: 3px 0;"></div>
-                <div>${t('stats.maxWin')}:</div><div style="text-align:right; font-weight:bold;">${gameStats.maxWinStreak}</div>
-                <div>${t('stats.maxLose')}:</div><div style="text-align:right; font-weight:bold;">${gameStats.maxLoseStreak}</div>
-                <div>${t('stats.current')}:</div><div style="text-align:right; font-weight:bold; color: ${currentStreak > 0 ? 'green' : (currentStreak < 0 ? 'red' : 'black')}">${streakText}</div>
-            </div>
-            <div style="grid-column: span 2; height: 1px; background: #ccc; margin: 8px 0;"></div>
-            <div style="font-size: 14px; text-align: left; font-weight: bold; margin-bottom: 4px;">${t('stats.highScores')}</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; text-align: left; font-size: 14px;">
-                ${gameStats.highScores.map(hs => `<div>${hs.score}</div><div style="text-align:right;">${hs.date}</div>`).join('')}
-                ${Array(Math.max(0, 3 - gameStats.highScores.length)).fill('<div>-</div><div style="text-align:right;">-</div>').join('')}
-            </div>
-        `;
-
         const overlay = document.getElementById('msgbox-overlay');
         const titleEl = document.querySelector('#msgbox-overlay .title-bar .title span');
         const textEl = document.getElementById('msgbox-text');
@@ -1947,12 +1937,93 @@ import winUrl from '@common/audio/pka_win.mp3'
         document.querySelector('.msgbox-window').classList.add('compact-mode');
 
         titleEl.textContent = t('stats.title');
-        textEl.innerHTML = msg;
         iconEl.style.display = 'none';
+
+        // 创建标签页结构
+        const msg = `
+            <div style="display: flex; flex-direction: column; height: 100%;">
+                <div style="display: flex; border-bottom: 1px solid #ccc; margin-bottom: 8px;">
+                    <button class="stats-tab" data-suit="suit1" style="flex: 1; padding: 8px; border: none; background: #e0e0e0; cursor: pointer; border-radius: 4px 4px 0 0;">
+                        ${t('options.suit1Short')}
+                    </button>
+                    <button class="stats-tab" data-suit="suit2" style="flex: 1; padding: 8px; border: none; background: #e0e0e0; cursor: pointer; border-radius: 4px 4px 0 0;">
+                        ${t('options.suit2Short')}
+                    </button>
+                    <button class="stats-tab" data-suit="suit4" style="flex: 1; padding: 8px; border: none; background: #e0e0e0; cursor: pointer; border-radius: 4px 4px 0 0;">
+                        ${t('options.suit4Short')}
+                    </button>
+                </div>
+                <div id="stats-content" style="flex: 1; overflow-y: auto;"></div>
+            </div>
+        `;
+
+        textEl.innerHTML = msg;
+
+        // 显示当前难度统计的函数
+        function showSuitStats(suitKey) {
+            const stats = gameStats[suitKey];
+            const winRate = stats.played > 0 ? ((stats.won / stats.played) * 100).toFixed(1) : 0;
+            const currentStreak = stats.winStreak;
+            
+            let streakText = '0';
+            if (currentStreak > 0) {
+                streakText = `${currentStreak} ${t('stats.winStreakTag')}`;
+            } else if (currentStreak < 0) {
+                streakText = `${Math.abs(currentStreak)} ${t('stats.loseStreakTag')}`;
+            }
+            
+            const content = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; text-align: left; font-size: 14px;">
+                    <div>${t('stats.played')}:</div><div style="text-align:right; font-weight:bold;">${stats.played}</div>
+                    <div>${t('stats.won')}:</div><div style="text-align:right; font-weight:bold;">${stats.won}</div>
+                    <div>${t('stats.rate')}:</div><div style="text-align:right; font-weight:bold;">${winRate}%</div>
+                    <div style="grid-column: span 2; height: 1px; background: #ccc; margin: 3px 0;"></div>
+                    <div>${t('stats.maxWin')}:</div><div style="text-align:right; font-weight:bold;">${stats.maxWinStreak}</div>
+                    <div>${t('stats.maxLose')}:</div><div style="text-align:right; font-weight:bold;">${stats.maxLoseStreak}</div>
+                    <div>${t('stats.current')}:</div><div style="text-align:right; font-weight:bold; color: ${currentStreak > 0 ? 'green' : (currentStreak < 0 ? 'red' : 'black')}">${streakText}</div>
+                </div>
+                <div style="height: 1px; background: #ccc; margin: 8px 0;"></div>
+                <div style="font-size: 14px; text-align: left; font-weight: bold; margin-bottom: 4px;">${t('stats.highScores')}</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; text-align: left; font-size: 14px;">
+                    ${(stats.highScores || []).map(hs => `<div>${hs.score}</div><div style="text-align:right;">${hs.date}</div>`).join('')}
+                    ${Array(Math.max(0, 3 - (stats.highScores || []).length)).fill('<div>-</div><div style="text-align:right;">-</div>').join('')}
+                </div>
+            `;
+            
+            document.getElementById('stats-content').innerHTML = content;
+        }
+
+        // 标签页切换事件
+        document.querySelectorAll('.stats-tab').forEach(tab => {
+            tab.onclick = () => {
+                document.querySelectorAll('.stats-tab').forEach(t => {
+                    t.style.background = '#e0e0e0';
+                });
+                tab.style.background = '#ece9d8';
+                showSuitStats(tab.dataset.suit);
+            };
+        });
+
+        // 默认显示当前难度的统计
+        const currentSuit = `suit${gameSettings.suitCount}`;
+        showSuitStats(currentSuit);
+        
+        // 设置当前标签为激活状态
+        document.querySelector(`.stats-tab[data-suit="${currentSuit}"]`).style.background = '#ece9d8';
 
         btnsEl.innerHTML = `<button class="msgbox-btn">${t('close')}</button><button class="msgbox-btn">${t('stats.reset')}</button>`;
         btnsEl.children[0].onclick = () => { overlay.style.display = 'none'; };
-        btnsEl.children[1].onclick = () => { if (confirm(t('stats.confirmReset'))) { gameStats = { played: 0, won: 0, winStreak: 0, maxWinStreak: 0, maxLoseStreak: 0, highScores: [] }; saveStats(); showStats(); } };
+        btnsEl.children[1].onclick = () => { 
+            if (confirm(t('stats.confirmReset'))) { 
+                gameStats = { 
+                    suit1: { played: 0, won: 0, winStreak: 0, maxWinStreak: 0, maxLoseStreak: 0, highScores: [] }, 
+                    suit2: { played: 0, won: 0, winStreak: 0, maxWinStreak: 0, maxLoseStreak: 0, highScores: [] }, 
+                    suit4: { played: 0, won: 0, winStreak: 0, maxWinStreak: 0, maxLoseStreak: 0, highScores: [] } 
+                }; 
+                saveStats(); 
+                showStats(); 
+            } 
+        };
         closeBtn.onclick = () => { overlay.style.display = 'none'; };
         overlay.style.display = 'block';
     }
@@ -2002,7 +2073,11 @@ import winUrl from '@common/audio/pka_win.mp3'
     function handleGameWin() {
         // 无胜利奖励分
         
-        const isNewHighScore = gameStats.highScores.length === 0 || game.score > gameStats.highScores[0].score;
+        // 判断是否为当前难度的新高分
+        const suitKey = `suit${gameSettings.suitCount}`;
+        const stats = gameStats[suitKey];
+        const currentHighScores = stats.highScores || [];
+        const isNewHighScore = currentHighScores.length === 0 || game.score > currentHighScores[0].score;
         
         updateStatsOnWin();
         stopGameTimer();
