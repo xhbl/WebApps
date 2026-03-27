@@ -982,8 +982,8 @@ const soundManager = new SoundManager();
         const canvasVpWidth = vw;
 
         let mode = 'pc';
-        if (vw < 480) mode = 'phone';
-        else if (vw < 800) mode = 'tablet';
+        if (vw <= 640) mode = 'phone';
+        else if (vw <= 1024) mode = 'tablet';
 
         // 切换布局模式
         const basePaddingX = { phone: 1, tablet: 10, pc: 40 }[mode];
@@ -991,8 +991,8 @@ const soundManager = new SoundManager();
         const cardAspectRatio = 96 / 71;
         
         let vMode = 'pc';
-        if (canvasVpHeight < 500) vMode = 'phone';
-        else if (canvasVpHeight < 700) vMode = 'tablet';
+        if (canvasVpHeight <= 600) vMode = 'phone';
+        else if (canvasVpHeight <= 1000) vMode = 'tablet';
         const basePaddingY = 5;
         
         const gapValues = { phone: 10, tablet: 15, pc: 20 };

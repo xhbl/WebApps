@@ -956,16 +956,16 @@ import winUrl from '@common/audio/pka_win.mp3'
         const bottomBarWidth = isLandscapeWide ? sidebarWrapper.offsetWidth : 0;
 
         let mode = 'pc';
-        if (vw < 480) mode = 'phone';
-        else if (vw < 800) mode = 'tablet';
+        if (vw <= 640) mode = 'phone';
+        else if (vw <= 1024) mode = 'tablet';
 
         const basePaddingX = { phone: 1, tablet: 10, pc: 40 }[mode];
         const baseColGap = { phone: 1, tablet: 8, pc: 16 }[mode];
         
         // 引入高度检测模式 (vMode)，完全对齐 xjfcel 逻辑
         let vMode = 'pc';
-        if (canvasVpHeight < 500) vMode = 'phone';
-        else if (canvasVpHeight < 700) vMode = 'tablet';
+        if (canvasVpHeight <= 600) vMode = 'phone';
+        else if (canvasVpHeight <= 1000) vMode = 'tablet';
 
         const basePaddingY = 5;
         const gapValues = { phone: 10, tablet: 15, pc: 20 };

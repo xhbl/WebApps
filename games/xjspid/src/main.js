@@ -991,15 +991,15 @@ import winUrl from '@common/audio/pka_win.mp3'
         const bottomBarWidth = isLandscapeWide ? sidebarWrapper.offsetWidth : 0;
 
         let mode = 'pc';
-        if (vw < 480) mode = 'phone';
-        else if (vw < 800) mode = 'tablet';
+        if (vw <= 640) mode = 'phone';
+        else if (vw <= 1024) mode = 'tablet';
 
         const basePaddingX = { phone: 1, tablet: 5, pc: 20 }[mode];
         const baseColGap = { phone: 1, tablet: 4, pc: 8 }[mode];
         
         let vMode = 'pc';
-        if (canvasVpHeight < 500) vMode = 'phone';
-        else if (canvasVpHeight < 700) vMode = 'tablet';
+        if (canvasVpHeight <= 600) vMode = 'phone';
+        else if (canvasVpHeight <= 1000) vMode = 'tablet';
 
         const basePaddingY = 5;
         const gapValues = { phone: 10, tablet: 15, pc: 20 };
@@ -2081,6 +2081,7 @@ import winUrl from '@common/audio/pka_win.mp3'
         
         updateStatsOnWin();
         stopGameTimer();
+        updateStatusBar();
         
         // 播放胜利音效
         const winSound = soundManager.sounds.win;

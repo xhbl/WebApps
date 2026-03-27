@@ -433,7 +433,7 @@
 
 <script>
 (function() {
-    const APP_VERSION = "1.0.98";
+    const APP_VERSION = "1.0.100";
 
     const LANG = {
         zh: {
@@ -1232,8 +1232,8 @@
         const canvasVpWidth = vw;
 
         let mode = 'pc';
-        if (vw < 480) mode = 'phone';
-        else if (vw < 800) mode = 'tablet';
+        if (vw <= 640) mode = 'phone';
+        else if (vw <= 1024) mode = 'tablet';
 
         // 定义响应式间距
         const basePaddingX = { phone: 1, tablet: 10, pc: 40 }[mode];
@@ -1241,8 +1241,8 @@
         const cardAspectRatio = 96 / 71;
         
         let vMode = 'pc';
-        if (canvasVpHeight < 500) vMode = 'phone';
-        else if (canvasVpHeight < 700) vMode = 'tablet';
+        if (canvasVpHeight <= 600) vMode = 'phone';
+        else if (canvasVpHeight <= 1000) vMode = 'tablet';
         const basePaddingY = 5;
         
         const gapValues = { phone: 10, tablet: 15, pc: 20 };
